@@ -1,0 +1,59 @@
+Ruby 1.9 for Debian GNU/Linux
+-----------------------------
+
+This is Ruby 1.9 package for Debian GNU/Linux.
+
+Ruby is the interpreted scripting language for quick and easy
+object-oriented programming.  It has many features to process text files and
+to do system management tasks (as in perl).  It is simple, straight-forward,
+and extensible.
+
+Ruby 1.9.0 is the development version of Ruby.
+
+Homepage of Ruby is:
+
+  <URL:http://www.ruby-lang.org/> (English and Japanese)
+
+And you can find helpful library or tools from RAA:
+
+  <URL:http://raa.ruby-lang.org/> (English)
+
+
+For Debian users:
+
+ * You can use /usr/bin/ruby1.9.
+
+ * ``sitedir'' is /usr/local/lib/site_ruby, so ``$:'' (or ``$LOAD_PATH'')
+   contains the following:
+
+    ["/usr/local/lib/site_ruby/1.9.0",
+     "/usr/local/lib/site_ruby/1.9.0/i486-linux",
+     "/usr/local/lib/site_ruby/1.9/i386-linux",
+     "/usr/local/lib/site_ruby",
+     "/usr/lib/ruby/vendor_ruby/1.9.0",
+     "/usr/lib/ruby/vendor_ruby/1.9.0/i486-linux",
+     "/usr/lib/ruby/vendor_ruby",
+     "/usr/lib/ruby/1.9.0",
+     "/usr/lib/ruby/1.9.0/i486-linux",
+     "/usr/lib/ruby/1.9/i386-linux",
+     "."]
+
+   ("1.9.0" means "#{major}.#{minor}.#{teeny}" and "i486-linux" means "#{arch}-#{os}".)
+
+ * Debian ruby policy is available in /usr/share/doc/ruby/ruby-policy.txt.gz
+   (ruby package) 
+
+ * Some libraries are in sub-packages.
+     * irb1.9 - irb program and libraries
+     * ri1.9 - ri program
+     * rdoc1.9 - rdoc program and libraries
+     * libdbm-ruby1.9 - dbm.so
+     * libdbm-gruby1.9 - gdbm.so
+     * libreadline-ruby1.9 - readline.so
+     * libtcltk-ruby1.9 - tkutil.so, tcltklib.so and related libraries
+     * libopenssl-ruby1.9 - openssl.so and libraries which use openssl
+     * ruby1.9-dev - header files and mkmf.rb.
+     * ruby1.9-elisp - ruby-mode, etc
+     * ruby1.9-examples - example programs
+
+ -- akira yamada <akira@debian.org>, Thu, 25 Dec 2007 15:44:00 +0900

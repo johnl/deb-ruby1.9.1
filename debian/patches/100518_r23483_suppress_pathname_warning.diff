@@ -1,0 +1,24 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 100503_r27356_queue_race.diff.dpatch by Daigo Moriwaki <daigo@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## 
+## DP: Author: akr <akr@b2dd03c8-39d4-4d8f-98ff-823fe69b080e>
+## DP: Date:   Mon May 18 12:41:08 2009 +0000
+## DP: git-svn-id: http://svn.ruby-lang.org/repos/ruby/trunk@23483 b2dd03c8-39d4-4d8f-98ff-823fe69b080e
+## DP: Backport from trunk. Fixes Debian bug #566612 (libruby1.9.1: A warning has shown in pathname.rb)
+
+@DPATCH@
+Index: b/lib/pathname.rb
+===================================================================
+--- a/lib/pathname.rb	2010-07-20 21:45:44.000000000 +0900
++++ b/lib/pathname.rb	2010-07-20 21:46:19.000000000 +0900
+@@ -267,7 +267,7 @@
+         ensure
+           Thread.current[:pathname_sub_matchdata] = old
+         end
+-        yield *args
++        yield(*args)
+       }
+     else
+       path = @path.sub(pattern, *rest)

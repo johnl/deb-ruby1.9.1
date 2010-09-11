@@ -1,0 +1,33 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 203_adjust_base_of_search_path.dpatch by akira yamada <akira@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: change basedir of search path to /usr/lib/ruby from /usr/lib/ruby1.9.
+
+@DPATCH@
+Index: b/configure.in
+===================================================================
+--- a/configure.in	2010-07-20 21:45:46.000000000 +0900
++++ b/configure.in	2010-07-20 21:46:13.000000000 +0900
+@@ -2003,7 +2003,7 @@
+     rubyw_install_name="$RUBYW_INSTALL_NAME"
+     ;;
+ esac
+-RUBY_LIB_PREFIX=`eval echo \\"${libdir}/${RUBY_INSTALL_NAME}\\"`
++RUBY_LIB_PREFIX=`eval echo \\"${libdir}/ruby\\"`
+ 
+ AC_ARG_WITH(ruby-version,
+ 	    [  --with-ruby-version=STR ruby version string for version specific directories [[full]] (full|minor|STR)],
+Index: b/mkconfig.rb
+===================================================================
+--- a/mkconfig.rb	2010-07-20 21:45:46.000000000 +0900
++++ b/mkconfig.rb	2010-07-20 21:46:13.000000000 +0900
+@@ -140,7 +140,7 @@
+ print(*v_fast)
+ print(*v_others)
+ print <<EOS
+-  CONFIG["rubylibdir"] = "$(libdir)/$(ruby_install_name)/$(ruby_version)"
++  CONFIG["rubylibdir"] = "$(libdir)/ruby/$(ruby_version)"
+   CONFIG["archdir"] = "$(rubylibdir)/$(arch)"
+   CONFIG["sitelibdir"] = "$(sitedir)/$(ruby_version)"
+   CONFIG["sitearchdir"] = "$(sitelibdir)/$(sitearch)"

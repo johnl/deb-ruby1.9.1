@@ -1,0 +1,20 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 904_linux_target_os.dpatch.dpatch by Matthias Klose <doko@ubuntu.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Robustify check for target_os
+
+@DPATCH@
+Index: b/configure.in
+===================================================================
+--- a/configure.in	2010-07-20 21:46:14.000000000 +0900
++++ b/configure.in	2010-07-20 21:46:15.000000000 +0900
+@@ -104,7 +104,7 @@
+ fi
+ 
+ AC_CANONICAL_TARGET
+-target_os=`echo $target_os | sed 's/linux-gnu$/linux/;s/linux-gnu/linux-/'`
++target_os=`echo $target_os | sed 's/linux-gnu$/linux/;s/linux-gnulp$/linux/;s/linux-gnu/linux-/'`
+ ac_install_sh='' # unusable for extension libraries.
+ 
+ ifelse(currently,disabled, [

@@ -1,0 +1,24 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 201_gem_prelude.dpatch by Daigo Moriwaki <daigo@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Adjust the default RubyGems directory.
+
+@DPATCH@
+Index: b/gem_prelude.rb
+===================================================================
+--- a/gem_prelude.rb	2010-07-20 21:45:46.000000000 +0900
++++ b/gem_prelude.rb	2010-07-20 21:46:13.000000000 +0900
+@@ -117,10 +117,10 @@
+         File.join File.dirname(ConfigMap[:sitedir]), 'Gems',
+                   ConfigMap[:ruby_version]
+       elsif RUBY_VERSION > '1.9' then
+-        File.join(ConfigMap[:libdir], ConfigMap[:ruby_install_name], 'gems',
++        File.join('/var/lib', 'gems',
+                   ConfigMap[:ruby_version])
+       else
+-        File.join(ConfigMap[:libdir], ruby_engine, 'gems',
++        File.join('/var/lib', 'gems',
+                   ConfigMap[:ruby_version])
+       end
+     end

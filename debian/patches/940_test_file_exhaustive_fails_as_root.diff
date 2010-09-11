@@ -1,0 +1,92 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 940_test_file_exhaustive_fails_as_root.dpatch by Lucas Nussbaum <lucas@lucas-nussbaum.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: several tests fail when building as root.
+## DP: see http://redmine.ruby-lang.org/issues/show/1170
+
+@DPATCH@
+Index: b/test/ruby/test_file_exhaustive.rb
+===================================================================
+--- a/test/ruby/test_file_exhaustive.rb	2010-07-20 21:45:45.000000000 +0900
++++ b/test/ruby/test_file_exhaustive.rb	2010-07-20 21:46:16.000000000 +0900
+@@ -142,6 +142,7 @@
+ 
+   def test_readable_p
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0
+     File.chmod(0200, @file)
+     assert(!(File.readable?(@file)))
+     File.chmod(0600, @file)
+@@ -151,6 +152,7 @@
+ 
+   def test_readable_real_p
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0
+     File.chmod(0200, @file)
+     assert(!(File.readable_real?(@file)))
+     File.chmod(0600, @file)
+@@ -171,6 +173,7 @@
+ 
+   def test_writable_p
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0
+     File.chmod(0400, @file)
+     assert(!(File.writable?(@file)))
+     File.chmod(0600, @file)
+@@ -180,6 +183,7 @@
+ 
+   def test_writable_real_p
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0
+     File.chmod(0400, @file)
+     assert(!(File.writable_real?(@file)))
+     File.chmod(0600, @file)
+@@ -238,6 +242,7 @@
+ 
+   def test_owned_p ## xxx
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0 # only needed on HPPA?
+     assert(File.owned?(@file))
+     assert(File.grpowned?(@file))
+   end
+@@ -613,6 +618,7 @@
+ 
+   def test_stat_readable_p
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0
+     File.chmod(0200, @file)
+     assert(!(File::Stat.new(@file).readable?))
+     File.chmod(0600, @file)
+@@ -621,6 +627,7 @@
+ 
+   def test_stat_readable_real_p
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0
+     File.chmod(0200, @file)
+     assert(!(File::Stat.new(@file).readable_real?))
+     File.chmod(0600, @file)
+@@ -639,6 +646,7 @@
+ 
+   def test_stat_writable_p
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0
+     File.chmod(0400, @file)
+     assert(!(File::Stat.new(@file).writable?))
+     File.chmod(0600, @file)
+@@ -647,6 +655,7 @@
+ 
+   def test_stat_writable_real_p
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0
+     File.chmod(0400, @file)
+     assert(!(File::Stat.new(@file).writable_real?))
+     File.chmod(0600, @file)
+@@ -698,6 +707,7 @@
+ 
+   def test_stat_owned_p ## xxx
+     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
++    return if Process.euid == 0 # only needed on HPPA?
+     assert(File::Stat.new(@file).owned?)
+     assert(File::Stat.new(@file).grpowned?)
+   end

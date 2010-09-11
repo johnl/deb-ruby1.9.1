@@ -1,0 +1,58 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 100518_load_libc_libm.dpatch by Lucas Nussbaum <lucas@lucas-nussbaum.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=560293
+## DP: ruby1.9.1: test fails to load libc and libm on GNU/kFreeBSD
+
+@DPATCH@
+Index: b/test/dl/test_base.rb
+===================================================================
+--- a/test/dl/test_base.rb	2010-07-20 21:45:44.000000000 +0900
++++ b/test/dl/test_base.rb	2010-07-20 21:46:19.000000000 +0900
+@@ -1,42 +1,9 @@
+ require 'test/unit'
+ require 'dl'
+ 
+-case RUBY_PLATFORM
+-when /cygwin/
+-  LIBC_SO = "cygwin1.dll"
+-  LIBM_SO = "cygwin1.dll"
+-when /x86_64-linux/
+-  LIBC_SO = "/lib64/libc.so.6"
+-  LIBM_SO = "/lib64/libm.so.6"
+-when /linux/
+-  libdir = '/lib'
+-  case [0].pack('L!').size
+-  when 4
+-    # 32-bit ruby
+-    libdir = '/lib32' if File.directory? '/lib32'
+-  when 8
+-    # 64-bit ruby
+-    libdir = '/lib64' if File.directory? '/lib64'
+-  end
+-  LIBC_SO = File.join(libdir, "libc.so.6")
+-  LIBM_SO = File.join(libdir, "libm.so.6")
+-when /mingw/, /mswin32/
+-  LIBC_SO = "msvcrt.dll"
+-  LIBM_SO = "msvcrt.dll"
+-when /darwin/
+-  LIBC_SO = "/usr/lib/libc.dylib"
+-  LIBM_SO = "/usr/lib/libm.dylib"
+-when /bsd/
+-  LIBC_SO = "/usr/lib/libc.so"
+-  LIBM_SO = "/usr/lib/libm.so"
+-else
+-  LIBC_SO = ARGV[0]
+-  LIBM_SO = ARGV[1]
+-  if( !(LIBC_SO && LIBM_SO) )
+-    $stderr.puts("#{$0} <libc> <libm>")
+-    exit
+-  end
+-end
++# hack, but likely more reliable than the original code
++LIBC_SO = Dir::glob('/lib/libc.so.*')[0]
++LIBM_SO = Dir::glob('/lib/libm.so.*')[0]
+ 
+ module DL
+   class TestBase < Test::Unit::TestCase

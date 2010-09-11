@@ -1,0 +1,31 @@
+Index: trunk/lib/rubygems/defaults.rb
+===================================================================
+--- trunk.orig/lib/rubygems/defaults.rb	2010-08-29 17:55:04.000000000 +0900
++++ trunk/lib/rubygems/defaults.rb	2010-08-29 17:57:49.000000000 +0900
+@@ -15,8 +15,13 @@
+   ##
+   # Default home directory path to be used if an alternate value is not
+   # specified in the environment
++  # 
++  # Debian patch: 
++  #   /var/lib/gems/{ruby version} (This is the default path in Debian system)
++  #
+ 
+   def self.default_dir
++    return File.join('/', 'var', 'lib', 'gems', ConfigMap[:ruby_version])
+     if defined? RUBY_FRAMEWORK_VERSION then
+       File.join File.dirname(ConfigMap[:sitedir]), 'Gems',
+                 ConfigMap[:ruby_version]
+@@ -63,8 +68,12 @@
+ 
+   ##
+   # The default directory for binaries
++  #
++  # Debian patch: 
++  #   /var/lib/gems/{ruby version}/bin is the default path in Debian system
+ 
+   def self.default_bindir
++    return File.join('/', 'var', 'lib', 'gems', ConfigMap[:ruby_version], 'bin')
+     if defined? RUBY_FRAMEWORK_VERSION then # mac framework support
+       '/usr/bin'
+     else # generic install
