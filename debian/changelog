@@ -1,3 +1,16 @@
+ruby1.9.1 (1.9.2.0-2) unstable; urgency=low
+
+  * Clarify versioning in package description to reduce 1.9.1 <-> 1.9.2
+    confusion. Closes: #601526.
+  * Remove README.Debian. It only contained outdated information.
+  * Build with -mieee on SH4. Closes: #591785.
+  * Update debian/NEWS to mention LOAD_PATH change. Closes: #593098.
+  * ruby1.9.1: add Suggests on ruby1.9.1-dev as it is need to build
+    many gems, and that's a FAQ.
+  * ruby1.9.1-dev: mention building gems in package description.
+
+ -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Mon, 01 Nov 2010 09:03:33 +0100
+
 ruby1.9.1 (1.9.2.0-1) unstable; urgency=high
 
   [ Lucas Nussbaum ]

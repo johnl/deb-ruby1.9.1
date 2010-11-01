@@ -12,7 +12,7 @@ Vcs-Svn: svn://svn.debian.org/pkg-ruby/ruby1.9.1/trunk/
 Package: ruby1.9.1
 Architecture: any
 Depends: libruby1.9.1 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Suggests: ruby1.9.1-examples, ri1.9.1, graphviz
+Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev
 Conflicts: rdoc1.9.1, irb1.9.1, rubygems1.9.1
 Replaces: rdoc1.9.1, irb1.9.1, rubygems1.9.1
 Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby1.9.2
@@ -22,8 +22,9 @@ Description: Interpreter of object-oriented scripting language Ruby 1.9.2
  files and to do system management tasks (as in perl).  It is simple,
  straight-forward, and extensible.
  .
- This package provides version 1.9.2 series of Ruby, which is binary-compatible
- with the 1.9.1 branch.
+ In the name of this package, `1.9.1' indicates the Ruby library
+ compatibility version. This package currently provides the `1.9.2'
+ branch of Ruby, which is compatible with the `1.9.1' branch.
 
 Package: libruby1.9.1
 Section: libs
@@ -64,7 +65,8 @@ Description: Header files for compiling extension modules for the Ruby 1.9.1
  straight-forward, and extensible.
  .
  This package contains the header files and the mkmf library, necessary
- to make extension library for Ruby 1.9.1.
+ to make extension library for Ruby 1.9.1. It is also required to build
+ many gems.
 
 Package: libtcltk-ruby1.9.1
 Architecture: any

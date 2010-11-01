@@ -1,3 +1,23 @@
+ruby1.9.1 (1.9.2.0-2) unstable; urgency=low
+
+  $LOAD_PATH is changed in Ruby 1.9.2-p0 as the following (for i386):
+
+    ["/usr/local/lib/site_ruby/1.9.1",
+     "/usr/local/lib/site_ruby/1.9.1/i486-linux",
+     "/usr/local/lib/site_ruby",
+     "/usr/lib/ruby/vendor_ruby/1.9.1",
+     "/usr/lib/ruby/vendor_ruby/1.9.1/i486-linux",
+     "/usr/lib/ruby/vendor_ruby",
+     "/usr/lib/ruby/1.9.1",
+     "/usr/lib/ruby/1.9.1/i486-linux"]
+
+  Please note that "." is no longer part of the $LOAD_PATH, so you might need to
+  change require statements using relative paths.
+
+  This changes was introduced by the upstream developers.
+
+ -- Tobias Grimm <etobi@debian.org>  Sun, 15 Aug 2010 18:01:51 +0200
+
 ruby1.9 (1.9.1.0-1) experimental; urgency=low
 
   $LOAD_PATH is changed in Ruby 1.9.1-p0 as the following:

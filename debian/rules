@@ -52,6 +52,11 @@ ifneq (,$(findstring $(DEB_HOST_GNU_CPU),ia64))
 	CXXFLAGS += -O0
 endif
 
+# Renesas SH(sh4) needs -mieee option. #591785
+ifeq (sh4,$(shell dpkg-architecture -qDEB_HOST_ARCH))
+	CFLAGS += -mieee
+endif
+
 ifeq ($(DEB_HOST_GNU_CPU),i386)
 	DEB_CONFIGURE_USER_FLAGS += --enable-frame-address
 endif
