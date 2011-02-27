@@ -2,7 +2,7 @@
 
   vm.c -
 
-  $Author: mame $
+  $Author: yugui $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -549,6 +549,7 @@ invoke_block_from_c(rb_thread_t *th, const rb_block_t *block,
 			     iseq->local_size - arg_size);
 	ncfp->me = th->passed_me;
 	th->passed_me = 0;
+	th->passed_block = blockptr;
 
 	if (cref) {
 	    th->cfp->dfp[-1] = (VALUE)cref;
@@ -741,7 +742,8 @@ vm_backtrace_each(rb_thread_t *th, int lev, void (*init)(void *), rb_backtrace_i
 		id = cfp->me->def->original_id;
 	    else
 		id = cfp->me->called_id;
-	    if ((*iter)(arg, file, line_no, rb_id2str(id))) break;
+	    if (id != ID_ALLOCATOR && (*iter)(arg, file, line_no, rb_id2str(id)))
+		break;
 	}
 	cfp = RUBY_VM_NEXT_CONTROL_FRAME(cfp);
     }
@@ -1394,7 +1396,7 @@ rb_thread_method_id_and_class(rb_thread_t *th,
 {
     rb_control_frame_t *cfp = th->cfp;
     rb_iseq_t *iseq = cfp->iseq;
-    if (!iseq) {
+    if (!iseq && cfp->me) {
 	if (idp) *idp = cfp->me->def->original_id;
 	if (klassp) *klassp = cfp->me->klass;
 	return 1;
@@ -1648,6 +1650,7 @@ rb_thread_mark(void *ptr)
 	    while (cfp != limit_cfp) {
 		rb_iseq_t *iseq = cfp->iseq;
 		rb_gc_mark(cfp->proc);
+		rb_gc_mark(cfp->self);
 		if (iseq) {
 		    rb_gc_mark(RUBY_VM_NORMAL_ISEQ_P(iseq) ? iseq->self : (VALUE)iseq);
 		}

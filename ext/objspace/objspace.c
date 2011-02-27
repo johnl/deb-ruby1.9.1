@@ -2,7 +2,7 @@
 
   objspace.c - ObjectSpace extender for MRI.
 
-  $Author: nobu $
+  $Author: yugui $
   created at: Wed Jun 17 07:39:17 2009
 
   NOTE: This extension library is not expected to exist except C Ruby.
@@ -139,6 +139,9 @@ memsize_of(VALUE obj)
 	    RSTRUCT(obj)->as.heap.ptr) {
 	    size += sizeof(VALUE) * RSTRUCT_LEN(obj);
 	}
+	break;
+
+      case T_ZOMBIE:
 	break;
 
       default:

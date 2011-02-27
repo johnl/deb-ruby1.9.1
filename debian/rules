@@ -257,9 +257,6 @@ binary-post-install/ri$(ruby_ver)::
 ifeq (,$(filter nordoc,$(DEB_BUILD_OPTIONS)))
 	+$(DEB_MAKE_INVOKE) install-doc DESTDIR=$(CURDIR)/debian/$(cdbs_curpkg) \
 	    RDOCFLAGS="--exclude debian --exclude test"
-else
-	+$(DEB_MAKE_INVOKE) install-nodoc DESTDIR=$(CURDIR)/debian/$(cdbs_curpkg) \
-	    RDOCFLAGS="--exclude debian --exclude test"
 endif
 
 binary-post-install/ruby$(ruby_ver)-examples::

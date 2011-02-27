@@ -2,7 +2,7 @@
 
   iseq.c -
 
-  $Author: wanabe $
+  $Author: yugui $
   created at: 2006-07-11(Tue) 09:00:03 +0900
 
   Copyright (C) 2006 Koichi Sasada
@@ -579,7 +579,7 @@ iseq_s_compile(int argc, VALUE *argv, VALUE self)
 
     rb_secure(1);
 
-    rb_scan_args(argc, argv, "13", &src, &file, &path, &line, &opt);
+    rb_scan_args(argc, argv, "14", &src, &file, &path, &line, &opt);
     if (NIL_P(file)) file = rb_str_new2("<compiled>");
     if (NIL_P(line)) line = INT2FIX(1);
 

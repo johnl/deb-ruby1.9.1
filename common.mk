@@ -447,7 +447,7 @@ extconf: $(PREP)
 	$(MAKEDIRS) "$(EXTCONFDIR)"
 	$(RUNRUBY) -C "$(EXTCONFDIR)" $(EXTCONF) $(EXTCONFARGS)
 
-$(RBCONFIG): $(srcdir)/tool/mkconfig.rb config.status $(PREP)
+$(RBCONFIG): $(srcdir)/tool/mkconfig.rb config.status $(srcdir)/version.h $(PREP)
 	@$(MINIRUBY) $(srcdir)/tool/mkconfig.rb -timestamp=$@ \
 		-install_name=$(RUBY_INSTALL_NAME) \
 		-so_name=$(RUBY_SO_NAME) rbconfig.rb
@@ -637,13 +637,13 @@ variable.$(OBJEXT): {$(VPATH)}variable.c $(RUBY_H_INCLUDES) \
   {$(VPATH)}node.h {$(VPATH)}util.h {$(VPATH)}encoding.h \
   {$(VPATH)}oniguruma.h
 version.$(OBJEXT): {$(VPATH)}version.c $(RUBY_H_INCLUDES) \
-  {$(VPATH)}version.h $(srcdir)/revision.h {$(VPATH)}config.h
+  {$(VPATH)}version.h $(srcdir)/version.h $(srcdir)/revision.h {$(VPATH)}config.h
 dmyversion.$(OBJEXT): {$(VPATH)}dmyversion.c version.$(OBJEXT)
 
 compile.$(OBJEXT): {$(VPATH)}compile.c {$(VPATH)}iseq.h \
   $(RUBY_H_INCLUDES) $(VM_CORE_H_INCLUDES) {$(VPATH)}insns.inc \
   {$(VPATH)}insns_info.inc {$(VPATH)}optinsn.inc {$(VPATH)}debug.h \
-  {$(VPATH)}optunifs.inc {$(VPATH)}opt_sc.inc
+  {$(VPATH)}optunifs.inc {$(VPATH)}opt_sc.inc {$(VPATH)}insns.inc
 iseq.$(OBJEXT): {$(VPATH)}iseq.c {$(VPATH)}gc.h {$(VPATH)}iseq.h \
   $(RUBY_H_INCLUDES) $(VM_CORE_H_INCLUDES) {$(VPATH)}insns.inc \
   {$(VPATH)}insns_info.inc {$(VPATH)}node_name.inc {$(VPATH)}debug.h
@@ -758,7 +758,7 @@ $(REVISION_H): $(srcdir)/version.h $(srcdir)/ChangeLog $(srcdir)/tool/file2lastr
 	@$(IFCHANGE) "--timestamp=$@" "$(srcdir)/revision.h" "$(srcdir)/revision.tmp"
 
 $(EXT_SRCS):
-	$(CHDIR) $(@D) && $(exec) $(MAKE) -f depend $(MFLAGS) top_srcdir=../.. srcdir=.
+	$(CHDIR) $(@D) && $(exec) $(MAKE) -f depend $(MFLAGS) top_srcdir=../.. srcdir=. RUBY=$(BASERUBY)
 
 ##
 

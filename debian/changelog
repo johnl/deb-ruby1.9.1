@@ -1,3 +1,13 @@
+ruby1.9.1 (1.9.2.180-1) unstable; urgency=low
+
+  * New upstream release.
+    - (CVE-2011-1004; Closes: #615519)
+    - No longer found in 1.9.2 (Closes: #509500)                                               
+  * debian/rules: correctly skip making rdoc for DEB_BUILD_OPTIONS="nordoc".
+  * debian/control: Build-Depends libncursesw5-dev as well. (Closes: #578169)
+
+ -- Daigo Moriwaki <daigo@debian.org>  Sun, 27 Feb 2011 16:28:32 +0900
+
 ruby1.9.1 (1.9.2.0-2) unstable; urgency=low
 
   * Clarify versioning in package description to reduce 1.9.1 <-> 1.9.2

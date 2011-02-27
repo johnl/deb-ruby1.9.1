@@ -127,11 +127,13 @@ VALUE rb_iseq_clone(VALUE iseqval, VALUE newcbase);
 static int
 clone_method(ID mid, const rb_method_entry_t *me, struct clone_method_data *data)
 {
+    VALUE newiseqval;
     if (me->def && me->def->type == VM_METHOD_TYPE_ISEQ) {
-	VALUE newiseqval = rb_iseq_clone(me->def->body.iseq->self, data->klass);
 	rb_iseq_t *iseq;
+	newiseqval = rb_iseq_clone(me->def->body.iseq->self, data->klass);
 	GetISeqPtr(newiseqval, iseq);
 	rb_add_method(data->klass, mid, VM_METHOD_TYPE_ISEQ, iseq, me->flag);
+	RB_GC_GUARD(newiseqval);
     }
     else {
 	rb_method_entry_set(data->klass, mid, me, me->flag);
@@ -293,7 +295,7 @@ make_metaclass(VALUE klass)
     }
 
     super = RCLASS_SUPER(klass);
-    while (FL_TEST(super, T_ICLASS)) super = RCLASS_SUPER(super);
+    while (RB_TYPE_P(super, T_ICLASS)) super = RCLASS_SUPER(super);
     RCLASS_SUPER(metaclass) = super ? ENSURE_EIGENCLASS(super) : rb_cClass;
 
     OBJ_INFECT(metaclass, RCLASS_SUPER(metaclass));
@@ -524,6 +526,7 @@ rb_define_class_id_under(VALUE outer, ID id, VALUE super)
     rb_set_class_path_string(klass, outer, rb_id2str(id));
     rb_const_set(outer, id, klass);
     rb_class_inherited(super, klass);
+    rb_gc_register_mark_object(klass);
 
     return klass;
 }
@@ -590,6 +593,7 @@ rb_define_module_id_under(VALUE outer, ID id)
     module = rb_define_module_id(id);
     rb_const_set(outer, id, module);
     rb_set_class_path_string(module, outer, rb_id2str(id));
+    rb_gc_register_mark_object(module);
 
     return module;
 }

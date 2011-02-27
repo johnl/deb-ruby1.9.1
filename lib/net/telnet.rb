@@ -163,7 +163,7 @@ module Net
     CR   = "\015"
     LF   = "\012"
     EOL  = CR + LF
-    REVISION = '$Id: telnet.rb 25733 2009-11-12 14:03:03Z xibbar $'
+    REVISION = '$Id: telnet.rb 30128 2010-12-08 08:08:59Z yugui $'
     # :startdoc:
 
     #
@@ -752,6 +752,10 @@ module Net
         end
       end
       line
+    end
+
+    def close
+      @sock.close
     end
 
   end  # class Telnet

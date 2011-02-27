@@ -868,7 +868,7 @@ static UINT ole_encoding2cp(rb_encoding *enc)
     ENC_MACHING_CP(enc, "EUC-KR", 51949);
     ENC_MACHING_CP(enc, "EUC-TW", 51950);
     ENC_MACHING_CP(enc, "GB18030", 54936);
-    ENC_MACHING_CP(enc, "GB2312", 51936);
+    ENC_MACHING_CP(enc, "GB2312", 20936);
     ENC_MACHING_CP(enc, "GBK", 936);
     ENC_MACHING_CP(enc, "IBM437", 437);
     ENC_MACHING_CP(enc, "IBM737", 737);
@@ -2338,6 +2338,13 @@ reg_get_val(HKEY hkey, const char *subkey)
         err = RegQueryValueEx(hkey, subkey, NULL, &dwtype, pbuf, &size);
         if (err == ERROR_SUCCESS) {
             pbuf[size] = '\0';
+            if (dwtype == REG_EXPAND_SZ) {
+                 char* pbuf2 = pbuf;
+                 DWORD len = ExpandEnvironmentStrings(pbuf2, NULL, 0);
+                 pbuf = ALLOC_N(char, len + 1);
+                 ExpandEnvironmentStrings(pbuf2, pbuf, len + 1);
+                 free(pbuf2);
+            }
             val = rb_str_new2(pbuf);
         }
         free(pbuf);

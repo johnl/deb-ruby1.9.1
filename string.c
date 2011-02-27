@@ -1224,12 +1224,13 @@ rb_str_times(VALUE str, VALUE times)
  *
  *  Format---Uses <i>str</i> as a format specification, and returns the result
  *  of applying it to <i>arg</i>. If the format specification contains more than
- *  one substitution, then <i>arg</i> must be an <code>Array</code> containing
- *  the values to be substituted. See <code>Kernel::sprintf</code> for details
- *  of the format string.
+ *  one substitution, then <i>arg</i> must be an <code>Array</code> or <code>Hash</code>
+ *  containing the values to be substituted. See <code>Kernel::sprintf</code> for
+ *  details of the format string.
  *
  *     "%05d" % 123                              #=> "00123"
  *     "%-5s: %08x" % [ "ID", self.object_id ]   #=> "ID   : 200e14d6"
+ *     "foo = %{foo}" % { :foo => 'bar' }        #=> "foo = bar"
  */
 
 static VALUE
@@ -1380,7 +1381,11 @@ rb_string_value_cstr(volatile VALUE *ptr)
     if (!s || memchr(s, 0, len)) {
 	rb_raise(rb_eArgError, "string contains null byte");
     }
-    if (s[len]) rb_str_modify(str);
+    if (s[len]) {
+	rb_str_modify(str);
+	s = RSTRING_PTR(str);
+	s[RSTRING_LEN(str)] = 0;
+    }
     return s;
 }
 
@@ -1707,7 +1712,8 @@ rb_str_resize(VALUE str, long len)
 	else if (len <= RSTRING_EMBED_LEN_MAX) {
 	    char *ptr = RSTRING(str)->as.heap.ptr;
 	    STR_SET_EMBED(str);
-	    if (slen > 0) MEMCPY(RSTRING(str)->as.ary, ptr, char, len);
+	    if (slen > len) slen = len;
+	    if (slen > 0) MEMCPY(RSTRING(str)->as.ary, ptr, char, slen);
 	    RSTRING(str)->as.ary[len] = '\0';
 	    STR_SET_EMBED_LEN(str, len);
 	    xfree(ptr);
@@ -1883,7 +1889,10 @@ rb_enc_cr_str_buf_cat(VALUE str, const char *ptr, long len,
     }
     else if (str_cr == ENC_CODERANGE_VALID) {
         res_encindex = str_encindex;
-        res_cr = str_cr;
+	if (ptr_cr == ENC_CODERANGE_7BIT || ptr_cr == ENC_CODERANGE_VALID)
+	    res_cr = str_cr;
+	else
+	    res_cr = ptr_cr;
     }
     else { /* str_cr == ENC_CODERANGE_BROKEN */
         res_encindex = str_encindex;
@@ -1991,17 +2000,17 @@ rb_str_append(VALUE str, VALUE str2)
 VALUE
 rb_str_concat(VALUE str1, VALUE str2)
 {
-    SIGNED_VALUE lc;
+    unsigned int lc;
 
     if (FIXNUM_P(str2)) {
-	lc = FIX2LONG(str2);
-	if (lc < 0)
+	if ((int)str2 < 0)
 	    rb_raise(rb_eRangeError, "negative argument");
+	lc = FIX2UINT(str2);
     }
     else if (TYPE(str2) == T_BIGNUM) {
 	if (!RBIGNUM_SIGN(str2))
 	    rb_raise(rb_eRangeError, "negative argument");
-	lc = rb_big2ulong(str2);
+	lc = NUM2UINT(str2);
     }
     else {
 	return rb_str_append(str1, str2);
@@ -2015,13 +2024,15 @@ rb_str_concat(VALUE str1, VALUE str2)
 	rb_encoding *enc = STR_ENC_GET(str1);
 	long pos = RSTRING_LEN(str1);
 	int cr = ENC_CODERANGE(str1);
-	int c, len;
+	int len;
 
-	if ((len = rb_enc_codelen(c = (int)lc, enc)) <= 0) {
-	    rb_raise(rb_eRangeError, "%u invalid char", c);
+	if ((len = rb_enc_codelen(lc, enc)) <= 0) {
+	    rb_raise(rb_eRangeError, "%u invalid char", lc);
 	}
 	rb_str_resize(str1, pos+len);
-	rb_enc_mbcput(c, RSTRING_PTR(str1)+pos, enc);
+	rb_enc_mbcput(lc, RSTRING_PTR(str1)+pos, enc);
+	if (cr == ENC_CODERANGE_7BIT && lc > 127)
+	    cr = ENC_CODERANGE_VALID;
 	ENC_CODERANGE_SET(str1, cr);
 	return str1;
     }
@@ -2528,7 +2539,7 @@ rb_str_rindex_m(int argc, VALUE *argv, VALUE str)
  *  against <i>str</i>,and returns the position the match starts, or
  *  <code>nil</code> if there is no match. Otherwise, invokes
  *  <i>obj.=~</i>, passing <i>str</i> as an argument. The default
- *  <code>=~</code> in <code>Object</code> returns <code>false</code>.
+ *  <code>=~</code> in <code>Object</code> returns <code>nil</code>.
  *
  *     "cat o' 9 tails" =~ /\d/   #=> 7
  *     "cat o' 9 tails" =~ 9      #=> nil
@@ -4014,7 +4025,7 @@ rb_str_include(VALUE str, VALUE arg)
  *  integer base <i>base</i> (between 2 and 36). Extraneous characters past the
  *  end of a valid number are ignored. If there is not a valid number at the
  *  start of <i>str</i>, <code>0</code> is returned. This method never raises an
- *  exception.
+ *  exception when <i>base</i> is valid.
  *
  *     "12345".to_i             #=> 12345
  *     "99 red balloons".to_i   #=> 99
@@ -4189,8 +4200,10 @@ rb_str_inspect(VALUE str)
               (cc == '$' || cc == '@' || cc == '{')))) {
 	    if (p - n > prev) str_buf_cat(result, prev, p - n - prev);
 	    str_buf_cat2(result, "\\");
-	    prev = p - n;
-	    continue;
+	    if (asciicompat || enc == resenc) {
+		prev = p - n;
+		continue;
+	    }
 	}
 	switch (c) {
 	  case '\n': cc = 'n'; break;
@@ -4271,12 +4284,11 @@ rb_str_dump(VALUE str)
 	    }
 	    else {
 		if (u8) {	/* \u{NN} */
-		    char buf[32];
 		    int n = rb_enc_precise_mbclen(p-1, pend, enc);
-		    if (MBCLEN_CHARFOUND_P(n)) {
-			int cc = rb_enc_mbc_to_codepoint(p-1, pend, enc);
-			sprintf(buf, "%x", cc);
-			len += strlen(buf)+4;
+		    if (MBCLEN_CHARFOUND_P(n-1)) {
+			unsigned int cc = rb_enc_mbc_to_codepoint(p-1, pend, enc);
+			while (cc >>= 4) len++;
+			len += 5;
 			p += MBCLEN_CHARFOUND_LEN(n)-1;
 			break;
 		    }
@@ -5035,6 +5047,15 @@ tr_setup_table(VALUE str, char stable[256], int first,
     if (RSTRING_LEN(str) > 1 && rb_enc_ascget(tr.p, tr.pend, &l, enc) == '^') {
 	cflag = 1;
 	tr.p += l;
+
+	table = rb_hash_new();
+	ptable = *ctablep;
+	*ctablep = table;
+    }
+    else {
+	table = rb_hash_new();
+	ptable = *tablep;
+	*tablep = table;
     }
     if (first) {
 	for (i=0; i<256; i++) {
@@ -5054,14 +5075,8 @@ tr_setup_table(VALUE str, char stable[256], int first,
 
 	    if (!table) {
 		table = rb_hash_new();
-		if (cflag) {
-		    ptable = *ctablep;
-		    *ctablep = table;
-		}
-		else {
-		    ptable = *tablep;
-		    *tablep = table;
-		}
+		ptable = *tablep;
+		*tablep = table;
 	    }
 	    if (!ptable || !NIL_P(rb_hash_aref(ptable, key))) {
 		rb_hash_aset(table, key, Qtrue);
@@ -5083,10 +5098,14 @@ tr_find(unsigned int c, char table[256], VALUE del, VALUE nodel)
     else {
 	VALUE v = UINT2NUM(c);
 
-	if (del && !NIL_P(rb_hash_lookup(del, v))) {
-	    if (!nodel || NIL_P(rb_hash_lookup(nodel, v))) {
+	if (del) {
+	    if (!NIL_P(rb_hash_lookup(del, v)) &&
+		    (!nodel || NIL_P(rb_hash_lookup(nodel, v)))) {
 		return TRUE;
 	    }
+	}
+	else if (nodel && NIL_P(rb_hash_lookup(nodel, v))) {
+	    return TRUE;
 	}
 	return FALSE;
     }
@@ -5388,16 +5407,15 @@ rb_str_count(int argc, VALUE *argv, VALUE str)
     i = 0;
     while (s < send) {
 	unsigned int c;
-	int clen;
 
 	if (ascompat && (c = *(unsigned char*)s) < 0x80) {
-	    clen = 1;
 	    if (table[c]) {
 		i++;
 	    }
 	    s++;
 	}
 	else {
+	    int clen;
 	    c = rb_enc_codepoint_len(s, send, &clen, enc);
 	    if (tr_find(c, table, del, nodel)) {
 		i++;
@@ -7164,6 +7182,8 @@ sym_to_sym(VALUE sym)
     return sym;
 }
 
+VALUE rb_funcall_passing_block(VALUE recv, ID mid, int argc, const VALUE *argv);
+
 static VALUE
 sym_call(VALUE args, VALUE sym, int argc, VALUE *argv)
 {
@@ -7173,7 +7193,7 @@ sym_call(VALUE args, VALUE sym, int argc, VALUE *argv)
 	rb_raise(rb_eArgError, "no receiver given");
     }
     obj = argv[0];
-    return rb_funcall3(obj, (ID)sym, argc - 1, argv + 1);
+    return rb_funcall_passing_block(obj, (ID)sym, argc - 1, argv + 1);
 }
 
 /*

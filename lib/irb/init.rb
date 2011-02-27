@@ -1,7 +1,7 @@
 #
 #   irb/init.rb - irb initialize module
 #   	$Release Version: 0.9.6$
-#   	$Revision: 28821 $
+#   	$Revision: 30310 $
 #   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
 #
 # --
@@ -207,7 +207,7 @@ module IRB
 	IRB.print_usage
 	exit 0
       when "--"
-	if opt = ARGV.shfit
+	if opt = ARGV.shift
 	  @CONF[:SCRIPT] = opt
 	  $0 = opt
 	end

@@ -2,7 +2,7 @@
 
   vm_insnhelper.c - instruction helper functions.
 
-  $Author: nobu $
+  $Author: yugui $
 
   Copyright (C) 2007 Koichi Sasada
 
@@ -58,6 +58,7 @@ vm_push_frame(rb_thread_t * th, const rb_iseq_t * iseq,
     cfp->self = self;
     cfp->lfp = lfp;
     cfp->dfp = sp;
+    cfp->block_iseq = 0;
     cfp->proc = 0;
     cfp->me = 0;
 
@@ -721,6 +722,9 @@ vm_yield_with_cfunc(rb_thread_t *th, const rb_block_t *block,
 		  self, (VALUE)block->dfp,
 		  0, th->cfp->sp, block->lfp, 1);
 
+    if (blockargptr) {
+	th->cfp->lfp[0] = GC_GUARDED_PTR((VALUE)blockargptr);
+    }
     val = (*ifunc->nd_cfnc) (arg, ifunc->nd_tval, argc, argv, blockarg);
 
     th->cfp++;
@@ -1052,21 +1056,23 @@ vm_getspecial(rb_thread_t *th, VALUE *lfp, VALUE key, rb_num_t type)
 }
 
 static NODE *
-vm_get_cref(const rb_iseq_t *iseq, const VALUE *lfp, const VALUE *dfp)
+vm_get_cref0(const rb_iseq_t *iseq, const VALUE *lfp, const VALUE *dfp)
 {
-    NODE *cref = 0;
-
     while (1) {
 	if (lfp == dfp) {
-	    cref = iseq->cref_stack;
-	    break;
+	    return iseq->cref_stack;
 	}
 	else if (dfp[-1] != Qnil) {
-	    cref = (NODE *)dfp[-1];
-	    break;
+	    return (NODE *)dfp[-1];
 	}
 	dfp = GET_PREV_DFP(dfp);
     }
+}
+
+static NODE *
+vm_get_cref(const rb_iseq_t *iseq, const VALUE *lfp, const VALUE *dfp)
+{
+    NODE *cref = vm_get_cref0(iseq, lfp, dfp);
 
     if (cref == 0) {
 	rb_bug("vm_get_cref: unreachable");
@@ -1083,10 +1089,10 @@ vm_cref_push(rb_thread_t *th, VALUE klass, int noex, rb_block_t *blockptr)
     cref->nd_visi = noex;
 
     if (blockptr) {
-	cref->nd_next = vm_get_cref(blockptr->iseq, blockptr->lfp, blockptr->dfp);
+	cref->nd_next = vm_get_cref0(blockptr->iseq, blockptr->lfp, blockptr->dfp);
     }
     else if (cfp) {
-	cref->nd_next = vm_get_cref(cfp->iseq, cfp->lfp, cfp->dfp);
+	cref->nd_next = vm_get_cref0(cfp->iseq, cfp->lfp, cfp->dfp);
     }
 
     return cref;
@@ -1468,7 +1474,7 @@ vm_throw(rb_thread_t *th, rb_control_frame_t *reg_cfp,
 
 		    while ((VALUE *)cfp < th->stack + th->stack_size) {
 			if (cfp->dfp == dfp) {
-			    VALUE epc = epc = cfp->pc - cfp->iseq->iseq_encoded;
+			    VALUE epc = cfp->pc - cfp->iseq->iseq_encoded;
 			    rb_iseq_t *iseq = cfp->iseq;
 			    int i;
 

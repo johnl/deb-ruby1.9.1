@@ -2,7 +2,7 @@
 
   enum.c -
 
-  $Author: marcandre $
+  $Author: yugui $
   created at: Fri Oct  1 15:15:19 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -527,7 +527,7 @@ inject_op_i(VALUE i, VALUE p, int argc, VALUE *argv)
  *  operation, specified by a block or a symbol that names a
  *  method or operator.
  *
- *  If you specify a block, then for each element in <i>enum<i>
+ *  If you specify a block, then for each element in <i>enum</i>
  *  the block is passed an accumulator value (<i>memo</i>) and the element.
  *  If you specify a symbol instead, then each element in the collection
  *  will be passed to the named method of <i>memo</i>.
@@ -1911,7 +1911,7 @@ zip_i(VALUE val, NODE *memo, int argc, VALUE *argv)
  *  elements from each <i>args</i>.  This generates a sequence of
  *  <em>n</em>-element arrays, where <em>n</em> is one more than the
  *  count of arguments.  The length of the resulting sequence will be
- *  <code>enum#size</code.  If the size of any argument is less than
+ *  <code>enum#size</code>.  If the size of any argument is less than
  *  <code>enum#size</code>, <code>nil</code> values are supplied. If
  *  a block is given, it is invoked for each output array, otherwise
  *  an array of arrays is returned.

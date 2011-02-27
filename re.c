@@ -587,7 +587,7 @@ rb_reg_to_s(VALUE re)
 static void
 rb_reg_raise(const char *s, long len, const char *err, VALUE re)
 {
-    VALUE desc = rb_reg_desc(s, len, re);
+    volatile VALUE desc = rb_reg_desc(s, len, re);
 
     rb_raise(rb_eRegexpError, "%s: %s", err, RSTRING_PTR(desc));
 }
@@ -1395,7 +1395,7 @@ rb_reg_search(VALUE re, VALUE str, long pos, int reverse)
 	else {
 	    onig_errmsg_buffer err = "";
 	    onig_error_code_to_str((UChar*)err, (int)result);
-	    rb_reg_raise(RREGEXP_SRC_PTR(re), RREGEXP_SRC_LEN(re), err, 0);
+	    rb_reg_raise(RREGEXP_SRC_PTR(re), RREGEXP_SRC_LEN(re), err, re);
 	}
     }
 
@@ -2446,6 +2446,7 @@ rb_reg_initialize_str(VALUE obj, VALUE str, int options, onig_errmsg_buffer err,
     }
     ret = rb_reg_initialize(obj, RSTRING_PTR(str), RSTRING_LEN(str), enc,
 			    options, err, sourcefile, sourceline);
+    OBJ_INFECT(obj, str);
     RB_GC_GUARD(str);
     return ret;
 }

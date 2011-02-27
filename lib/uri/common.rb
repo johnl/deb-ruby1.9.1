@@ -1,7 +1,7 @@
 # = uri/common.rb
 #
 # Author:: Akira Yamada <akira@ruby-lang.org>
-# Revision:: $Id: common.rb 27285 2010-04-10 22:05:02Z naruse $
+# Revision:: $Id: common.rb 30306 2010-12-23 10:49:00Z yugui $
 # License::
 #   You can redistribute it and/or modify it under the same term as Ruby.
 #
@@ -801,7 +801,7 @@ module URI
     str
   end
 
-  WFKV_ = '(?:%\h\h|[^%#=;&]+)' # :nodoc:
+  WFKV_ = '(?:%\h\h|[^%#=;&])' # :nodoc:
 
   # Decode URL-encoded form data from given +str+.
   #

@@ -362,7 +362,7 @@ static char *
 BSD__uqtoa(register u_quad_t val, char *endp, int base, int octzero, const char *xdigs)
 {
 	register char *cp = endp;
-	register long sval;
+	register quad_t sval;
 
 	/*
 	 * Handle the three cases separately, in the hope of getting
@@ -893,7 +893,7 @@ fp_begin:		_double = va_arg(ap, double);
 			 */
 			prec = (int)(sizeof(void*)*CHAR_BIT/4);
 #ifdef _HAVE_LLP64_
-			uqval = (u_long)va_arg(ap, void *);
+			uqval = (u_quad_t)va_arg(ap, void *);
 			flags = (flags) | QUADINT | HEXPREFIX;
 #else
 			ulval = (u_long)va_arg(ap, void *);
@@ -1165,6 +1165,7 @@ cvt(value, ndigits, flags, sign, decpt, ch, length, buf)
 	else {
 	    digits = BSD__dtoa(value, mode, ndigits, decpt, &dsgn, &rve);
 	}
+	buf[0] = 0; /* rve - digits may be 0 */
 	memcpy(buf, digits, rve - digits);
 	xfree(digits);
 	rve = buf + (rve - digits);
