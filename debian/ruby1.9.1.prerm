@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+
+set -e
+
+case "$1" in
+    remove|deconfigure)
+        update-alternatives --remove gem /usr/bin/gem1.9.1
+        update-alternatives --remove ruby /usr/bin/ruby1.9.1
+        ;;
+    *)
+esac
+
+#DEBHELPER#
+
+exit 0

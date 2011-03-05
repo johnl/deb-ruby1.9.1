@@ -1,3 +1,16 @@
+ruby1.9.1 (1.9.2.180-2~experimental.1) experimental; urgency=low
+
+  * Remove the patchsys-quilt CDBS rule. It is not needed since we are using
+    3.0 (quilt).
+  * Add Provides for ruby-interpreter and ruby1.9.2-full.
+  * Switch to alternatives to manage Ruby versions.
+  * Decrease gem alternatives priority to 10 to be consistent with the
+    interpreter priority.
+  * Upload to experimental. Changes are very intrusive and need
+    extensive testing.
+
+ -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Sat, 05 Mar 2011 20:57:31 +0100
+
 ruby1.9.1 (1.9.2.180-1) unstable; urgency=low
 
   * New upstream release.

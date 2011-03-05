@@ -30,7 +30,6 @@ insns_cache_dir = debian/generated-incs
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/makefile.mk
 include /usr/share/cdbs/1/class/autotools.mk
-include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 
 DEB_AUTO_UPDATE_AUTOCONF = YES
 
@@ -306,8 +305,6 @@ clean::
 	    debian/libruby$(ruby_libpkgsfx).postinst \
 	    debian/libruby$(ruby_libpkgsfx).prerm \
 	    debian/libruby$(ruby_libpkgsfx).postrm \
-	    debian/ruby1.9.1.postinst \
-	    debian/ruby1.9.1.prerm \
 	    debian/etc/bash_completion.d/gem1.9.1
 	(find $(insns_cache_dir) -type f -print; \
 	  echo configure; \

@@ -13,9 +13,9 @@ Package: ruby1.9.1
 Architecture: any
 Depends: libruby1.9.1 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev
-Conflicts: rdoc1.9.1, irb1.9.1, rubygems1.9.1
+Conflicts: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby (<= 4.5), ri (<= 4.5)
 Replaces: rdoc1.9.1, irb1.9.1, rubygems1.9.1
-Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby1.9.2
+Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby1.9.2, ruby-interpreter
 Description: Interpreter of object-oriented scripting language Ruby 1.9.2
  Ruby is the interpreted scripting language for quick and easy
  object-oriented programming.  It has many features to process text
@@ -113,10 +113,12 @@ Architecture: all
 Depends: ruby1.9.1 (>= ${source:Version}), libruby1.9.1-dbg (>= ${source:Version}), ruby1.9.1-dev (>= ${source:Version}), ruby1.9.1-examples (>= ${source:Version}), ri1.9.1 (>= ${source:Version}), ${misc:Depends}
 Recommends: libtcltk-ruby1.9.1 (>= ${source:Version})
 Suggests: ruby1.9.1-elisp
+Provides: ruby1.9.2-full
 Description: Ruby 1.9.1 full installation
  For many good reasons, the Ruby programming language is split in many
  small different packages. Installing this package will make sure you have
  all the packages that add up to a full Ruby installation, with the exception
  of the Tcl/Tk bindings for Ruby, which are only recommended.
  .
- This package installs the dependencies for Ruby 1.9.1.
+ This package installs the dependencies for Ruby compatibility version 1.9.1
+ (currently Ruby 1.9.2).
