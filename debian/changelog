@@ -1,3 +1,9 @@
+ruby1.9.1 (1.9.2.180-2~experimental.2) UNRELEASED; urgency=low
+
+  * Switch to git. Update Vcs-*.
+
+ -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Sat, 12 Mar 2011 10:44:01 +0100
+
 ruby1.9.1 (1.9.2.180-2~experimental.1) experimental; urgency=low
 
   * Remove the patchsys-quilt CDBS rule. It is not needed since we are using
