@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_ssl.c 27976 2010-05-23 12:18:51Z yugui $
+ * $Id: ossl_ssl.c 30334 2010-12-24 03:24:00Z yugui $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2000-2002  GOTOU Yuuzou <gotoyuzo@notwork.org>
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
@@ -1018,7 +1018,7 @@ ossl_ssl_setup(VALUE self)
 }
 
 #ifdef _WIN32
-#define ssl_get_error(ssl, ret) (errno = WSAGetLastError(), SSL_get_error(ssl, ret))
+#define ssl_get_error(ssl, ret) (errno = rb_w32_map_errno(WSAGetLastError()), SSL_get_error(ssl, ret))
 #else
 #define ssl_get_error(ssl, ret) SSL_get_error(ssl, ret)
 #endif
@@ -1337,7 +1337,7 @@ ossl_ssl_get_cert(VALUE self)
     X509 *cert = NULL;
 
     Data_Get_Struct(self, SSL, ssl);
-    if (ssl) {
+    if (!ssl) {
         rb_warning("SSL session is not started yet.");
         return Qnil;
     }

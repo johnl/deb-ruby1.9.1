@@ -137,7 +137,7 @@ VALUE rb_default_rs;
 
 static VALUE argf;
 
-static ID id_write, id_read, id_getc, id_flush, id_readpartial;
+static ID id_write, id_read, id_getc, id_flush, id_readpartial, id_set_encoding;
 static VALUE sym_mode, sym_perm, sym_extenc, sym_intenc, sym_encoding, sym_open_args;
 static VALUE sym_textmode, sym_binmode, sym_autoclose;
 
@@ -1211,6 +1211,9 @@ io_fillbuf(rb_io_t *fptr)
         fptr->rbuf_len = 0;
         fptr->rbuf_capa = IO_RBUF_CAPA_FOR(fptr);
         fptr->rbuf = ALLOC_N(char, fptr->rbuf_capa);
+#ifdef _WIN32
+	fptr->rbuf_capa--;
+#endif
     }
     if (fptr->rbuf_len == 0) {
       retry:
@@ -1734,6 +1737,32 @@ io_shift_cbuf(rb_io_t *fptr, int len, VALUE *strp)
     return str;
 }
 
+static void
+io_setstrbuf(VALUE *str,long len)
+{
+#ifdef _WIN32
+    if (NIL_P(*str)) {
+	*str = rb_str_new(0, len+1);
+	rb_str_set_len(*str,len);
+    }
+    else {
+	StringValue(*str);
+	rb_str_modify(*str);
+	rb_str_resize(*str, len+1);
+	rb_str_set_len(*str,len);
+    }
+#else
+    if (NIL_P(*str)) {
+	*str = rb_str_new(0, len);
+    }
+    else {
+	StringValue(*str);
+	rb_str_modify(*str);
+	rb_str_resize(*str, len);
+    }
+#endif
+}
+
 static VALUE
 read_all(rb_io_t *fptr, long siz, VALUE str)
 {
@@ -1744,8 +1773,7 @@ read_all(rb_io_t *fptr, long siz, VALUE str)
     int cr;
 
     if (NEED_READCONV(fptr)) {
-        if (NIL_P(str)) str = rb_str_new(NULL, 0);
-        else rb_str_set_len(str, 0);
+	io_setstrbuf(&str,0);
         make_readconv(fptr, 0);
         while (1) {
             VALUE v;
@@ -1773,12 +1801,7 @@ read_all(rb_io_t *fptr, long siz, VALUE str)
     cr = 0;
 
     if (siz == 0) siz = BUFSIZ;
-    if (NIL_P(str)) {
-	str = rb_str_new(0, siz);
-    }
-    else {
-	rb_str_resize(str, siz);
-    }
+    io_setstrbuf(&str,siz);
     for (;;) {
 	READ_CHECK(fptr);
 	n = io_fread(str, bytes, fptr);
@@ -1831,14 +1854,7 @@ io_getpartial(int argc, VALUE *argv, VALUE io, int nonblock)
 	rb_raise(rb_eArgError, "negative length %ld given", len);
     }
 
-    if (NIL_P(str)) {
-	str = rb_str_new(0, len);
-    }
-    else {
-	StringValue(str);
-	rb_str_modify(str);
-        rb_str_resize(str, len);
-    }
+    io_setstrbuf(&str,len);
     OBJ_TAINT(str);
 
     GetOpenFile(io, fptr);
@@ -2157,7 +2173,6 @@ io_read(int argc, VALUE *argv, VALUE io)
     rb_scan_args(argc, argv, "02", &length, &str);
 
     if (NIL_P(length)) {
-	if (!NIL_P(str)) StringValue(str);
 	GetOpenFile(io, fptr);
 	rb_io_check_char_readable(fptr);
 	return read_all(fptr, remain_size(fptr), str);
@@ -2167,14 +2182,7 @@ io_read(int argc, VALUE *argv, VALUE io)
 	rb_raise(rb_eArgError, "negative length %ld given", len);
     }
 
-    if (NIL_P(str)) {
-	str = rb_str_new(0, len);
-    }
-    else {
-	StringValue(str);
-	rb_str_modify(str);
-	rb_str_resize(str,len);
-    }
+    io_setstrbuf(&str,len);
 
     GetOpenFile(io, fptr);
     rb_io_check_byte_readable(fptr);
@@ -3193,11 +3201,10 @@ rb_io_ungetc(VALUE io, VALUE c)
     rb_io_check_char_readable(fptr);
     if (NIL_P(c)) return Qnil;
     if (FIXNUM_P(c)) {
-	int cc = FIX2INT(c);
-	rb_encoding *enc = io_read_encoding(fptr);
-	char buf[16];
-
-	c = rb_str_new(buf, rb_enc_mbcput(cc, buf, enc));
+	c = rb_enc_uint_chr(FIX2UINT(c), io_read_encoding(fptr));
+    }
+    else if (TYPE(c) == T_BIGNUM) {
+	c = rb_enc_uint_chr(NUM2UINT(c), io_read_encoding(fptr));
     }
     else {
 	SafeStringValue(c);
@@ -3423,7 +3430,7 @@ fptr_finalize(rb_io_t *fptr, int noraise)
 {
     VALUE err = Qnil;
     if (fptr->writeconv) {
-	if (fptr->write_lock) {
+	if (fptr->write_lock && !noraise) {
             struct finish_writeconv_arg arg;
             arg.fptr = fptr;
             arg.noalloc = noraise;
@@ -3434,8 +3441,14 @@ fptr_finalize(rb_io_t *fptr, int noraise)
 	}
     }
     if (fptr->wbuf_len) {
-        if (io_fflush(fptr) < 0 && NIL_P(err))
-            err = noraise ? Qtrue : INT2NUM(errno);
+	if (noraise) {
+	    if ((int)io_flush_buffer_sync(fptr) < 0 && NIL_P(err))
+		err = Qtrue;
+	}
+	else {
+	    if (io_fflush(fptr) < 0 && NIL_P(err))
+		err = INT2NUM(errno);
+	}
     }
     if (IS_PREP_STDIO(fptr) || fptr->fd <= 2) {
         goto skip_fd_close;
@@ -3874,14 +3887,7 @@ rb_io_sysread(int argc, VALUE *argv, VALUE io)
     rb_scan_args(argc, argv, "11", &len, &str);
     ilen = NUM2LONG(len);
 
-    if (NIL_P(str)) {
-	str = rb_str_new(0, ilen);
-    }
-    else {
-	StringValue(str);
-	rb_str_modify(str);
-	rb_str_resize(str, ilen);
-    }
+    io_setstrbuf(&str,ilen);
     if (ilen == 0) return str;
 
     GetOpenFile(io, fptr);
@@ -4319,9 +4325,12 @@ rb_io_extract_encoding_option(VALUE opt, rb_encoding **enc_p, rb_encoding **enc2
 	if (v != Qundef) intenc = v;
     }
     if ((extenc != Qundef || intenc != Qundef) && !NIL_P(encoding)) {
-	rb_warn("Ignoring encoding parameter '%s': %s_encoding is used",
-		StringValueCStr(encoding),
-		extenc == Qundef ? "internal" : "external");
+	if (!NIL_P(ruby_verbose)) {
+	    int idx = rb_to_encoding_index(encoding);
+	    rb_warn("Ignoring encoding parameter '%s': %s_encoding is used",
+		    idx < 0 ? StringValueCStr(encoding) : rb_enc_name(rb_enc_from_index(idx)),
+		    extenc == Qundef ? "internal" : "external");
+	}
 	encoding = Qnil;
     }
     if (extenc != Qundef && !NIL_P(extenc)) {
@@ -4352,7 +4361,12 @@ rb_io_extract_encoding_option(VALUE opt, rb_encoding **enc_p, rb_encoding **enc2
     }
     if (!NIL_P(encoding)) {
 	extracted = 1;
-	parse_mode_enc(StringValueCStr(encoding), enc_p, enc2_p, fmode_p);
+	if (!NIL_P(tmp = rb_check_string_type(encoding))) {
+	    parse_mode_enc(StringValueCStr(tmp), enc_p, enc2_p, fmode_p);
+	}
+	else {
+	    rb_io_ext_int_to_encs(rb_to_encoding(encoding), NULL, enc_p, enc2_p);
+	}
     }
     else if (extenc != Qundef || intenc != Qundef) {
         extracted = 1;
@@ -4788,7 +4802,7 @@ static void
 pipe_finalize(rb_io_t *fptr, int noraise)
 {
 #if !defined(HAVE_FORK) && !defined(_WIN32)
-    int status;
+    int status = 0;
     if (fptr->stdio_file) {
 	status = pclose(fptr->stdio_file);
     }
@@ -6055,6 +6069,22 @@ rb_f_putc(VALUE recv, VALUE ch)
     return rb_funcall2(rb_stdout, rb_intern("putc"), 1, &ch);
 }
 
+
+static int
+str_end_with_asciichar(VALUE str, int c)
+{
+    long len = RSTRING_LEN(str);
+    const char *ptr = RSTRING_PTR(str);
+    rb_encoding *enc = rb_enc_from_index(ENCODING_GET(str));
+    int n;
+
+    if (len == 0) return 0;
+    if ((n = rb_enc_mbminlen(enc)) == 1) {
+	return ptr[len - 1] == c;
+    }
+    return rb_enc_ascget(ptr + ((len - 1) / n) * n, ptr + len, &n, enc) == c;
+}
+
 static VALUE
 io_puts_ary(VALUE ary, VALUE out, int recur)
 {
@@ -6118,7 +6148,7 @@ rb_io_puts(int argc, VALUE *argv, VALUE out)
       string:
 	rb_io_write(out, line);
 	if (RSTRING_LEN(line) == 0 ||
-            RSTRING_PTR(line)[RSTRING_LEN(line)-1] != '\n') {
+            !str_end_with_asciichar(line, '\n')) {
 	    rb_io_write(out, rb_default_rs);
 	}
     }
@@ -6748,7 +6778,6 @@ argf_next_argv(VALUE argf)
     }
 
     if (ARGF.next_p == 1) {
-	ARGF.next_p = 0;
       retry:
 	if (RARRAY_LEN(ARGF.argv) > 0) {
 	    ARGF.filename = rb_ary_shift(ARGF.argv);
@@ -6837,6 +6866,7 @@ argf_next_argv(VALUE argf)
 		fptr->encs = ARGF.encs;
                 clear_codeconv(fptr);
 	    }
+	    ARGF.next_p = 0;
 	}
 	else {
 	    ARGF.next_p = 1;
@@ -7472,16 +7502,22 @@ rb_io_fcntl(int argc, VALUE *argv, VALUE io)
 #define rb_io_fcntl rb_f_notimplement
 #endif
 
-#if defined(HAVE_SYSCALL) && SIZEOF_LONG == SIZEOF_INT
+#if defined(HAVE_SYSCALL) || defined(HAVE___SYSCALL)
 /*
  *  call-seq:
- *     syscall(fixnum [, args...])   -> integer
+ *     syscall(num [, args...])   -> integer
  *
- *  Calls the operating system function identified by _fixnum_,
- *  passing in the arguments, which must be either +String+
- *  objects, or +Integer+ objects that ultimately fit within
- *  a native +long+. Up to nine parameters may be passed (14
- *  on the Atari-ST). The function identified by _fixnum_ is system
+ *  Calls the operating system function identified by _num_ and
+ *  returns the result of the function or raises SystemCallError if
+ *  it failed.
+ *
+ *  Arguments for the function can follow _num_. They must be either
+ *  +String+ objects or +Integer+ objects. A +String+ object is passed
+ *  as a pointer to the byte sequence. An +Integer+ object is passed
+ *  as an integer whose bit size is same as a pointer.
+ *  Up to nine parameters may be passed (14 on the Atari-ST). 
+ *
+ *  The function identified by _num_ is system
  *  dependent. On some Unix systems, the numbers may be obtained from a
  *  header file called <code>syscall.h</code>.
  *
@@ -7490,102 +7526,137 @@ rb_io_fcntl(int argc, VALUE *argv, VALUE io)
  *  <em>produces:</em>
  *
  *     hello
+ *
+ *
+ *  Calling +syscall+ on a platform which does not have any way to
+ *  an arbitrary system function just fails with NotImplementedError.
+ *
+ * Note::
+ *   +syscall+ is essentially unsafe and unportable. Feel free to shoot your foot.
+ *   DL (Fiddle) library is preferred for safer and a bit more portable programming.
  */
 
 static VALUE
 rb_f_syscall(int argc, VALUE *argv)
 {
 #ifdef atarist
-    unsigned long arg[14]; /* yes, we really need that many ! */
+    VALUE arg[13]; /* yes, we really need that many ! */
 #else
-    unsigned long arg[8];
+    VALUE arg[8];
 #endif
-    int retval = -1;
-    int i = 1;
-    int items = argc - 1;
-
-    /* This probably won't work on machines where sizeof(long) != sizeof(int)
-     * or where sizeof(long) != sizeof(char*).  But such machines will
-     * not likely have syscall implemented either, so who cares?
+#if SIZEOF_VOIDP == 8 && HAVE___SYSCALL && SIZEOF_INT != 8 /* mainly *BSD */
+# define SYSCALL __syscall
+# define NUM2SYSCALLID(x) NUM2LONG(x)
+# define RETVAL2NUM(x) LONG2NUM(x)
+# if SIZEOF_LONG == 8
+    long num, retval = -1;
+# elif SIZEOF_LONG_LONG == 8
+    long long num, retval = -1;
+# else
+#  error ---->> it is asserted that __syscall takes the first argument and returns retval in 64bit signed integer. <<----
+# endif
+#elif defined linux
+# define SYSCALL syscall
+# define NUM2SYSCALLID(x) NUM2LONG(x)
+# define RETVAL2NUM(x) LONG2NUM(x)
+    /*
+     * Linux man page says, syscall(2) function prototype is below.
+     *
+     *     int syscall(int number, ...);
+     *
+     * But, it's incorrect. Actual one takes and returned long. (see unistd.h)
      */
+    long num, retval = -1;
+#else
+# define SYSCALL syscall
+# define NUM2SYSCALLID(x) NUM2INT(x)
+# define RETVAL2NUM(x) INT2NUM(x)
+    int num, retval = -1;
+#endif
+    int i;
+ 
+    if (RTEST(ruby_verbose)) {
+	rb_warning("We plan to remove a syscall function at future release. DL(Fiddle) provides safer alternative.");
+    }
 
     rb_secure(2);
     if (argc == 0)
 	rb_raise(rb_eArgError, "too few arguments for syscall");
     if (argc > numberof(arg))
 	rb_raise(rb_eArgError, "too many arguments for syscall");
-    arg[0] = NUM2LONG(argv[0]); argv++;
-    while (items--) {
-	VALUE v = rb_check_string_type(*argv);
+    num = NUM2SYSCALLID(argv[0]); ++argv;
+    for (i = argc - 1; i--; ) {
+	VALUE v = rb_check_string_type(argv[i]);
 
 	if (!NIL_P(v)) {
 	    StringValue(v);
 	    rb_str_modify(v);
-	    arg[i] = (unsigned long)StringValueCStr(v);
+	    arg[i] = (VALUE)StringValueCStr(v);
 	}
 	else {
-	    arg[i] = (unsigned long)NUM2LONG(*argv);
+	    arg[i] = (VALUE)NUM2LONG(argv[i]);
 	}
-	argv++;
-	i++;
     }
 
     switch (argc) {
       case 1:
-	retval = syscall(arg[0]);
+	retval = SYSCALL(num);
 	break;
       case 2:
-	retval = syscall(arg[0],arg[1]);
+	retval = SYSCALL(num, arg[0]);
 	break;
       case 3:
-	retval = syscall(arg[0],arg[1],arg[2]);
+	retval = SYSCALL(num, arg[0],arg[1]);
 	break;
       case 4:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2]);
 	break;
       case 5:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3]);
 	break;
       case 6:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4]);
 	break;
       case 7:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4],arg[5]);
 	break;
       case 8:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
-	  arg[7]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6]);
 	break;
 #ifdef atarist
       case 9:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
-	  arg[7], arg[8]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
+	  arg[7]);
 	break;
       case 10:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
-	  arg[7], arg[8], arg[9]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
+	  arg[7], arg[8]);
 	break;
       case 11:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
-	  arg[7], arg[8], arg[9], arg[10]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
+	  arg[7], arg[8], arg[9]);
 	break;
       case 12:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
-	  arg[7], arg[8], arg[9], arg[10], arg[11]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
+	  arg[7], arg[8], arg[9], arg[10]);
 	break;
       case 13:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
-	  arg[7], arg[8], arg[9], arg[10], arg[11], arg[12]);
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
+	  arg[7], arg[8], arg[9], arg[10], arg[11]);
 	break;
       case 14:
-	retval = syscall(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
-	  arg[7], arg[8], arg[9], arg[10], arg[11], arg[12], arg[13]);
-	break;
-#endif /* atarist */
+	retval = SYSCALL(num, arg[0],arg[1],arg[2],arg[3],arg[4],arg[5],arg[6],
+	  arg[7], arg[8], arg[9], arg[10], arg[11], arg[12]);
+        break;
+#endif
     }
 
-    if (retval < 0) rb_sys_fail(0);
-    return INT2NUM(retval);
+    if (retval == -1)
+	rb_sys_fail(0);
+    return RETVAL2NUM(retval);
+#undef SYSCALL
+#undef NUM2SYSCALLID
+#undef RETVAL2NUM
 }
 #else
 #define rb_f_syscall rb_f_notimplement
@@ -8638,6 +8709,10 @@ rb_io_set_encoding(int argc, VALUE *argv, VALUE io)
 {
     rb_io_t *fptr;
     VALUE v1, v2, opt;
+
+    if (TYPE(io) != T_FILE) {
+        return rb_funcall2(io, id_set_encoding, argc, argv);
+    }
 
     opt = pop_last_hash(&argc, argv);
     rb_scan_args(argc, argv, "11", &v1, &v2);
@@ -9816,6 +9891,7 @@ Init_IO(void)
     id_getc = rb_intern("getc");
     id_flush = rb_intern("flush");
     id_readpartial = rb_intern("readpartial");
+    id_set_encoding = rb_intern("set_encoding");
 
     rb_define_global_function("syscall", rb_f_syscall, -1);
 

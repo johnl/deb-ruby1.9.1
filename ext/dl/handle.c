@@ -1,5 +1,5 @@
 /* -*- C -*-
- * $Id: handle.c 28736 2010-07-24 05:33:17Z yugui $
+ * $Id: handle.c 30559 2011-01-16 06:30:33Z yugui $
  */
 
 #include <ruby.h>
@@ -7,7 +7,7 @@
 
 VALUE rb_cDLHandle;
 
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 # ifndef _WIN32_WCE
 static void *
 w32_coredll(void)
@@ -142,7 +142,7 @@ rb_dlhandle_initialize(int argc, VALUE argv[], VALUE self)
 
     rb_secure(2);
 
-#if defined(HAVE_WINDOWS_H)
+#if defined(_WIN32)
     if( !clib ){
 	HANDLE rb_libruby_handle(void);
 	ptr = rb_libruby_handle();

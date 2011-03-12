@@ -2,7 +2,7 @@
 
   time.c -
 
-  $Author: akr $
+  $Author: yugui $
   created at: Tue Dec 28 14:31:59 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -184,7 +184,7 @@ quo(VALUE x, VALUE y)
     return ret;
 }
 
-#define mulquo(x,y,z) ((y == z) ? x : quo(mul(x,y),z))
+#define mulquo(x,y,z) (((y) == (z)) ? (x) : quo(mul((x),(y)),(z)))
 
 static void
 divmodv(VALUE n, VALUE d, VALUE *q, VALUE *r)
@@ -853,11 +853,11 @@ static const char *find_time_t(struct tm *tptr, int utc_p, time_t *tp);
 static struct vtm *localtimew(wideval_t timew, struct vtm *result);
 
 static int leap_year_p(long y);
-#define leap_year_v_p(y) leap_year_p(NUM2LONG(mod(v, INT2FIX(400))))
+#define leap_year_v_p(y) leap_year_p(NUM2LONG(mod((y), INT2FIX(400))))
 
 #ifdef HAVE_GMTIME_R
-#define rb_gmtime_r(t, tm) gmtime_r(t, tm)
-#define rb_localtime_r(t, tm) localtime_r(t, tm)
+#define rb_gmtime_r(t, tm) gmtime_r((t), (tm))
+#define rb_localtime_r(t, tm) localtime_r((t), (tm))
 #else
 static inline struct tm *
 rb_gmtime_r(const time_t *tp, struct tm *result)
@@ -1762,9 +1762,9 @@ struct time_object {
 };
 
 #define GetTimeval(obj, tobj) \
-    TypedData_Get_Struct(obj, struct time_object, &time_data_type, tobj)
+    TypedData_Get_Struct((obj), struct time_object, &time_data_type, (tobj))
 
-#define IsTimeval(obj) rb_typeddata_is_kind_of(obj, &time_data_type)
+#define IsTimeval(obj) rb_typeddata_is_kind_of((obj), &time_data_type)
 
 #define TIME_UTC_P(tobj) ((tobj)->gmt == 1)
 #define TIME_SET_UTC(tobj) ((tobj)->gmt = 1)
@@ -2703,7 +2703,7 @@ find_time_t(struct tm *tptr, int utc_p, time_t *tp)
     int status;
     int tptr_tm_yday;
 
-#define GUESS(p) (DEBUG_FIND_TIME_NUMGUESS_INC (utc_p ? gmtime_with_leapsecond(p, &result) : LOCALTIME(p, result)))
+#define GUESS(p) (DEBUG_FIND_TIME_NUMGUESS_INC (utc_p ? gmtime_with_leapsecond((p), &result) : LOCALTIME((p), result)))
 
     guess_lo = TIMET_MIN;
     guess_hi = TIMET_MAX;

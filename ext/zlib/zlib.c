@@ -3,7 +3,7 @@
  *
  *   Copyright (C) UENO Katsuhiro 2000-2003
  *
- * $Id: zlib.c 28082 2010-05-29 17:54:13Z mame $
+ * $Id: zlib.c 30575 2011-01-16 12:35:32Z yugui $
  */
 
 #include <ruby.h>
@@ -2106,7 +2106,7 @@ gzfile_check_footer(struct gzfile *gz)
     if (gz->crc != crc) {
 	rb_raise(cCRCError, "invalid compressed data -- crc error");
     }
-    if (gz->z.stream.total_out != length) {
+    if ((uint32_t)gz->z.stream.total_out != length) {
 	rb_raise(cLengthError, "invalid compressed data -- length error");
     }
 }

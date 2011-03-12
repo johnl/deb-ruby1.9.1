@@ -2,7 +2,7 @@
 
   hash.c -
 
-  $Author: marcandre $
+  $Author: yugui $
   created at: Mon Nov 22 18:51:18 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -570,7 +570,7 @@ rb_hash_fetch_m(int argc, VALUE *argv, VALUE hash)
     if (!RHASH(hash)->ntbl || !st_lookup(RHASH(hash)->ntbl, key, &val)) {
 	if (block_given) return rb_yield(key);
 	if (argc == 1) {
-	    VALUE desc = rb_protect(rb_inspect, key, 0);
+	    volatile VALUE desc = rb_protect(rb_inspect, key, 0);
 	    if (NIL_P(desc) || RSTRING_LEN(desc) > 65) {
 		desc = rb_any_to_s(key);
 	    }
@@ -2135,6 +2135,7 @@ ruby_setenv(const char *name, const char *value)
 #if defined(_WIN32)
     int len;
     char *buf;
+    int failed = 0;
     if (strchr(name, '=')) {
 	errno = EINVAL;
 	rb_sys_fail("ruby_setenv");
@@ -2143,18 +2144,21 @@ ruby_setenv(const char *name, const char *value)
 	len = strlen(name) + 1 + strlen(value) + 1;
 	buf = ALLOCA_N(char, len);
 	snprintf(buf, len, "%s=%s", name, value);
-	putenv(buf);
+	failed = putenv(buf);
 
 	/* putenv() doesn't handle empty value */
 	if (!*value)
-	    SetEnvironmentVariable(name,value);
+	    failed = !SetEnvironmentVariable(name,value);
     }
     else {
 	len = strlen(name) + 1 + 1;
 	buf = ALLOCA_N(char, len);
 	snprintf(buf, len, "%s=", name);
 	putenv(buf);
-	SetEnvironmentVariable(name, 0);
+	failed = !SetEnvironmentVariable(name, 0);
+    }
+    if (failed) {
+        rb_warn("failed to set environment variable. Ruby 1.9.3 will raise SystemCallError in this case.");
     }
 #elif defined(HAVE_SETENV) && defined(HAVE_UNSETENV)
 #undef setenv

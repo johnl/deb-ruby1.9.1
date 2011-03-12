@@ -2,7 +2,7 @@
 
   cont.c -
 
-  $Author: kosaki $
+  $Author: yugui $
   created at: Thu May 23 09:03:43 2007
 
   Copyright (C) 2007 Koichi Sasada
@@ -221,7 +221,7 @@ fiber_memsize(const void *ptr)
 	}
 	size += cont_memsize(&fib->cont);
     }
-    return 0;
+    return size;
 }
 
 static void

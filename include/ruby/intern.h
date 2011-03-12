@@ -2,7 +2,7 @@
 
   intern.h -
 
-  $Author: usa $
+  $Author: yugui $
   created at: Thu Jun 10 14:22:17 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -563,8 +563,6 @@ VALUE rb_reg_init_str(VALUE re, VALUE s, int options);
 VALUE rb_reg_match(VALUE, VALUE);
 VALUE rb_reg_match2(VALUE);
 int rb_reg_options(VALUE);
-void rb_set_kcode(const char*);
-const char* rb_get_kcode(void);
 /* ruby.c */
 #define rb_argv rb_get_argv()
 RUBY_EXTERN VALUE rb_argv0;

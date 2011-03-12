@@ -513,15 +513,14 @@ install?(:ext, :comm, :gem) do
     version = open(src) {|f| f.find {|s| /^\s*\w*VERSION\s*=(?!=)/ =~ s}} or next
     version = version.split(%r"=\s*", 2)[1].strip[/\A([\'\"])(.*?)\1/, 2]
     puts "#{" "*30}#{name} #{version}"
-    open_for_install(File.join(destdir, "#{name}.gemspec"), $data_mode) do
-      <<-GEMSPEC
+    gemspec = <<-GEMSPEC
 Gem::Specification.new do |s|
   s.name = #{name.dump}
   s.version = #{version.dump}
   s.summary = "This #{name} is bundled with Ruby"
 end
-      GEMSPEC
-    end
+    GEMSPEC
+    open_for_install(File.join(destdir, "#{name}-#{version}.gemspec"), $data_mode) { gemspec }
   end
 end
 

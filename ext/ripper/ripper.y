@@ -1171,8 +1171,14 @@ stmt		: keyword_alias fitem {lex_state = EXPR_FNAME;} fitem
 		    }
 		| primary_value tCOLON2 tCONSTANT tOP_ASGN command_call
 		    {
+#if 0
 			yyerror("constant re-assignment");
 			$$ = 0;
+#endif
+			$$ = dispatch2(const_path_field, $1, $3);
+			$$ = dispatch3(opassign, $$, $4, $5);
+			$$ = dispatch1(assign_error, $$);
+
 		    }
 		| primary_value tCOLON2 tIDENTIFIER tOP_ASGN command_call
 		    {
@@ -3890,7 +3896,8 @@ regexp		: tREGEXP_BEG regexp_contents tREGEXP_END
 				if (nd_type(list->nd_head) == NODE_STR) {
 				    VALUE tail = list->nd_head->nd_lit;
 				    if (reg_fragment_check(tail, options) && prev && !NIL_P(prev->nd_lit)) {
-					if (!literal_concat0(parser, prev->nd_lit, tail)) {
+					VALUE lit = prev == node ? prev->nd_lit : prev->nd_head->nd_lit;
+					if (!literal_concat0(parser, lit, tail)) {
 					    node = 0;
 					    break;
 					}
@@ -8645,6 +8652,7 @@ assign_in_cond(struct parser_params *parser, NODE *node)
 	return 0;
     }
 
+    if (!node->nd_value) return 1;
     switch (nd_type(node->nd_value)) {
       case NODE_LIT:
       case NODE_STR:

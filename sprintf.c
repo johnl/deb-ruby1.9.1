@@ -2,7 +2,7 @@
 
   sprintf.c -
 
-  $Author: mame $
+  $Author: yugui $
   created at: Fri Oct 15 10:39:26 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -422,13 +422,13 @@ get_hash(volatile VALUE *hash, int argc, const VALUE *argv)
  *     sprintf("%u", -123)                        #=> "-123"
  *
  *  For more complex formatting, Ruby supports a reference by name.
- *  %<name>s style uses format style, but ${name} style doesn't.
+ *  %<name>s style uses format style, but %{name} style doesn't.
  *
  *  Exapmles:
- *    sprintf("%<foo>d : %<bar>f" % { :foo => 1, :bar => 2 })
+ *    sprintf("%<foo>d : %<bar>f", { :foo => 1, :bar => 2 })
  *      #=> 1 : 2.000000
- *    sprintf("%d %{foo}" % { :foo => 'bar' })
- *      # => "%d bar"
+ *    sprintf("%{foo}f", { :foo => 1 })
+ *      # => "1f"
  */
 
 VALUE

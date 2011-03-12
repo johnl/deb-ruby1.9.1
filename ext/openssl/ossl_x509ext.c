@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_x509ext.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_x509ext.c 30320 2010-12-23 12:45:44Z yugui $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -178,7 +178,7 @@ ossl_x509extfactory_set_config(VALUE self, VALUE config)
     return config;
 }
 #else
-#define rb_f_fork rb_f_notimplement
+#define ossl_x509extfactory_set_config rb_f_notimplement
 #endif
 
 static VALUE

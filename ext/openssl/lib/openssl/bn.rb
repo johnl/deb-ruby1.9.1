@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: bn.rb 25189 2009-10-02 12:04:37Z akr $
+  $Id: bn.rb 30028 2010-12-02 08:05:48Z yugui $
 =end
 
 ##
@@ -29,7 +29,7 @@ end # OpenSSL
 #
 class Integer
   def to_bn
-    OpenSSL::BN::new(self)
+    OpenSSL::BN::new(self.to_s(16), 16)
   end
 end # Integer
 

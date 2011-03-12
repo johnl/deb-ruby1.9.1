@@ -2,7 +2,7 @@
 
   util.c -
 
-  $Author: mame $
+  $Author: yugui $
   created at: Fri Mar 10 17:22:34 JST 1995
 
   Copyright (C) 1993-2008 Yukihiro Matsumoto
@@ -2120,7 +2120,11 @@ break2:
 	    static const char hexdigit[] = "0123456789abcdef0123456789ABCDEF";
 	    s0 = ++s;
 	    adj = 0;
+	    aadj = -1;
 
+            if  (!s[1]) {
+                rb_warn("malformed value for Float(): %s. Ruby 1.9.3 for later will raise an ArgumentError for the value.", s00);
+            }
 	    while (*++s && (s1 = strchr(hexdigit, *s))) {
 		adj *= 16;
 		adj += (s1 - hexdigit) & 15;
@@ -2139,14 +2143,21 @@ break2:
 		if (abs(dsign) == 1) s++;
 		else dsign = 1;
 
-		for (nd = 0; (c = *s) >= '0' && c <= '9'; s++) {
+               nd = 0;
+               c = *s;
+               if (c < '0' || '9' < c) goto ret0;
+               do {
 		    nd *= 10;
 		    nd += c;
 		    nd -= '0';
-		}
+                   c = *++s;
+               } while ('0' <= c && c <= '9');
 		dval(rv) = ldexp(adj, nd * dsign);
 	    }
 	    else {
+		if (aadj != -1) {
+                    rb_warn("malformed value for Float(): %s. Ruby 1.9.3 for later will raise an ArgumentError for the value.", s00);
+                }
 		dval(rv) = adj;
 	    }
 	    goto ret;

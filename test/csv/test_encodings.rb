@@ -13,11 +13,14 @@ require "csv"
 
 class TestEncodings < Test::Unit::TestCase
   def setup
-    @temp_csv_path = File.join(File.dirname(__FILE__), "temp.csv")
+    require 'tempfile'
+    @temp_csv_file = Tempfile.new(%w"test_csv. .csv")
+    @temp_csv_path = @temp_csv_file.path
+    @temp_csv_file.close
   end
 
   def teardown
-    File.unlink(@temp_csv_path) if File.exist? @temp_csv_path
+    @temp_csv_file.close!
   end
 
   ########################################
@@ -216,6 +219,22 @@ class TestEncodings < Test::Unit::TestCase
       end
       assert_equal(data, CSV.read(@temp_csv_path, encoding: encoding.name))
     end
+  end
+  
+  def test_encoding_is_upgraded_during_writing_as_needed
+    data = ["foo".force_encoding("US-ASCII"), "\u3042"]
+    assert_equal("US-ASCII", data.first.encoding.name)
+    assert_equal("UTF-8",    data.last.encoding.name)
+    assert_equal("UTF-8",    data.join.encoding.name)
+    assert_equal("UTF-8",    data.to_csv.encoding.name)
+  end
+  
+  def test_encoding_is_upgraded_for_ascii_content_during_writing_as_needed
+    data = ["foo".force_encoding("ISO-8859-1"), "\u3042"]
+    assert_equal("ISO-8859-1", data.first.encoding.name)
+    assert_equal("UTF-8",      data.last.encoding.name)
+    assert_equal("UTF-8",      data.join.encoding.name)
+    assert_equal("UTF-8",      data.to_csv.encoding.name)
   end
 
   private

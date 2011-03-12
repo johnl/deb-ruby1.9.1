@@ -22,7 +22,7 @@
 # http://www.ruby-lang.org/ja/man/html/net_http.html
 #
 #--
-# $Id: http.rb 27605 2010-05-03 23:42:26Z mame $
+# $Id: http.rb 30571 2011-01-16 12:35:11Z yugui $
 #++
 
 require 'net/protocol'
@@ -285,7 +285,7 @@ module Net   #:nodoc:
   class HTTP < Protocol
 
     # :stopdoc:
-    Revision = %q$Revision: 27605 $.split[1]
+    Revision = %q$Revision: 30571 $.split[1]
     HTTPVersion = '1.1'
     @newimpl = true
     begin
@@ -662,21 +662,27 @@ module Net   #:nodoc:
       @socket.read_timeout = @read_timeout
       @socket.debug_output = @debug_output
       if use_ssl?
-        if proxy?
-          @socket.writeline sprintf('CONNECT %s:%s HTTP/%s',
-                                    @address, @port, HTTPVersion)
-          @socket.writeline "Host: #{@address}:#{@port}"
-          if proxy_user
-            credential = ["#{proxy_user}:#{proxy_pass}"].pack('m')
-            credential.delete!("\r\n")
-            @socket.writeline "Proxy-Authorization: Basic #{credential}"
+        begin
+          if proxy?
+            @socket.writeline sprintf('CONNECT %s:%s HTTP/%s',
+                                      @address, @port, HTTPVersion)
+            @socket.writeline "Host: #{@address}:#{@port}"
+            if proxy_user
+              credential = ["#{proxy_user}:#{proxy_pass}"].pack('m')
+              credential.delete!("\r\n")
+              @socket.writeline "Proxy-Authorization: Basic #{credential}"
+            end
+            @socket.writeline ''
+            HTTPResponse.read_new(@socket).value
           end
-          @socket.writeline ''
-          HTTPResponse.read_new(@socket).value
-        end
-        s.connect
-        if @ssl_context.verify_mode != OpenSSL::SSL::VERIFY_NONE
-          s.post_connection_check(@address)
+          timeout(@open_timeout) { s.connect }
+          if @ssl_context.verify_mode != OpenSSL::SSL::VERIFY_NONE
+            s.post_connection_check(@address)
+          end
+        rescue => exception
+          D "Conn close because of connect error #{exception}"
+          @socket.close if @socket and not @socket.closed?
+          raise exception
         end
       end
       on_connect
@@ -873,7 +879,9 @@ module Net   #:nodoc:
       res = nil
       if HAVE_ZLIB
         unless  initheader.keys.any?{|k| k.downcase == "accept-encoding"}
-          initheader["accept-encoding"] = "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          initheader = initheader.merge({
+            "accept-encoding" => "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          })
           @compression = true
         end
       end
@@ -883,7 +891,7 @@ module Net   #:nodoc:
           the_body = r.read_body dest, &block
           case r["content-encoding"]
           when "gzip"
-            r.body= Zlib::GzipReader.new(StringIO.new(the_body)).read
+            r.body= Zlib::GzipReader.new(StringIO.new(the_body), encoding: "ASCII-8BIT").read
             r.delete("content-encoding")
           when "deflate"
             r.body= Zlib::Inflate.inflate(the_body);
@@ -1189,7 +1197,7 @@ module Net   #:nodoc:
       res
     rescue => exception
       D "Conn close because of error #{exception}"
-      @socket.close unless @socket.closed?
+      @socket.close if @socket and not @socket.closed?
       raise exception
     end
 

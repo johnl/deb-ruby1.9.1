@@ -1,3 +1,1054 @@
+Fri Feb 18 19:31:31 2011  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* lib/fileutils.rb (FileUtils::remove_entry_secure): there is a
+	  race condition in the case where the given path is a directory,
+	  and some other user can move that directory, and create a
+	  symlink while this method is executing.
+	  Reported by: Nicholas Jefferson <nicholas at pythonic.com.au>
+
+Sat Jan 29 22:16:26 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* array.c (rb_ary_join): [].join.encoding must be US-ASCII.
+	  [ruby-list:47790]
+
+Fri Jan 28 12:05:48 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* configure.in: Add #include<sys/stat.h> when struct stat is
+	  tested. Otherwise, incomplete type dereference error will occur.
+
+Fri Jan 28 02:37:18 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* re.c (rb_reg_raise): add GC guard to prevent intermediate
+	  variable from GC.
+
+Fri Jan 28 02:35:41 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* hash.c (rb_hash_fetch_m): add GC guard to prevent intermediate
+	  variable from GC.
+
+Wed Jan 26 22:57:30 2011  CHIKANAGA Tomoyuki  <nagachika00@gmail.com>
+
+	* class.c (clone_method): add GC guard to prevent intermediate
+	  variable from GC. [Bug #4321] [ruby-dev:43107]
+
+Wed Jan 26 22:28:49 2011  CHIKANAGA Tomoyuki  <nagachika00@gmail.com>
+
+	* vm_eval.c (rb_throw_obj): add GC guard to prevent intermediate
+	  variable from GC. [Bug #4322] [ruby-dev:43108]
+
+Wed Jan 26 10:36:28 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (=~): documentation fix; the return value is nil when
+	  it doesn't match. patched by Andrei Kulakov [ruby-core:34562]
+
+Tue Jan 25 08:28:19 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_resize): get rid of out-of-bound access.
+
+Tue Jan 25 07:00:52 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_string_value_cstr): rb_str_modify can change
+	  RSTRING_PTR.
+
+Tue Jan 25 07:48:22 2011  Kazuhiro NISHIYAMA  <zn@mbf.nifty.com>
+
+	* test/ruby/test_thread.rb: remove unused variables.
+
+Tue Jan 25 07:45:44 2011  Kazuhiro NISHIYAMA  <zn@mbf.nifty.com>
+
+	* test/ruby/test_thread.rb (TestThread#test_condvar_nolock_2): get
+	  rid of method redefined.
+
+Tue Jan 25 03:24:28 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* test/ruby/test_thread.rb: Added various ConditionVariable tests.
+
+Mon Jan 24 21:04:45 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* error.c (rb_invalid_str): prevent intermediate variable from GC.
+	  [ruby-core:34820]
+
+Sat Jan 22 11:21:40 2011  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/psych/parser.c (parse): fixing off-by-one error on line numbers
+	  in parse exceptions.  [ruby-core:34690]
+
+	* test/psych/test_parser.rb: test for error
+
+Wed Jan 19 13:04:16 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* proc.c (proc_call): Add gc guard to avoid segfault. The fix
+	  is created by Tomoyuki Chikanaga. [Bug #4238][ruby-dev:42963]
+
+Tue Jan 18 23:31:01 2011  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* parse.y: avoid NULL reference.  [ruby-dev:43067]
+
+Wed Jan 19 02:54:04 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* vsnprintf.c (cvt): set first byte of buf to NUL for the case when
+	  no bytes are written to the buf. [ruby-dev:43062]
+
+Tue Jan 18 02:46:55 2011  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/psych/lib/psych/visitors/json_tree.rb (visit_String): JSON
+	  strings should be dumped with double quotes. [ruby-core:34186]
+
+	* test/psych/test_json_tree.rb: test for double quotes
+
+Sun Jan 16 22:06:30 2011  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* too/rbinstall.rb (install?(:ext, :comm, :gem)): no longer 
+	  installs no-versioned gempsecs. [ruby-core:34011]
+	  Patch by Luis Lavena.
+
+Fri Jan 14 15:32:29 2011  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* test/net/imap/test_imap.rb: call neither logout nor disconnect
+	  unless connected.  patch by Kazuhiro NISHIYAMA.  [ruby-dev:42860]
+
+Fri Jan 14 14:56:57 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* lib/net/imap.rb: use bytesize for binary strings.
+	  patched by Yoshimasa Niwa. [ruby-core:34222]
+
+Fri Jan 14 13:38:58 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/zlib/zlib.c (gzfile_check_footer): ISIZE (Input SIZE) in
+	  gzip's header is the size of uncompressed input data modulo 2^32.
+	  [ruby-core:34481] http://www.ietf.org/rfc/rfc1952.txt
+
+Fri Jan 14 07:30:47 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* io.c (argf_next_argv): go advance when the next file cannot be
+	  read.  [ruby-core:34446]
+
+Wed Jan 12 23:55:48 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* io.c (rb_f_syscall): Add 64bit Linux support. Some syscall takes
+	  long type arguments.
+
+Thu Jan 13 00:06:38 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* io.c (rb_f_syscall): Add warning messages. [ruby-core:34062]
+
+Thu Jan 13 00:00:07 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* io.c (rb_f_syscall): Some syscall return unsigned or pointer value.
+	  Therefore we should only check the result is -1 or not. [ruby-core:34062]
+
+Wed Jan 12 16:25:12 2011  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* lib/net/http.rb (Net::HTTP#connect): makes it timeout during 
+	  SSL handshake too. [ruby-core:34203]
+	  Patch by Marc Slemko.
+
+	* test/net/http/test_http.rb (TestNetHTTP_v1_2#test_timeout_during_HTTP_session):
+	  test for [ruby-core:34203]
+
+	* test/net/http/test_https.rb (TestNetHTTPS#test_timeout_during_SSL_handshake):
+	  ditto.
+
+Sun Jan  9 16:31:53 2011  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* io.c (Kernel.#syscall): implemented on LP64/LLP64 environments too.
+	  also uses __syscall if available for *BSD on 64bit architecture.
+	  [ruby-core:34062]
+
+Wed Jan 12 16:24:53 2011  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* ext/readline/extconf.rb: new checks for RL_PROMPT_START_IGNORE 
+	  and RL_PROMPT_END_IGNORE. [ruby-core:34331]
+
+	* ext/readline/readline.c: enables USE_INSERT_IGNORE_ESCAPE only if
+	  RL_PROMPT_{START,END}_IGNORE are available to get rid of compilation
+	  error with libedit.
+
+Sun Jan  9 14:47:50 2011  TAKAO Kouji  <kouji@takao7.net>
+
+	* ext/readline/readline.c: apply a patch from Nobuyoshi Nakada.
+	  fixed #3616 [ruby-core:31484] IRB + readline incorrectly counts
+	  non-printing characters in prompt
+
+Fri Jan  7 21:54:04 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* misc/ruby-mode.el (ruby-font-lock-syntactic-keywords): highlight
+	  regexp after open bracket.  [ruby-core:34183]
+
+Thu Jan  6 22:42:02 2011  Yukihiro Matsumoto  <matz@ruby-lang.org>
+
+	* bignum.c (bigmul1_karatsuba): avoid overflow that make assertion
+	  fail in certain case.  this patch is contributed from Ray Chason
+	  <chasonr at gmail.com> in personal communication.
+
+Thu Jan  6 11:27:01 2011  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/psych/lib/psych/json/tree_builder.rb (start_mapping): tags
+	  should not be included in JSON mapping
+
+Thu Jan  6 05:14:41 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/stringio/stringio.c (get_strio, strio_set_string)
+	  (strio_reopen): check if frozen.  [ruby-core:33648]
+
+Wed Jan  5 13:56:54 2011  Akinori MUSHA  <knu@iDaemons.org>
+
+	* lib/net/http.rb (Net::HTTP#get): A header hash given should not
+	  be modified.
+
+Sun Jan  9 16:31:34 2011  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* lib/irb/locale.rb (IRB::Locale::LOCALE_NAME_RE): 
+	  some platoform has a locale without territory but with 
+	  encoding.
+	  (#each_sub_locale): ditto.
+
+Sat Jan  1 17:02:50 2011  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* lib/irb/locale.rb (IRB::Locale#search_file): make it possible
+	  to load a localization from a gem.
+	  (IRB::Locale#lc_path): obsoleted because of the change of #search_file
+	  (IRB::Locale#each_localized_path): new private method, based on lc_path
+	  (IRB::Locale#find): follows the change of #search_file.
+	  (IRB::Locale#load): removed duplicate with #find.
+
+Fri Dec 31 03:23:26 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* vsnprintf.c (BSD__uqtoa): Fix overflow when long != quad_t.
+	  patched by Peter Weldon <peter.weldon AT null.net>
+	  [ruby-core:33985]
+
+Wed Jan  5 12:10:08 2011  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* Use _WIN32 rather than checking for windows.h.  Thanks Jon Forums!
+	  [ruby-core:33977]
+
+Tue Dec 28 04:32:37 2010  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/fiddle/extconf.rb: check for windows.h while building fiddle.
+	  Thanks Jon Forums! [ruby-core:33923]
+
+Sun Dec 26 11:39:11 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* parse.y (stmt): missing ripper rule.  i.e., `a::B ||= c 1'.
+	  http://twitter.com/#!/wannabe53/status/18797576396472321
+	  http://twitter.com/#!/wannabe53/status/18798416150663168
+
+Sun Dec 26 04:31:15 2010  Luis Lavena  <luislavena@gmail.com>
+
+	* ext/dl/win32/registry.rb: Corrected RegCreateKeyExA signature.
+	  Patch by Rafal Michalski [ruby-core:33874] [Ruby 1.9-Bug#4203]
+
+Sat Dec 25 15:04:05 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* test/csv/test_encodings.rb (TestEncodings#setup): fix evil test
+	  suite writing to the source directory.
+
+Sat Dec 25 14:27:09 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* io.c (rb_io_extract_encoding_option): accept Encoding object as
+	  encoding: optional argument.  [ruby-dev:42884]
+
+Sat Dec 25 15:08:08 2010  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* ext/pty/pty.c (chfunc): Added rb_thread_atfork_before_exec().
+	  We must reinitialize GVL at new process creation. Otherwise
+	  we may meet an insane deadlock. [Bug#4121][ruby-dev:42686]
+
+Wed Sep  8 22:46:31 2010  NAKAMURA, Hiroshi  <nahi@ruby-lang.org>
+
+	* ext/openssl/ossl_ssl.c (ssl_get_error): Thread context switch was
+	  blocked on Windows while blocking call for SSLSocket.  Need to
+	  convert errno for letting rb_io_wait_readable detect EWOULDBLOCK.
+	  Patch by arton. ref #3794.
+
+Thu Dec 23 23:29:04 2010  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* common.mk, win32/Makefile.sub: fixes dependencies.
+	  patch by nobu.
+
+Thu Dec 23 22:29:08 2010  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* io.c (io_fillbuf): fixes a mistake on merging r30280, at r30321.
+
+Thu Dec 23 06:35:41 2010  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* lib/net/smtp.rb: Net::SMTP should close the SSL connection if the
+	  connection verification fails.
+
+Tue Dec 21 06:25:43 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* test/rexml/test_contrib.rb (ContribTester#test_pos): should not
+	  use fixed path name for tests.  [ruby-dev:42827]
+
+	* test/rexml/test_sax.rb (SAX2Tester#test_socket): should not use
+	  fixed port for tests.  [ruby-dev:42828]
+
+Tue Dec 21 01:41:42 2010  Masaya Tarui  <tarui@ruby-lnag.org>
+
+	* io.c : add an extra byte to buffer for the specification of read
+	  in Windows. see [ruby-core:33460] and r29980. and, we have to
+	  discuss how to do this one byte.
+
+Wed Dec 15 04:02:00 2010  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* ext/openssl/ossl_x509ext.c (ossl_x509extfactory_set_config):
+	  fix compile error when !HAVE_X509V3_SET_NCONF. Thanks
+	  Chikanaga-san. [ruby-dev:42761] [Ruby 1.9-Bug#4158]
+
+Sat Dec 11 05:48:28 2010  Hidetoshi NAGAI  <nagai@ai.kyutech.ac.jp>
+
+	* ext/tk/lib/multi-tk.rb: infinite loop on method_missing at loading.
+	  [ruby-dev:42716] [Ruby 1.9-Bug#4129]
+
+	* ext/tk/lib/multi-tk.rb: when no eventloop is running, ruby freezes at exit.
+
+Tue Dec  7 22:37:15 2010  Masaya Tarui  <tarui@ruby-lnag.org>
+
+	* io.c (io_read): duplicate string if shared. [ruby-dev:42719]
+
+Tue Dec  7 21:59:37 2010  Kouhei Sutou  <kou@cozmixng.org>
+
+	* lib/rexml/light/node.rb: remove circular require.
+
+Tue Dec  7 18:56:52 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/nkf/lib/kconv.rb (String#kconv): fix typo and update rdoc.
+	  patched by Kouhei Yanagita [ruby-dev:42696]
+
+Tue Dec  7 00:27:14 2010  Masaya Tarui  <tarui@ruby-lnag.org>
+
+	* win32/win32.c (rb_w32_read): fixed more for readline,
+	  and so on. [ruby-core:33511]
+
+Mon Dec  6 18:56:42 2010  Kazuhiro NISHIYAMA  <zn@mbf.nifty.com>
+
+	* test/ruby/test_string.rb (TestString#test_scan): add a test for
+	  [ruby-core:33338] #4087.
+
+Thu Dec 23 19:17:14 2010  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* test/net/imap/cacert.pem: updated because it has been expired.
+
+	* test/net/imap/server.crt: signed again because CA cert was expired.
+
+Sun Dec  5 17:56:36 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* class.c (make_metaclass): fix probable typo.  builtin type flag
+	  cannot be used with FL_TEST.
+
+Sun Dec  5 12:09:27 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/irb/init.rb (IRB.parse_opts): fix typo. [ruby-core:33574]
+
+Sun Dec  5 11:27:08 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ruby.c (load_file_internal): decrement for ungotten line.
+	  [ruby-dev:42680]
+
+Fri Dec  3 07:08:42 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/stringio/stringio.c (strio_getline): round upto next char
+	  boundary.  [ruby-dev:42674]
+
+Thu Dec  2 15:31:14 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/win32.c (rb_w32_read): more fix. [ruby-core:33513]
+
+Thu Dec  2 13:41:43 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/win32.c (rb_w32_read): workaround for console reading troubles.
+	  fixed [ruby-core:33511]
+
+Tue Nov 30 12:23:52 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/win32.c (rb_w32_read): read only 1 byte at once on console.
+	  workaround of Windows bug. see [ruby-core:33460].
+	  this is not the final solution.
+
+Mon Nov 29 22:55:24 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/uri/common.rb (URI::WFKV_): get rid of backtrack explosion
+	  by nested repeat operators.  [ruby-core:33464]
+
+Mon Nov 29 18:31:31 2010  Martin Duerst  <duerst@it.aoyama.ac.jp>
+
+	* test/ruby/test_transcode.rb (test_unicode_public_review_issue_121):
+	  - Removed commented-out options that are no longer under discussion.
+	  - Added two more tests for forthcomming clarifications.
+
+Mon Nov 29 05:54:22 2010  Koichi Sasada  <ko1@atdot.net>
+
+	* thread_pthread.c (native_cond_*): Check return code.
+	  (Some OSs except Linux return error code).
+
+Sat Nov 27 19:12:10 2010  Tanaka Akira  <akr@fsij.org>
+
+	* time.c: parenthesize macro arguments.
+
+Sat Nov 27 18:08:18 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* time.c (leap_year_v_p): fixed typo.  [ruby-dev:42631]
+
+Fri Nov 26 09:48:45 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* re.c (rb_reg_initialize_str): should succeed the taint status from
+	  the origin. [ruby-core:33338]
+
+Tue Nov 23 18:54:03 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm.c (rb_thread_mark): should mark self in conrol
+	  frames.  [ruby-core:33289]
+
+Sat Oct 30 00:35:13 2010  Koichi Sasada  <ko1@atdot.net>
+
+	* iseq.c (iseq_s_compile): fix optional argument.
+	  a patch from Yutaka HARA [ruby-core:32953] [Ruby 1.9-Bug#4001]
+
+Mon Nov 22 21:30:57 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_inspect): fix for ascii-compatible external
+	  encoding and different encoding string.  [ruby-core:33283]
+
+Mon Nov 22 18:33:30 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_inspect): append for each chars instead of bulk
+	  copy if encoding conversion is needed.  [ruby-core:33283]
+
+Mon Nov 22 11:58:11 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (rb_str_concat): set ENC_CODERANGE_VALID when the
+	  receiver is 7BIT and the argument is non ASCII.
+
+Sat Nov 20 01:57:55 2010  Akio Tajima  <artonx@yahoo.co.jp>
+
+	* common.mk: add dependency(insns.inc) to compile.obj
+
+Thu Nov 18 00:02:17 2010  James Edward Gray II  <jeg2@ruby-lang.org>
+
+	* lib/csv.rb: Upgrading output encoding with ASCII content 
+	  as needed.  [ruby-core:33229]
+
+Tue Nov 17 08:54:04 2010  James Edward Gray II  <jeg2@ruby-lang.org>
+
+	* lib/csv.rb: Upgrading output encoding as needed.  [ruby-core:33135]
+
+Tue Nov 16 22:30:39 2010  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* vm_insnhelper.c (vm_throw): remove fear of undefined behavior :-)
+	  Coverity Scan found this bug.
+
+Tue Nov 16 06:39:31 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* pack.c (PACK_ITEM_ADJUST): return nil not result array and yield
+	  values if block is given.  [ruby-core:33193]
+
+Tue Nov 16 00:21:20 2010  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* regparse.c (and_cclass, or_cclass): fix memory leak.  Coverity Scan
+	  found this bug.  [ruby-dev:42579]
+
+Mon Nov 15 23:54:45 2010  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* eval_intern.h (CHECK_STACK_OVERFLOW): it was not intended to add
+	  size_t to a pointer typed VALUE*.  Coverity Scan found this defect.
+
+Mon Nov 15 23:41:21 2010  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* compile.c (iseq_set_exception_local_table, iseq_set_local_table,
+	  rb_iseq_build_from_ary): fix type inconsistency (which is benign
+	  because sizeof(ID) == sizeof(ID*), though).  Coverity Scan found
+	  these bugs.
+
+Mon Nov 15 22:47:27 2010  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* vm_eval.c (rb_funcall): ensure va_end after va_init_list.  Coverity
+	  Scan found this bug.
+
+Mon Nov 15 06:43:48 2010  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* etc/openssl/ossl_ssl.c (ossl_ssl_get_cert): raise exception if
+	  pointer is invalid.  Thanks Ippei Obayashi! [ruby-dev:42573]
+
+Mon Dec  6 22:53:49 2010  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* cygwin/GNUMakefile.in ($(RCFILES)): fixes [ruby-core:33525].
+	  Patch by Luis Lavena <luislavena AT gmail.com>.
+	  http://groups.google.com/group/rubyinstaller/browse_thread/thread/412abfdcb695aecb
+
+Mon Dec  6 22:28:41 2010  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* string.c (rb_str_concat): partially reverts r30040 because
+	  it unpexpectedly changes the behavior of String#<<.
+
+Fri Nov  5 00:14:15 2010  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/fiddle/extconf.rb: fixing ffi library location on windows.
+	  Thanks Usa! [ruby-core:32930]
+
+Wed Nov  3 14:13:46 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_enc_cr_str_buf_cat): concatenation of valid
+	  encoding string and invalid encoding string should result
+	  invalid encoding.  [ruby-core:33027]
+
+Wed Nov  3 07:47:25 2010  Yukihiro Matsumoto  <matz@ruby-lang.org>
+
+	* lib/irb/ruby-lex.rb (RubyLex#identify_string): parse multiple
+	  regex options.  a patch from Heesob Park in [ruby-core:32988].
+
+Sat Oct 30 06:32:52 2010  Tanaka Akira  <akr@fsij.org>
+
+	* test/pathname/test_pathname.rb (TestPathname#test_grpowned?): the
+	  group of the created file is inherited from the parent
+	  directory on BSDs and MacOS X.  Linux also inherit the group if
+	  the setgid bit of the directory is set.  It causes the test fail.
+	  fixed by Shota Fukumori.  [ruby-dev:42458]
+
+Fri Oct 29 03:04:16 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_dump): fix expected length. [ruby-core:32935]
+
+Thu Oct 21 15:42:01 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* lib/net/telnet.rb (Net::Telnet#close): added.
+	  patched by Erik Hollensbe [ruby-dev:42260] #3830
+
+Wed Oct 27 18:27:17 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/ruby/test_io.rb (TestIO#pipe): should close write end of pipe
+	  before closing read end, to get rid of timing problem.
+
+	* test/ruby/test_io_m17n.rb (TestIO_M17N#pipe): ditto.
+
+Wed Oct 27 13:51:25 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/ruby/test_io.rb (TestIO#pipe): need to propagate exceptions
+	  in read/write thread. fix r29541.
+
+	* test/ruby/test_io_m17n.rb (TestIO_M17N#pipe): ditto.
+
+Thu Oct 21 00:05:45 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* test/ruby/test_io.rb (TestIO#pipe): get rid of deadlock on pipe.
+	  a patch from Tomoyuki Chikanaga at [ruby-dev:42435].  #3970
+
+	* test/ruby/test_io_m17n.rb (TestIO_M17N#pipe): ditto.
+
+Mon Oct 18 10:19:00 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* lib/net/http.rb (transport_request): @socket may be nil.
+	  patched by Egbert Eich [ruby-core:32829]
+
+Sun Oct 17 10:40:17 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* class.c (rb_define_{class,module}_id_under): register to be
+	  marked, which probably are defined and used internally.
+
+Sat Oct 16 11:10:55 2010  Masaki Suketa <masaki.suketa@nifty.ne.jp>
+
+	* ext/win32ole/win32ole.c (ole_encoding2cp): set codepage 20936
+	  according to GB2312. [Bug #3937] [ruby-core:32758]
+
+Fri Oct 15 23:36:25 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* file.c (NUM2DEVT, DEVT2NUM, PRI_DEVT_PREFIX): fallback to
+	  unsigned int.
+
+Fri Oct 15 20:30:30 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* configure.in (dev_t): use RUBY_REPLACE_TYPE.
+
+	* file.c (rb_stat_inspect): use PRI_DEVT_PREFIX.
+
+Thu Oct 14 07:35:07 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* file.c (DEVT2NUM): added. Size of dev_t is depend on the
+	  environment even if POSIX defines dev_t as unsigned integer.
+	  For example, OpenVMS, 64bit Solaris 9, and NetBSD 6 defines
+	  dev_t as 64bit unsigned integer.
+
+	* file.c (rb_stat_dev): use DEVT2NUM.
+
+	* file.c (rb_stat_dev_major): dev_t is not long. major(3)'s return
+	  value is int.
+
+	* file.c (rb_stat_dev_minor): dev_t is not long. minor(3)'s return
+	  value is int.
+
+	* configure.in: check size of dev_t.
+
+Thu Oct 14 20:50:51 2010  Masaki Suketa <masaki.suketa@nifty.ne.jp>
+
+	* ext/win32ole/win32ole.c (reg_get_val): expand environment in 
+	  the pathname. [Bug #3907]
+
+Thu Oct 14 04:16:41 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* numeric.c (ruby_float_step): fix Numeric#step with infinity unit
+	  doesn't works well. [ruby-core:32779]
+
+Wed Oct 13 22:32:34 2010  Takeyuki FUJIOKA  <xibbar@ruby-lang.org>
+
+	* lib/cgi/util.rb (CGI::unescape): bugfix to unescape the multibyte
+	  string. Thanks nobu and tDiary dev members. [Bug #3909]
+
+Tue Oct 12 23:58:19 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* win32/win32.c (rb_w32_open_osfhandle, rb_w32_wopen, rb_w32_pipe):
+	  use uintptr_t instead of long for win64.
+
+Tue Oct 12 23:55:11 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vsnprintf.c (BSD_vfprintf): fix cast.
+
+Tue Oct 12 18:25:43 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* io.c (rb_io_ungetc): always see Bignum. On 32bit valid value
+	  may be a Bignum. On 64bit for errors. [ruby-dev:42366]
+
+Tue Oct 12 18:25:04 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (rb_str_concat): use unsigned int for GB18030.
+
+Tue Oct 12 15:52:35 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/win32.c (rb_w32_strerror): unmap some range of errno for
+	  workaround of VC10's strerror() and sys_nerr problem.
+	  based on a patch from Akio Tajima, [ruby-dev:42355].
+
+Tue Oct 12 15:36:09 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* io.c (rb_io_ungetc): use unsigned int for GB18030.
+
+Tue Oct 12 15:10:31 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* numeric.c (rb_enc_uint_chr): split from int_chr.
+
+	* numeric.c (int_chr): use rb_enc_uint_chr.
+
+	* include/ruby/encoding.h (rb_enc_uint_chr): added.
+
+Tue Oct 12 14:04:41 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* numeric.c (int_chr): a codepoint of Ruby M17N must be 32bit
+	  unsigned int; GB18030 uses MSB. Also note that OnigCodePoint
+	  is defined as uisigned int.
+
+Mon Oct 11 20:20:23 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* lib/net/http.rb (HTTP.get): specify ASCII-8BIT as the result
+	  encoding of Zlib::GzipReader.
+	  http://hibari.2ch.net/test/read.cgi/tech/1281473294/271
+
+Mon Oct 11 14:03:54 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* error.c (syserr_initialize): set the encoding of Errno::*#message
+	  as locale. [ruby-dev:42358]
+
+Mon Oct 11 06:11:30 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* io.c (rb_io_set_encoding): use rb_funcall2 when the io is not
+	  a T_FILE. [ruby-dev:42356]
+
+Fri Oct  8 00:24:54 2010  James Edward Gray II  <jeg2@ruby-lang.org>
+
+	* lib/csv.rb: Fixing documentation typos.  [ruby-core:32712]
+
+Wed Oct  6 11:52:12 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* io.c (fptr_finalize): write_mutex might have been destroyed
+	  already in finalization phase, as the order of finalizers is not
+	  guaranteed.  rb_mutex_t should be used in place of Mutex object
+	  in the future.
+
+Mon Oct  4 12:43:47 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* parse.y (regexp): dregexp has literal string only at the head
+	  and successors are array.  [ruby-core:32682]
+
+Mon Oct  4 09:30:42 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/openssl/lib/openssl/bn.rb (Integer#to_bn): OpenSSL::BN.new
+	  accepts only Strings, so call Integer#to_s(16).
+	  16 is for an optimization. [ruby-dev:42336]
+
+Mon Oct  4 07:57:51 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* cont.c (fiber_memsize): Return size.
+	  Before this change, fiber_memsize always returns 0.
+
+Sat Oct  2 22:59:32 2010  Masaki Suketa <masaki.suketa@nifty.ne.jp>
+
+	* test/win32ole/test_thread.rb: add for win32ole with Thread.
+
+Thu Sep 30 16:11:08 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/win32.c (rb_w32_getenv): should return NULL if specified name
+	  is empty. a patch from Heesob Park at [ruby-core:32650]
+
+Sun Aug 29 13:22:43 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm.c (rb_thread_method_id_and_class): curried proc has no
+	  method.  [ruby-core:31871]
+
+Fri Sep 24 23:44:59 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (sym_call), vm.c (invoke_block_from_c),
+	  vm_insnhelper.c (vm_yield_with_cfunc): pass given block.
+	  [ruby-core:32075]
+
+	* vm_eval.c (rb_funcall_passing_block): new function to call
+	  method with passing given block.
+
+Fri Sep 24 15:50:43 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (rb_str_to_i): fix rdoc: String#to_i raises an
+	  exception when base is invalid. [ruby-core:31685]
+
+Wed Sep 22 16:59:40 2010  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* test/test_prime.rb (TestPrime#test_new): the warning expected have
+	  not been displayed when $VERBOSE == nil. Patch by Shota Fukumori
+	  a.k.a. sora_h. [ruby-dev:42272]
+	  Recovers $stderr even if StringIO.new fails. Reported by unak.
+
+Wed Sep 22 01:55:48 2010  Koichi Sasada  <ko1@atdot.net>
+
+	* bootstraptest/test_method.rb: fix last commit.
+
+Wed Sep 22 01:49:52 2010  Koichi Sasada  <ko1@atdot.net>
+
+	* bootstraptest/test_method.rb: add a test for [ruby-core:30534].
+
+Mon Sep 20 23:23:05 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* dir.c (bracket): get rid of scanning at the end of the pattern
+	  string, not to raise an exception while globbing command line.
+	  [ruby-core:32478]
+
+Fri Sep 17 23:44:07 2010  Kouhei Sutou  <kou@cozmixng.org>
+
+	* lib/rexml/xpath_parser.rb, test/rexml/test_xpath.rb:
+	add missing method availability check. [ruby-core:32447]
+	Reported by Wiebe Cazemier. Thanks!!!
+
+Fri Sep 17 23:23:26 2010  Kouhei Sutou  <kou@cozmixng.org>
+
+	* test/rexml/test_sax.rb: don't use thread and sleep to avoid slow test.
+
+Fri Sep 17 23:10:44 2010  Kouhei Sutou  <kou@cozmixng.org>
+
+	* test/rexml/test_core.rb: enable.
+
+Fri Sep 17 22:46:02 2010  Kouhei Sutou  <kou@cozmixng.org>
+
+	* test/rexml/: untabify.
+
+Fri Sep 17 22:29:56 2010  Kouhei Sutou  <kou@cozmixng.org>
+
+	* test/rexml/: fix fixture data path. All REXML tests are worked.
+
+Fri Sep 17 22:15:15 2010  Kouhei Sutou  <kou@cozmixng.org>
+
+	* test/rexml/test_listener.rb: remove needless codes.
+
+Fri Sep 17 22:12:23 2010  Kouhei Sutou  <kou@cozmixng.org>
+
+	* test/rexml/: import REXML tests from
+	http://www.germane-software.com/repos/rexml/trunk/test/.
+	Many tests are failed temporary. I'll fix them quickly. Sorry.
+
+Fri Sep 17 08:30:27 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/tracer.rb: count only non-internal libraries in stack trace,
+	  ignoring custom_require.  [ruby-core:31858]
+
+Thu Sep 16 08:30:28 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* sprintf.c (rb_f_sprintf): fix rdoc.  pointed out by Tomoyuki
+	  Chikanaga at [ruby-core:32395], and a patch from Daniel
+	  Bovensiepen at [ruby-core:32403].
+
+Thu Sep 16 08:27:36 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/etc/extconf.rb: use expanded sysconfdir with empty DESTDIR.
+	  [ruby-core:32394]
+
+Wed Sep 15 13:37:00 2010  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+	* test/net/imap/test_imap.rb: "localhost" not guaranteed to
+	  resolve to "127.0.0.1".  On my machine it is "::1" instead.
+	  The problem is, you have to connect to the imaps server via
+	  the canonical name written in a server certificate, and that
+	  of the server.cert is "localhost".  So you have to listen to
+	  the address of what "localhost" resolves to.  I think this
+	  situation cannot be resolved in a handy manner because the
+	  test "test_imaps_post_connection_check" is actually
+	  expecting to connect to a server via an address other than
+	  the CN.  On my machine several assertions won't pass because
+	  the test cannot connect to the server.
+
+Wed Sep 15 09:12:03 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* io.c (rb_io_puts): fix for wide char encoding strings.
+	  [ruby-dev:42212]
+
+Wed Sep 15 07:27:52 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_times): mentioned about Hash argument.  a patch
+	  from Daniel Bovensiepen at [ruby-core:32386].
+
+	* sprintf.c (get_hash): ditto, and fix typo.
+
+Mon Sep 13 19:56:50 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/socket/rubysocket.h (__DARWIN_ALIGNBYTES): workaround of a
+	  bug in system header of darwin 9.  [ruby-core:32341]
+
+Mon Sep 13 10:12:09 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* util.c (ruby_strtod): reject Float('0x0.').
+	  [ruby-dev:42239] Bug #3820
+
+Mon Sep 13 09:23:58 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/openssl/ossl_bn.c (ossl_bn_is_prime): fix comparison
+	  with rb_scan_args. Before this fix, OpenSSL::BN#prime?
+	  is fully broken. [ruby-dev:42225]
+
+Sun Sep 12 21:21:50 2010  Tadayoshi Funaba  <tadf@dotrb.org>
+
+	* lib/date.rb: [ruby-core:32096]  Thanks Colin Bartlett.
+
+Tue Nov  2 21:33:43 2010  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+
+	* hash.c (ruby_setenv): merged r29225 but just warning
+	  instead of raising an exception. c.f. [ruby-core:32250].
+
+Sep 11 16:47:41 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* hash.c (ruby_setenv): raise if putenv and SetEnvironmentVariable
+	  failed, because of the restriction of the size on Windows.
+	  based on a patch from Peter Weldon at [ruby-core:32304].  fix:
+	  Bug#3812, [ruby-core:32250]
+
+Sat Sep 11 12:32:05 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* include/ruby/intern.h (rb_set_kcode, rb_get_kcode): removed
+	  zombie prototype declarations.  a patch from Eric Hodel
+	  at [ruby-core:32305].
+
+Thu Sep  9 23:25:53 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm.c (vm_backtrace_each): skip allocator frames which have no
+	  name.  [ruby-core:32231]
+
+Thu Sep  9 10:44:46 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* test/ruby/test_env.rb (test_aset): OpenBSD acts like NetBSD in
+	  that it ignores characters after = in ENV.
+	  patched by Jeremy Evans [ruby-core:32184]
+
+Thu Sep  9 09:02:01 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* tool/rbinstall.rb (install?): gemspec filename should include
+	  its version. patched by Luis Lavena [ruby-core:32165]
+
+Mon Sep  6 11:03:13 2010  NAKAMURA, Hiroshi  <nahi@ruby-lang.org>
+
+	* Fixed wrong check of missing functions. Patch by Adrian Quark.
+	  ref #3400
+	  The patch contains following comment:
+	    This patch should avoid unnecessary incompatibility with future
+	    versions of Openssl.  Changes suggested by bmaher_at_amazon.com.
+
+Mon Sep  6 10:31:59 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/readline/readline.c (readline_s_get_line_buffer):
+	  Readline.line_buffer should return locale string.
+	  [ruby-dev:42184] #3791
+
+Sat Sep  4 23:48:47 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* file.c (rb_file_s_readlink): symlink target should be in
+	  filesystem encoding.
+
+Wed Sep  1 14:33:36 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* enum.c (enum_zip): fix typo of rdoc.
+	  patched by Andrei Kulakov [ruby-core:31974]
+
+Wed Sep  1 12:56:36 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* thread.c (ruby_suppress_tracing): restore the state and invoke
+	  the func with normal state.  a patch from Satoshi Shiba <shiba
+	  AT rvm.jp> at [ruby-dev:42162].  [ruby-core:31783]
+
+Tue Aug 31 17:32:34 2010  Hidetoshi NAGAI  <nagai@ai.kyutech.ac.jp>
+
+	* ext/tk/stubs.c: fix [Bug #3771] "VC++ can't make ext/tk with enabling
+	  stubs". Thanks, Akio Tajima [ruby-dev:42159].
+
+Tue Aug 10 11:26:33 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* lib/un.rb (httpd): SIGQUIT and SIGHUP are not guaranteed to exist.
+
+Sat Aug 14 17:48:41 2010  Narihiro Nakamura  <authorNari@gmail.com>
+
+	* test/objspace/test_objspace.rb: added test for objspace.
+
+	* ext/objspace/objspace.c: considers T_ZOMBIE by lazy sweep GC.
+
+	* gc.c: considers that dsize was 0. [ruby-dev:42022]
+
+Tue Aug 31 03:42:14 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (tr_setup_table): fix bug in r29146.
+	  Initialize table even if cflag is 0; tr_find see whether
+	  del is empty or not.
+
+	* string.c (tr_find): nodel can't be NULL; if NULL, it means
+	  it is not specified.
+
+Mon Aug 30 15:00:13 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (tr_setup_table): initialize negating table when
+	  negating string is given. [ruby-core:31851]
+
+	* string.c (tr_find): add a sentence for the time when
+	  target characters include negating one.
+
+	* string.c (rb_str_count): move definition.
+
+Sun Aug 29 23:54:10 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/rdoc/parser/ruby.rb (RDoc#parse_call_parameters): don't
+	  include assignment.  [Bug #3759], [ruby-dev:42154]
+
+	* lib/rdoc/parser/ruby.rb (RDoc#parse_class): ignore non-constant
+	  name signleton class.  [Bug #3759], [ruby-dev:42154]
+
+Sat Sep 25 22:48:30 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* configure.in (LIBRUBY_DLDFLAGS): fix quoting.
+
+Sat Sep 25 10:30:37 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* configure.in (LIBRUBY_DLDFLAGS): use -unexported_symbol only
+	  when available.  http://trac.macports.org/ticket/26341
+
+Sat Oct 16 10:54:57 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* Makefile.in (CPP): already used in .c.i rule.
+
+	* cygwin/GNUmakefile.in (DLLWRAP, WINDRES): add --driver-name and
+	  --preprocessor options explicitly.  [ruby-core:32776]
+
+Thu Sep 23 09:01:28 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm_insnhelper.c (vm_cref_push): no outer cref is needed for proc
+	  from method.  Bug #3786, Bug #3860, [ruby-core:32501]
+
+Sun Sep 19 13:44:24 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* configure.in (LIBRUBY_SO): fix an oversight of replace
+	  RUBY_INSTALL_NAME with RUBY_SO_NAME.  a patch from Jeremy Evans
+	  at [ruby-core:32474].
+
+Sun Aug 29 12:19:58 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* load.c (load_failed): should honor encoding.  [ruby-core:31915]
+
+Fri Aug 27 12:26:23 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* object.c (rb_obj_class): remove mention of obsolete method.
+	  a patch from Run Paint Run Run at [ruby-core:31842].
+
+Thu Aug 26 10:37:00 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* regint.h (OnigStackIndex): the type should be intptr_t.
+	  Original Oniguruma assumes the size of long and that of void *
+	  are equal, but it's not true on LLP64 platform: mswin64.
+	  originally patched by shintaro kuwamoto [ruby-dev:42133]
+
+Thu Aug 26 10:38:11 2010  Yutaka Kanemoto  <kanemoto@ruby-lang.org>
+
+	* test/dl/test_base.rb: AIX does not have dynamically loadable lib[cm].
+
+	* test/fiddle/helper.rb: AIX does not have dynamically loadable lib[cm].
+
+Wed Aug 25 03:42:43 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ext/dl/cfunc.c (rb_dlcfunc_call): workaround for VC9 for x64.
+	  reported by kuwamoto shintaro in [ruby-dev:42125].
+
+Mon Aug 23 13:09:27 2010  NAKAMURA, Hiroshi  <nahi@ruby-lang.org>
+
+	* backport r29071 from ruby_1_8;
+
+	  * ext/openssl/ossl_asn1.c (obj_to_asn1bool): fixed ASN1::Boolean
+	    encoding issue for OpenSSL 1.0.0 compatibility.
+	    ASN1::Boolean.new(false).to_der wrongly generated "\1\1\377" which
+	    means 'true'.
+
+	    ASN1_TYPE_set of OpenSSL <= 0.9.8 treats value 0x100 as 'false'
+	    but OpenSSL >= 1.0.0 treats it as 'true'.  ruby-ossl was using
+	    0x100 for 'false' for backward compatibility.  Just use 0x0 for
+	    the case OpenSSL >= OpenSSL 0.9.7.
+
+	  * test/openssl/test_asn1.rb: test added.
+
+Mon Aug 23 22:30:58 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* common.mk (version.o): depends on both of version.h and
+	  include/ruby/version.h.   [ruby-dev:42063]
+
+Mon Aug 23 12:28:58 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* re.c (rb_reg_search): fix: 4th argument should be regexp
+	  object. patched by shintaro kuwamoto [ruby-dev:41667] #3459
+
+Mon Aug 23 02:23:05 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* util.c (ruby_strtod): make sure to have digit-sequence after 'p'
+	  for hexadecimal-floating-constant. [ruby-dev:42105]
+
+Sun Aug 22 09:08:02 2010  Tanaka Akira  <akr@fsij.org>
+
+	* include/ruby/ruby.h (UINT2NUM): fix ifdef condition for LLP64.
+	  reported by Daniel Gutmanas.  [ruby-core:31778]
+
+Sun Aug 22 05:55:01 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* configure.in: fix typo.  a patch from Eric Wong at
+	  [ruby-core:31810].
+
+Thu Aug 19 12:04:39 2010  Kenta Murata  <mrkn@mrkn.jp>
+
+	* array.c (rb_ary_permutation, rb_ary_repeated_permutation,
+	  rb_ary_repeated_combination, rb_ary_product):
+	  use ary_make_shared_copy instead of ary_make_substitution.
+	  [ruby-dev:42067] [Bug #3708]
+
+	* test/ruby/test_array.rb (test_product, test_repeated_permutation,
+	  test_repeated_combination): append assertions against [Bug #3708].
+
+Thu Aug 19 11:11:24 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* enum.c (enum_inject): fix typo of rdoc.
+	  patched by Andrei Kulakov [ruby-core:31768]
+
+Thu Aug 19 06:03:27 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm_insnhelper.c (vm_push_frame): initialize block_iseq.  a patch
+	  from Peter Weldon at [ruby-core:31757].
+
+Wed Sep 15 02:13:44 2010  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/fiddle/closure.c : Don't use FFI closure alloc on OpenBSD.
+	  Thanks Jeremy Evans! [ruby-core:32384]
+
 Wed Aug 18 01:37:49 2010  NARUSE, Yui  <naruse@ruby-lang.org>
 
 	* regcomp.c: revert r26701; it introduces Bug #3681.
@@ -1402,11 +2453,6 @@ Tue May 11 23:07:22 2010  Tanaka Akira  <akr@fsij.org>
 
 	  [ruby-dev:38849]
 
-Wed May 12 09:21:05 2010  NARUSE, Yui  <naruse@ruby-lang.org>
-
-	* re.c (rb_reg_initialize_m): fix wrong index for the lang
-	  option's value 'N'. reported by Masaya TARUI via IRC.
-
 Tue May 11 21:53:18 2010  Yusuke Endoh  <mame@tsg.ne.jp>
 
 	* test/rake/test_task_arguments.rb: makes ENV empty during tests
@@ -1442,38 +2488,6 @@ Sun May 16 14:41:48 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* common.mk (dln_find.o): fix dependency.
 
-Tue May 11 01:20:43 2010  Aaron Patterson <aaron@tenderlovemaking.com>
-
-	* ext/psych/parser.c (parse): Return strings encoded as
-	  Encoding.default_internal if set.
-
-Mon May 10 06:59:19 2010  NARUSE, Yui  <naruse@ruby-lang.org>
-
-	* common.mk (rdoc): rdoc should depend main. Moreover when XRUBY
-	  is miniruby, it can run after miniruby is built.
-
-Mon May 10 03:36:56 2010  Yusuke Endoh  <mame@tsg.ne.jp>
-
-	* vm_eval.c (eval_string_with_cref): propagative filename and line_no
-	  of binding.  [ruby-dev:38767] [ruby-core:28307]
-
-	* vm_core.h (rb_binding_t), proc.c: add filename and line_no fields to
-	  preserve them.
-
-Mon May 10 02:29:51 2010  Yusuke Endoh  <mame@tsg.ne.jp>
-
-	* cont.c (fiber_switch): raise FiberError when returning to dead
-	  fiber.  [ruby-dev:40833]
-
-Sun May 16 11:39:15 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
-
-	* include/ruby/missing.h (signbit): add missing prototype.
-
-Sun May 16 10:49:47 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
-
-	* ext/iconv/iconv.c (rb_iconv_sys_fail): fix number of arguments.
-	  a patch by Masaya TARUI <tarui AT prx.jp>.
-
 Sun May  9 23:07:53 2010  Yusuke Endoh  <mame@tsg.ne.jp>
 
 	* proc.c (proc_dup): copy blockprocval.  proc_dup is used by
@@ -1488,11 +2502,6 @@ Tue May 11 01:20:43 2010  Aaron Patterson <aaron@tenderlovemaking.com>
 
 	* ext/psych/parser.c (parse): Return strings encoded as
 	  Encoding.default_internal if set.
-
-Mon May 10 06:59:19 2010  NARUSE, Yui  <naruse@ruby-lang.org>
-
-	* common.mk (rdoc): rdoc should depend main. Moreover when XRUBY
-	  is miniruby, it can run after miniruby is built.
 
 Mon May 10 03:36:56 2010  Yusuke Endoh  <mame@tsg.ne.jp>
 
