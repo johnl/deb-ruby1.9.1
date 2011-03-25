@@ -73,7 +73,6 @@ DEB_CONFIGURE_USER_FLAGS += --with-soname=ruby-1.9.1
 DEB_CONFIGURE_USER_FLAGS += --with-baseruby=/usr/bin/ruby1.8
 # the following are ignored by ./configure, but used by some extconf.rb scripts
 DEB_CONFIGURE_USER_FLAGS += --enable-ipv6
-DEB_CONFIGURE_USER_FLAGS += --with-lookup-order-hack=INET
 DEB_CONFIGURE_USER_FLAGS += --with-dbm-type=gdbm_compat
 DEB_CONFIGURE_USER_FLAGS += --with-tklib=tk$(tcltk_ver)
 DEB_CONFIGURE_USER_FLAGS += --with-tcllib=tcl$(tcltk_ver)
