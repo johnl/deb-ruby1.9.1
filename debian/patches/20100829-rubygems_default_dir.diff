@@ -1,8 +1,6 @@
-Index: trunk/lib/rubygems/defaults.rb
-===================================================================
---- trunk.orig/lib/rubygems/defaults.rb	2010-08-29 17:55:04.000000000 +0900
-+++ trunk/lib/rubygems/defaults.rb	2010-08-29 17:57:49.000000000 +0900
-@@ -15,8 +15,13 @@
+--- a/lib/rubygems/defaults.rb
++++ b/lib/rubygems/defaults.rb
+@@ -15,8 +15,13 @@ module Gem
    ##
    # Default home directory path to be used if an alternate value is not
    # specified in the environment
@@ -16,7 +14,7 @@ Index: trunk/lib/rubygems/defaults.rb
      if defined? RUBY_FRAMEWORK_VERSION then
        File.join File.dirname(ConfigMap[:sitedir]), 'Gems',
                  ConfigMap[:ruby_version]
-@@ -63,8 +68,12 @@
+@@ -63,8 +68,12 @@ module Gem
  
    ##
    # The default directory for binaries
