@@ -3,6 +3,8 @@ ruby1.9.1 (1.9.2.180-3) UNRELEASED; urgency=low
   * Remove --with-lookup-order-hack=INET.  That breaks IPv6-only systems. See
     #619209
   * Drop ruby1.9.1-elisp. The Ruby emacs mode is now provided in emacs 23.
+  * Add patch 110411_disable_osslv2.patch
+    Disables SSLv2. Closes: #620998
 
  -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Fri, 25 Mar 2011 15:52:47 +0100
 
