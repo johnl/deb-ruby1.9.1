@@ -87,15 +87,6 @@ Description: Examples for Ruby 1.9
  files and to do system management tasks (as in perl).  It is simple,
  straight-forward, and extensible.
 
-Package: ruby1.9.1-elisp
-Architecture: all
-Depends: emacs | emacsen, ${misc:Depends}
-Suggests: ruby1.9.1 (>= ${source:Version})
-Conflicts: ruby-elisp (<< 1.8), ruby1.6-elisp, ruby1.7-elisp, ruby-beta-elisp, ruby1.8-elisp
-Description: ruby-mode for Emacsen
- This package provides major-mode for editing Ruby scripts and some
- emacs-lisp programs for Ruby programmers.
-
 Package: ri1.9.1
 Architecture: all
 Depends: ruby1.9.1 (>= ${source:Version}), ${misc:Depends}
@@ -112,7 +103,6 @@ Package: ruby1.9.1-full
 Architecture: all
 Depends: ruby1.9.1 (>= ${source:Version}), libruby1.9.1-dbg (>= ${source:Version}), ruby1.9.1-dev (>= ${source:Version}), ruby1.9.1-examples (>= ${source:Version}), ri1.9.1 (>= ${source:Version}), ${misc:Depends}
 Recommends: libtcltk-ruby1.9.1 (>= ${source:Version})
-Suggests: ruby1.9.1-elisp
 Provides: ruby1.9.2-full
 Description: Ruby 1.9.1 full installation
  For many good reasons, the Ruby programming language is split in many
