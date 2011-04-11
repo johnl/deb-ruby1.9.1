@@ -1,0 +1,17 @@
+Description: Disable SSLv2 support
+ Bug for ruby1.8: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=621509
+Author: Lucas Nussbaum <lucas@debian.org>
+Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=620998
+Bug: http://redmine.ruby-lang.org/issues/4556
+--- a/ext/openssl/ossl_ssl.c
++++ b/ext/openssl/ossl_ssl.c
+@@ -107,9 +107,6 @@ struct {
+     OSSL_SSL_METHOD_ENTRY(TLSv1),
+     OSSL_SSL_METHOD_ENTRY(TLSv1_server),
+     OSSL_SSL_METHOD_ENTRY(TLSv1_client),
+-    OSSL_SSL_METHOD_ENTRY(SSLv2),
+-    OSSL_SSL_METHOD_ENTRY(SSLv2_server),
+-    OSSL_SSL_METHOD_ENTRY(SSLv2_client),
+     OSSL_SSL_METHOD_ENTRY(SSLv3),
+     OSSL_SSL_METHOD_ENTRY(SSLv3_server),
+     OSSL_SSL_METHOD_ENTRY(SSLv3_client),
