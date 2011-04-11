@@ -18,7 +18,6 @@ ruby_archdir = $(ruby_libbase)/$(ruby_ver_dir)/$(arch_name)
 bin_dir = usr/bin
 man_dir = usr/share/man/man1
 
-el_dir = usr/share/emacs/site-lisp/ruby$(ruby_ver)-elisp
 el_etc = etc/emacs/site-start.d
 
 examples_dir = $(CURDIR)/debian/ruby$(ruby_ver)-examples/usr/share/doc/ruby$(ruby_ver)-examples/examples
@@ -86,10 +85,6 @@ DEB_MAKE_BUILD_TARGET = all
 else
 DEB_MAKE_BUILD_TARGET = main
 endif
-
-DEB_INSTALL_DIRS_ruby$(ruby_ver)-elisp += $(el_dir)
-DEB_INSTALL_DIRS_ruby$(ruby_ver)-elisp += $(el_etc)
-DEB_INSTALL_DOCS_ruby$(ruby_ver)-elisp += $(DEB_SRCDIR)/misc/README
 
 DEB_INSTALL_DIRS_ri$(ruby_ver) += $(bin_dir)
 DEB_INSTALL_DIRS_ri$(ruby_ver) += $(man_dir)
@@ -243,10 +238,6 @@ binary-install/ruby$(ruby_ver)::
 	    usr/bin/irb1.9.1 \
 	    usr/bin/gem1.9.1 \
 	    usr/share/man/man1/ruby1.9.1.1
-
-binary-post-install/ruby$(ruby_ver)-elisp::
-	install -m444 $(DEB_SRCDIR)/misc/*.el \
-	    $(CURDIR)/debian/$(cdbs_curpkg)/$(el_dir)
 
 binary-install/ri$(ruby_ver)::
 	dh_movefiles -p$(cdbs_curpkg) $(bin_dir)/ri1.9.1
