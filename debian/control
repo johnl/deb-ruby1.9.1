@@ -13,7 +13,7 @@ Package: ruby1.9.1
 Architecture: any
 Depends: libruby1.9.1 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev
-Conflicts: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby (<= 4.5), ri (<= 4.5)
+Conflicts: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ri1.9.1 (<< 1.9.2.180-3~), ruby (<= 4.5), ri (<= 4.5)
 Replaces: rdoc1.9.1, irb1.9.1, rubygems1.9.1
 Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby1.9.2, ruby-interpreter
 Description: Interpreter of object-oriented scripting language Ruby 1.9.2
@@ -98,6 +98,8 @@ Description: Ruby Interactive reference (for Ruby 1.9.1)
  implements.
  .
  This package provides ri command and descriptions about Ruby 1.9.1.
+ This package provides the ri documentation for the Ruby 1.9.1 standard library.
+ The ri1.9.1 executable itself is in the ruby1.9.1 package.
 
 Package: ruby1.9.1-full
 Architecture: all
