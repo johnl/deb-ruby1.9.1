@@ -30,8 +30,8 @@ Package: libruby1.9.1
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1
-Replaces: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1
+Conflicts: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1, irb1.8, rdoc1.8
+Replaces: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1, irb1.8, rdoc1.8
 Provides: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1
 Description: Libraries necessary to run Ruby 1.9.1
  Ruby is the interpreted scripting language for quick and easy
