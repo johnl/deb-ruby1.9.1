@@ -1,4 +1,4 @@
-ruby1.9.1 (1.9.2.180-3) UNRELEASED; urgency=low
+ruby1.9.1 (1.9.2.180-3) unstable; urgency=low
 
   * Remove --with-lookup-order-hack=INET.  That breaks IPv6-only systems. See
     #619209
@@ -10,7 +10,7 @@ ruby1.9.1 (1.9.2.180-3) UNRELEASED; urgency=low
     fix #621058.
   * Make libruby1.9.1 Conflict, Replace irb1.9.1, rdoc1.9.1. fixes #608582
 
- -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Fri, 25 Mar 2011 15:52:47 +0100
+ -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Tue, 12 Apr 2011 12:03:14 +0200
 
 ruby1.9.1 (1.9.2.180-2) unstable; urgency=low
 
