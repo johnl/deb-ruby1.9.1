@@ -13,7 +13,7 @@ Package: ruby1.9.1
 Architecture: any
 Depends: libruby1.9.1 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev
-Conflicts: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ri1.9.1 (<< 1.9.2.180-3~), ruby (<= 4.5), ri (<= 4.5)
+Conflicts: rdoc1.9.1 (<< 1.9.1.378-2~), irb1.9.1 (<< 1.9.1.378-2~), rubygems1.9.1, ri1.9.1 (<< 1.9.2.180-3~), ruby (<= 4.5), ri (<= 4.5)
 Replaces: rdoc1.9.1, irb1.9.1, rubygems1.9.1
 Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby1.9.2, ruby-interpreter
 Description: Interpreter of object-oriented scripting language Ruby 1.9.2
@@ -30,7 +30,7 @@ Package: libruby1.9.1
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1, irb1.8, rdoc1.8
+Conflicts: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1, irb1.8 (<< 1.9.1.378-2~), rdoc1.8 (<< 1.9.1.378-2~)
 Replaces: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1, irb1.8, rdoc1.8
 Provides: libdbm-ruby1.9.1, libgdbm-ruby1.9.1, libreadline-ruby1.9.1, libopenssl-ruby1.9.1
 Description: Libraries necessary to run Ruby 1.9.1
