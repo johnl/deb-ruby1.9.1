@@ -1,10 +1,9 @@
 #!/bin/sh
-# 
 
 set -e
 
-case "$1" in
-  configure)
+if [ "$1" = "configure" ]
+then
         update-alternatives --install /usr/bin/gem gem \
             /usr/bin/gem1.9.1 10 \
 	    --slave /usr/share/man/man1/gem.1.gz gem.1.gz /usr/share/man/man1/gem1.9.1.1.gz \
@@ -23,11 +22,5 @@ case "$1" in
         --slave /usr/share/man/man1/irb.1.gz irb.1.gz /usr/share/man/man1/irb${RUBYVER}.1.gz \
         --slave /usr/share/man/man1/rdoc.1.gz rdoc.1.gz /usr/share/man/man1/rdoc${RUBYVER}.1.gz \
         --slave /usr/share/man/man1/ri.1.gz ri.1.gz /usr/share/man/man1/ri${RUBYVER}.1.gz
-
-       ;;
-  *)
-esac
-
+fi
 #DEBHELPER#
-
-exit 0
