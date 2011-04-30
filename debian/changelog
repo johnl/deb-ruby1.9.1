@@ -1,3 +1,9 @@
+ruby1.9.1 (1.9.2.180-4) UNRELEASED; urgency=low
+
+  * debian/control: Corrected wording. (Closes: #624574)
+
+ -- Daigo Moriwaki <daigo@debian.org>  Sat, 30 Apr 2011 10:14:17 +0900
+
 ruby1.9.1 (1.9.2.180-3) unstable; urgency=low
 
   * Remove --with-lookup-order-hack=INET.  That breaks IPv6-only systems. See
