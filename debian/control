@@ -39,8 +39,8 @@ Description: Libraries necessary to run Ruby 1.9.1
  files and to do system management tasks (as in perl).  It is simple,
  straight-forward, and extensible.
  .
- This package includes the libruby, necessary to run Ruby 1.9. (API version
- 1.9.1)
+ This package includes the 'libruby-1.9.1' library, necessary to run Ruby 1.9.
+ (API version 1.9.1)
 
 Package: libruby1.9.1-dbg
 Section: debug
