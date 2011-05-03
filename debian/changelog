@@ -1,10 +1,10 @@
 ruby1.9.1 (1.9.2.180-4) UNRELEASED; urgency=low
 
- [ Daigo Moriwaki ]
- * debian/control: Corrected wording. (Closes: #624574)
+  [ Daigo Moriwaki ]
+  * debian/control: Corrected wording. (Closes: #624574)
 
- [ Lucas Nussbaum ]
- * Change 01_default_gem_path.diff:
+  [ Lucas Nussbaum ]
+  * Change 01_default_gem_path.diff:
     + executables are now installed to /usr/local/bin.
     + but the other files created by rubygems stay in /var/lib/gems/.
     Several commenters in #448639 and #403407 argued in favor of the switch to
