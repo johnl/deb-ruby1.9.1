@@ -13,8 +13,9 @@ ruby1.9.1 (1.9.2.180-4) UNRELEASED; urgency=low
     /var/lib/gems.
     Nobody in the bug logs explained why that was an issue. If you care about
     it, please open a new bug. Fixes the rubygems bugs: #448639, #403407
+  * Update Standards-Version to 3.9.2. No changes needed.
 
- -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Tue, 03 May 2011 16:11:25 +0200
+ -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Tue, 03 May 2011 16:26:04 +0200
 
 ruby1.9.1 (1.9.2.180-3) unstable; urgency=low
 
