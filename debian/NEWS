@@ -1,3 +1,17 @@
+ruby1.9.1 (1.9.2.180-4) unstable; urgency=low
+
+  * Rubygems executables are now installed to /usr/local/bin, instead of
+    /var/lib/gems/1.9.2/bin
+  * But the other files created by rubygems stay in /var/lib/gems/1.9.2.
+    Several commenters in #448639 and #403407 argued in favor of the switch to
+    /usr/local/bin. Those two bugs can therefore be closed. However, the issue
+    is not completely solved, as rubygems still installs files in
+    /var/lib/gems.
+    Nobody in the bug logs explained why that was an issue. If you care about
+    it, please open a new bug. Fixes rubygems bugs: #448639, #403407
+
+ -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Tue, 03 May 2011 16:11:25 +0200
+
 ruby1.9.1 (1.9.2.0-2) unstable; urgency=low
 
   $LOAD_PATH is changed in Ruby 1.9.2-p0 as the following (for i386):

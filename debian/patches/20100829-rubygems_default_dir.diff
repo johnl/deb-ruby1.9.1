@@ -23,7 +23,7 @@
 +  #   /var/lib/gems/{ruby version}/bin is the default path in Debian system
  
    def self.default_bindir
-+    return File.join('/', 'var', 'lib', 'gems', ConfigMap[:ruby_version], 'bin')
++    return File.join('/', 'usr', 'local', 'bin')
      if defined? RUBY_FRAMEWORK_VERSION then # mac framework support
        '/usr/bin'
      else # generic install

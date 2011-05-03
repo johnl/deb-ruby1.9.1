@@ -1,3 +1,17 @@
+ruby1.9.1 (1.9.2.180-4) unstable; urgency=low
+
+ * Change 01_default_gem_path.diff:
+    + executables are now installed to /usr/local/bin.
+    + but the other files created by rubygems stay in /var/lib/gems/.
+    Several commenters in #448639 and #403407 argued in favor of the switch to
+    /usr/local/bin. Those two bugs can therefore be closed. However, the issue
+    is not completely solved, as rubygems still installs files in
+    /var/lib/gems.
+    Nobody in the bug logs explained why that was an issue. If you care about
+    it, please open a new bug. Fixes the rubygems bugs: #448639, #403407
+
+ -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Tue, 03 May 2011 16:11:25 +0200
+
 ruby1.9.1 (1.9.2.180-3) unstable; urgency=low
 
   * Remove --with-lookup-order-hack=INET.  That breaks IPv6-only systems. See
