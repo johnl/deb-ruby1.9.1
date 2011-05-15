@@ -1,3 +1,11 @@
+ruby1.9.1 (1.9.2.180-5) unstable; urgency=low
+
+  * Build-depend on libreadline-gplv2-dev instead of libreadline5-dev. Ruby
+    is dual-licensed under GPLv2 (only) || Ruby license, so we cannot use
+    libreadline6-dev.
+
+ -- Lucas Nussbaum <lucas@lucas-nussbaum.net>  Sun, 15 May 2011 10:46:43 +0200
+
 ruby1.9.1 (1.9.2.180-4) unstable; urgency=low
 
   [ Daigo Moriwaki ]
