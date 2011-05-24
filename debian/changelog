@@ -1,3 +1,9 @@
+ruby1.9.1 (1:1.9.2.180-5) lucid; urgency=low
+
+  * Backported to Ubuntu Lucid
+
+ -- John Leach <john@brightbox.co.uk>  Tue, 24 May 2011 23:31:53 +0100
+
 ruby1.9.1 (1.9.2.180-5) unstable; urgency=low
 
   * Build-depend on libreadline-gplv2-dev instead of libreadline5-dev. Ruby
