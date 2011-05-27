@@ -1,6 +1,10 @@
 ruby1.9.1 (1.9.2.180+svn31745-1) UNRELEASED; urgency=low
 
   * New SVN snapshot based on revision 31745 from trunk.
+  * 20100829-rubygems_default_dir.diff: refresh
+  * 20100829-rubygems_disable_update_system.diff: refresh
+  * 909_update_lib_README.diff: refresh
+  * 110411_disable_osslv2.patch: drop, cleaner solution implemented upstream
   * Update Lucas' email address.
 
  -- Lucas Nussbaum <lucas@debian.org>  Fri, 27 May 2011 11:42:51 +0200

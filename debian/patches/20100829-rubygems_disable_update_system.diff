@@ -6,35 +6,14 @@ This patch was imported from the rubygems package.
 
 --- a/lib/rubygems/commands/update_command.rb
 +++ b/lib/rubygems/commands/update_command.rb
-@@ -48,18 +48,22 @@ class Gem::Commands::UpdateCommand < Gem
-     hig = {}
+@@ -134,6 +134,10 @@ class Gem::Commands::UpdateCommand < Gem
+   # Update RubyGems software to the latest version.
  
-     if options[:system] then
--      say "Updating RubyGems"
-+      if ENV.include?('REALLY_GEM_UPDATE_SYSTEM')
-+        say "Updating RubyGems"
- 
--      unless options[:args].empty? then
--        raise "No gem names are allowed with the --system option"
--      end
-+        unless options[:args].empty? then
-+          raise "No gem names are allowed with the --system option"
-+        end
- 
--      rubygems_update = Gem::Specification.new
--      rubygems_update.name = 'rubygems-update'
--      rubygems_update.version = Gem::Version.new Gem::VERSION
--      hig['rubygems-update'] = rubygems_update
-+        rubygems_update = Gem::Specification.new
-+        rubygems_update.name = 'rubygems-update'
-+        rubygems_update.version = Gem::Version.new Gem::VERSION
-+        hig['rubygems-update'] = rubygems_update
- 
--      options[:user_install] = false
-+        options[:user_install] = false
-+      else
-+        fail "gem update --system is disabled on Debian, because it will overwrite the content of the rubygems Debian package, and might break your Debian system in subtle ways. The Debian-supported way to update rubygems is through apt-get, using Debian official repositories.\nIf you really know what you are doing, you can still update rubygems by setting the REALLY_GEM_UPDATE_SYSTEM environment variable, but please remember that this is completely unsupported by Debian."
-+      end
-     else
-       say "Updating installed gems"
- 
+   def update_rubygems
++    if not ENV.include?('REALLY_GEM_UPDATE_SYSTEM')
++      fail "gem update --system is disabled on Debian, because it will overwrite the content of the rubygems Debian package, and might break your Debian system in subtle ways. The Debian-supported way to update rubygems is through apt-get, using Debian official repositories.\nIf you really know what you are doing, you can still update rubygems by setting the REALLY_GEM_UPDATE_SYSTEM environment variable, but please remember that this is completely unsupported by Debian."
++    end
++
+     unless options[:args].empty? then
+       alert_error "Gem names are not allowed with the --system option"
+       terminate_interaction 1
