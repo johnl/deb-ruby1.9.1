@@ -1,3 +1,9 @@
+ruby1.9.1 (1.9.2.180+svn31745-1) UNRELEASED; urgency=low
+
+  * New SVN snapshot based on revision 31745 from trunk.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Fri, 27 May 2011 11:42:51 +0200
+
 ruby1.9.1 (1.9.2.180-5) unstable; urgency=low
 
   * Build-depend on libreadline-gplv2-dev instead of libreadline5-dev. Ruby
