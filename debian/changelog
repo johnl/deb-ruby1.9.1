@@ -6,6 +6,7 @@ ruby1.9.1 (1.9.2.180+svn31745-1) UNRELEASED; urgency=low
   * 909_update_lib_README.diff: refresh
   * 110411_disable_osslv2.patch: drop, cleaner solution implemented upstream
   * Update Lucas' email address.
+  * Build-depend on tcl-dev and tk-dev instead of {tcl,tk}8.4-dev.
 
  -- Lucas Nussbaum <lucas@debian.org>  Fri, 27 May 2011 11:42:51 +0200
 
