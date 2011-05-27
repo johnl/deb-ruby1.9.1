@@ -1,5 +1,5 @@
 /* -*- C -*-
- * $Id: cptr.c 28148 2010-06-03 10:33:57Z nobu $
+ * $Id: cptr.c 28676 2010-07-18 07:31:54Z nobu $
  */
 
 #include <ruby/ruby.h>
@@ -43,7 +43,7 @@ dlptr_memsize(const void *ptr)
 
 static const rb_data_type_t dlptr_data_type = {
     "dl/ptr",
-    0, dlptr_free, dlptr_memsize,
+    {0, dlptr_free, dlptr_memsize,},
 };
 
 void

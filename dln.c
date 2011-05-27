@@ -2,7 +2,7 @@
 
   dln.c -
 
-  $Author: yugui $
+  $Author: nobu $
   created at: Tue Jan 18 17:05:06 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -57,7 +57,7 @@ void *xrealloc();
 #include <sys/stat.h>
 
 #ifndef S_ISDIR
-#   define S_ISDIR(m) ((m & S_IFMT) == S_IFDIR)
+#   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
 #endif
 
 #ifdef HAVE_SYS_PARAM_H
@@ -107,44 +107,47 @@ dln_loaderror(const char *format, ...)
 
 #ifndef FUNCNAME_PATTERN
 # if defined(__hp9000s300) || ((defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__)) && !defined(__ELF__)) || defined(__BORLANDC__) || defined(NeXT) || defined(__WATCOMC__) || defined(MACOSX_DYLD)
-#  define FUNCNAME_PATTERN "_Init_%s"
+#  define FUNCNAME_PREFIX "_Init_"
 # else
-#  define FUNCNAME_PATTERN "Init_%s"
+#  define FUNCNAME_PREFIX "Init_"
 # endif
 #endif
 
+#if defined __CYGWIN__ || defined DOSISH
+#define isdirsep(x) ((x) == '/' || (x) == '\\')
+#else
+#define isdirsep(x) ((x) == '/')
+#endif
+
 static size_t
-init_funcname_len(char **buf, const char *file)
+init_funcname_len(const char **file)
 {
-    char *p;
-    const char *slash;
-    size_t len;
+    const char *p = *file, *base, *dot = NULL;
 
     /* Load the file as an object one */
-    for (slash = file-1; *file; file++) /* Find position of last '/' */
-	if (*file == '/') slash = file;
-
-    len = strlen(FUNCNAME_PATTERN) + strlen(slash + 1);
-    *buf = xmalloc(len);
-    snprintf(*buf, len, FUNCNAME_PATTERN, slash + 1);
-    for (p = *buf; *p; p++) {         /* Delete suffix if it exists */
-	if (*p == '.') {
-	    *p = '\0'; break;
-	}
+    for (base = p; *p; p++) { /* Find position of last '/' */
+	if (*p == '.' && !dot) dot = p;
+	if (isdirsep(*p)) base = p+1, dot = NULL;
     }
-    return p - *buf;
+    *file = base;
+    /* Delete suffix if it exists */
+    return (dot ? dot : p) - base;
 }
 
+static const char funcname_prefix[sizeof(FUNCNAME_PREFIX) - 1] = FUNCNAME_PREFIX;
+
 #define init_funcname(buf, file) do {\
-    size_t len = init_funcname_len(buf, file);\
-    char *tmp = ALLOCA_N(char, len+1);\
+    const char *base = (file);\
+    const size_t flen = init_funcname_len(&base);\
+    const size_t plen = sizeof(funcname_prefix);\
+    char *const tmp = ALLOCA_N(char, plen+flen+1);\
     if (!tmp) {\
-	free(*buf);\
 	dln_memerror();\
     }\
-    strlcpy(tmp, *buf, len + 1);\
-    free(*buf);\
-    *buf = tmp;\
+    memcpy(tmp, funcname_prefix, plen);\
+    memcpy(tmp+plen, base, flen);\
+    tmp[plen+flen] = '\0';\
+    *(buf) = tmp;\
 } while (0)
 
 #ifdef USE_DLN_A_OUT
@@ -1116,9 +1119,31 @@ dln_sym(const char *name)
 
 #if defined _WIN32 && !defined __CYGWIN__
 #include <windows.h>
+#include <imagehlp.h>
 #endif
 
-#if ! defined _AIX
+#if defined _WIN32 && !defined __CYGWIN__
+static const char *
+dln_strerror(char *message, size_t size)
+{
+    int error = GetLastError();
+    char *p = message;
+    size_t len = snprintf(message, size, "%d: ", error);
+
+#define format_message(sublang) FormatMessage(\
+	FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,	\
+	NULL, error, MAKELANGID(LANG_NEUTRAL, (sublang)),		\
+	message + len, size - len, NULL)
+    if (format_message(SUBLANG_ENGLISH_US) == 0)
+	format_message(SUBLANG_DEFAULT);
+    for (p = message + len; *p; p++) {
+	if (*p == '\n' || *p == '\r')
+	    *p = ' ';
+    }
+    return message;
+}
+#define dln_strerror() dln_strerror(message, sizeof message)
+#elif ! defined _AIX
 static const char *
 dln_strerror(void)
 {
@@ -1146,27 +1171,6 @@ dln_strerror(void)
 #ifdef USE_DLN_DLOPEN
     return (char*)dlerror();
 #endif
-
-#if defined _WIN32 && !defined __CYGWIN__
-    static char message[1024];
-    int error = GetLastError();
-    char *p = message;
-    p += sprintf(message, "%d: ", error);
-    FormatMessage(
-	FORMAT_MESSAGE_FROM_SYSTEM	 | FORMAT_MESSAGE_IGNORE_INSERTS,
-	NULL,
-	error,
-	MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-	p,
-	sizeof message - strlen(message),
-	NULL);
-
-    for (p = message; *p; p++) {
-	if (*p == '\n' || *p == '\r')
-	    *p = ' ';
-    }
-    return message;
-#endif
 }
 #endif
 
@@ -1176,7 +1180,7 @@ aix_loaderror(const char *pathname)
 {
   char *message[1024], errbuf[1024];
   int i;
-#define ERRBUF_APPEND(s) strncat(errbuf, s, sizeof(errbuf)-strlen(errbuf)-1)
+#define ERRBUF_APPEND(s) strncat(errbuf, (s), sizeof(errbuf)-strlen(errbuf)-1)
   snprintf(errbuf, sizeof(errbuf), "load failed - %s. ", pathname);
 
   if (loadquery(L_GETMESSAGES, &message[0], sizeof(message)) != -1) {
@@ -1196,13 +1200,44 @@ aix_loaderror(const char *pathname)
 }
 #endif
 
+#if defined _WIN32 && defined RUBY_EXPORT
+HANDLE rb_libruby_handle(void);
+
+static int
+rb_w32_check_imported(HMODULE ext, HMODULE mine)
+{
+    ULONG size;
+    const IMAGE_IMPORT_DESCRIPTOR *desc;
+
+    desc = ImageDirectoryEntryToData(ext, TRUE, IMAGE_DIRECTORY_ENTRY_IMPORT, &size);
+    if (!desc) return 0;
+    while (desc->Name) {
+	PIMAGE_THUNK_DATA pint = (PIMAGE_THUNK_DATA)((char *)ext + desc->Characteristics);
+	PIMAGE_THUNK_DATA piat = (PIMAGE_THUNK_DATA)((char *)ext + desc->FirstThunk);
+	while (piat->u1.Function) {
+	    PIMAGE_IMPORT_BY_NAME pii = (PIMAGE_IMPORT_BY_NAME)((char *)ext + (size_t)pint->u1.AddressOfData);
+	    static const char prefix[] = "rb_";
+	    const char *name = (const char *)pii->Name;
+	    if (strncmp(name, prefix, sizeof(prefix) - 1) == 0) {
+		FARPROC addr = GetProcAddress(mine, name);
+		if (addr) return (FARPROC)piat->u1.Function == addr;
+	    }
+	    piat++;
+	    pint++;
+	}
+	desc++;
+    }
+    return 1;
+}
+#endif
+
 #if defined(DLN_NEEDS_ALT_SEPARATOR) && DLN_NEEDS_ALT_SEPARATOR
 #define translit_separator(src) do { \
 	char *tmp = ALLOCA_N(char, strlen(src) + 1), *p = tmp, c; \
 	do { \
 	    *p++ = ((c = *file++) == '/') ? DLN_NEEDS_ALT_SEPARATOR : c; \
 	} while (c); \
-	src = tmp; \
+	(src) = tmp; \
     } while (0)
 #else
 #define translit_separator(str) (void)(str)
@@ -1219,6 +1254,7 @@ dln_load(const char *file)
 #if defined _WIN32 && !defined __CYGWIN__
     HINSTANCE handle;
     char winfile[MAXPATHLEN];
+    char message[1024];
     void (*init_fct)();
     char *buf;
 
@@ -1234,6 +1270,14 @@ dln_load(const char *file)
 	error = dln_strerror();
 	goto failed;
     }
+
+#if defined _WIN32 && defined RUBY_EXPORT
+    if (!rb_w32_check_imported(handle, rb_libruby_handle())) {
+	FreeLibrary(handle);
+	error = "incompatible library version";
+	goto failed;
+    }
+#endif
 
     if ((init_fct = (void(*)())GetProcAddress(handle, buf)) == NULL) {
 	dln_loaderror("%s - %s\n%s", dln_strerror(), buf, file);

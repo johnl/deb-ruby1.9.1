@@ -36,7 +36,9 @@ def parse_args(argv = ARGV)
   $dir_mode = nil
   $script_mode = nil
   $strip = false
-  $cmdtype = ('bat' if File::ALT_SEPARATOR == '\\')
+  $cmdtype = (if File::ALT_SEPARATOR == '\\'
+                File.exist?("rubystub.exe") ? 'exe' : 'bat'
+              end)
   mflags = []
   opt = OptionParser.new
   opt.on('-n', '--dry-run') {$dryrun = true}
@@ -195,7 +197,8 @@ def install_recursive(srcdir, dest, options = {})
   noinst = opts.delete(:no_install)
   glob = opts.delete(:glob) || "*"
   subpath = (srcdir.size+1)..-1
-  prune = skip = FalseProc
+  prune = []
+  skip = []
   if noinst
     if Array === noinst
       prune = noinst.grep(/#{File::SEPARATOR}/o).map!{|f| f.chomp(File::SEPARATOR)}
@@ -207,10 +210,10 @@ def install_recursive(srcdir, dest, options = {})
         skip = [noinst]
       end
     end
-    skip |= %w"#*# *~ *.old *.bak *.orig *.rej *.diff *.patch *.core"
-    prune = path_matcher(prune)
-    skip = path_matcher(skip)
   end
+  skip |= %w"#*# *~ *.old *.bak *.orig *.rej *.diff *.patch *.core"
+  prune = path_matcher(prune)
+  skip = path_matcher(skip)
   File.directory?(srcdir) or return rescue return
   paths = [[srcdir, dest, true]]
   found = []
@@ -237,7 +240,11 @@ def install_recursive(srcdir, dest, options = {})
       makedirs(d)
     else
       makedirs(File.dirname(d))
-      install src, d, opts
+      if block_given?
+        yield src, d, opts
+      else
+        install src, d, opts
+      end
     end
   end
 end
@@ -300,6 +307,9 @@ enable_shared = CONFIG["ENABLE_SHARED"] == 'yes'
 dll = CONFIG["LIBRUBY_SO"]
 lib = CONFIG["LIBRUBY"]
 arc = CONFIG["LIBRUBY_A"]
+major = CONFIG["MAJOR"]
+minor = CONFIG["MINOR"]
+load_relative = configure_args.include?("--enable-load-relative")
 
 install?(:local, :arch, :bin, :'bin-arch') do
   prepare "binary commands", bindir
@@ -333,6 +343,14 @@ install?(:local, :arch, :lib) do
     for file in CONFIG["ARCHFILE"].split
       install file, archlibdir, :mode => $data_mode
     end
+  end
+end
+
+install?(:local, :arch, :data) do
+  pc = CONFIG["ruby_pc"]
+  if pc and File.file?(pc) and File.size?(pc)
+    prepare "pkgconfig data", pkgconfigdir = File.join(libdir, "pkgconfig")
+    install pc, pkgconfigdir, :mode => $data_mode
   end
 end
 
@@ -371,12 +389,32 @@ install?(:doc, :capi) do
   install_recursive "doc/capi", capidir, :mode => $data_mode
 end
 
+if load_relative
+  PROLOG_SCRIPT = <<EOS
+#!/bin/sh\n# -*- ruby -*-
+bindir=`#{CONFIG["CHDIR"]} "${0%/*}" 2>/dev/null; pwd`
+EOS
+  if CONFIG["LIBRUBY_RELATIVE"] != 'yes' and libpathenv = CONFIG["LIBPATHENV"]
+    pathsep = File::PATH_SEPARATOR
+    PROLOG_SCRIPT << <<EOS
+prefix="${bindir%/bin}"
+export #{libpathenv}="$prefix/lib${#{libpathenv}#{pathsep}+#{pathsep}$#{libpathenv}}"
+EOS
+  end
+  PROLOG_SCRIPT << %Q[exec "$bindir/#{ruby_install_name}" -x "$0" "$@"\n]
+else
+  PROLOG_SCRIPT = nil
+end
+
 install?(:local, :comm, :bin, :'bin-comm') do
   prepare "command scripts", bindir
 
   ruby_shebang = File.join(bindir, ruby_install_name)
   if File::ALT_SEPARATOR
     ruby_bin = ruby_shebang.tr(File::SEPARATOR, File::ALT_SEPARATOR)
+    if $cmdtype == 'exe'
+      stub = File.open("rubystub.exe", "rb") {|f| f.read} << "\n" rescue nil
+    end
   end
   if trans = CONFIG["program_transform_name"]
     exp = []
@@ -402,11 +440,8 @@ install?(:local, :comm, :bin, :'bin-comm') do
   else
     trans = proc {|base| base}
   end
-  for src in Dir[File.join(srcdir, "bin/*")]
-    next unless File.file?(src)
-    next if /\/[.#]|(\.(old|bak|orig|rej|diff|patch|core)|~|\/core)$/i =~ src
-
-    name = RbConfig.expand(trans[File.basename(src)])
+  install_recursive(File.join(srcdir, "bin"), bindir) do |src, cmd|
+    cmd = File.join(File.dirname(cmd), RbConfig.expand(trans[File.basename(cmd)]))
 
     shebang = ''
     body = ''
@@ -414,14 +449,19 @@ install?(:local, :comm, :bin, :'bin-comm') do
       shebang = f.gets
       body = f.read
     end
-    shebang.sub!(/^\#!.*?ruby\b/) {"#!" + ruby_shebang}
+    if PROLOG_SCRIPT
+      shebang.sub!(/\A(\#!.*?ruby\b)?/) {PROLOG_SCRIPT + ($1 || "#!ruby\n")}
+    else
+      shebang.sub!(/\A\#!.*?ruby\b/) {"#!" + ruby_shebang}
+    end
     shebang.sub!(/\r$/, '')
     body.gsub!(/\r$/, '')
 
-    cmd = File.join(bindir, name)
     cmd << ".#{$cmdtype}" if $cmdtype
     open_for_install(cmd, $script_mode) do
       case $cmdtype
+      when "exe"
+        stub + shebang + body
       when "bat"
         [<<-"EOH".gsub(/^\s+/, ''), shebang, body, "__END__\n:endofruby\n"].join.gsub(/$/, "\r")
           @echo off
@@ -513,14 +553,15 @@ install?(:ext, :comm, :gem) do
     version = open(src) {|f| f.find {|s| /^\s*\w*VERSION\s*=(?!=)/ =~ s}} or next
     version = version.split(%r"=\s*", 2)[1].strip[/\A([\'\"])(.*?)\1/, 2]
     puts "#{" "*30}#{name} #{version}"
-    gemspec = <<-GEMSPEC
+    open_for_install(File.join(destdir, "#{name}-#{version}.gemspec"), $data_mode) do
+      <<-GEMSPEC
 Gem::Specification.new do |s|
   s.name = #{name.dump}
   s.version = #{version.dump}
   s.summary = "This #{name} is bundled with Ruby"
 end
-    GEMSPEC
-    open_for_install(File.join(destdir, "#{name}-#{version}.gemspec"), $data_mode) { gemspec }
+      GEMSPEC
+    end
   end
 end
 

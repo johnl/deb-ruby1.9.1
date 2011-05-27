@@ -3,7 +3,7 @@
 /*
  * bytecode.re
  *
- * $Author: nobu $
+ * $Author: naruse $
  *
  * Copyright (C) 2003 why the lucky stiff
  */
@@ -325,7 +325,7 @@ yy24:
             CHK_NL(YYCURSOR);
             if ( qstr[0] == '!' )
             {
-                int qidx = strlen( qstr );
+                size_t qidx = strlen( qstr );
                 if ( qstr[1] == '\0' )
                 {
                     free( qstr );

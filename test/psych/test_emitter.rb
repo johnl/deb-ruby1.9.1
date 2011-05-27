@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-require_relative 'helper'
+require 'psych/helper'
 
 module Psych
   class TestEmitter < TestCase
@@ -8,6 +8,12 @@ module Psych
       super
       @out = StringIO.new('')
       @emitter = Psych::Emitter.new @out
+    end
+
+    def test_line_width
+      assert_equal 0, @emitter.line_width
+      assert_equal 10, @emitter.line_width = 10
+      assert_equal 10, @emitter.line_width
     end
 
     def test_set_canonical
@@ -64,6 +70,7 @@ module Psych
         ['foo', Object.new, nil, false, true, 1],
         ['foo', nil, Object.new, false, true, 1],
         ['foo', nil, nil, false, true, :foo],
+        [nil, nil, nil, false, true, 1],
       ].each do |args|
         assert_raises(TypeError) do
           @emitter.scalar(*args)

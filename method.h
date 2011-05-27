@@ -2,7 +2,7 @@
 
   method.h -
 
-  $Author: ko1 $
+  $Author: akr $
   created at: Wed Jul 15 20:02:33 2009
 
   Copyright (C) 2009 Koichi Sasada
@@ -26,8 +26,8 @@ typedef enum {
 } rb_method_flag_t;
 
 #define NOEX_SAFE(n) ((int)((n) >> 8) & 0x0F)
-#define NOEX_WITH(n, s) ((s << 8) | (n) | (ruby_running ? 0 : NOEX_BASIC))
-#define NOEX_WITH_SAFE(n) NOEX_WITH(n, rb_safe_level())
+#define NOEX_WITH(n, s) (((s) << 8) | (n) | (ruby_running ? 0 : NOEX_BASIC))
+#define NOEX_WITH_SAFE(n) NOEX_WITH((n), rb_safe_level())
 
 /* method data type */
 
@@ -99,5 +99,6 @@ int rb_method_entry_arity(const rb_method_entry_t *me);
 void rb_mark_method_entry(const rb_method_entry_t *me);
 void rb_free_method_entry(rb_method_entry_t *me);
 void rb_sweep_method_entry(void *vm);
+void rb_free_m_table(st_table *tbl);
 
 #endif /* METHOD_H */

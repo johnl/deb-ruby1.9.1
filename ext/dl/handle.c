@@ -1,5 +1,5 @@
 /* -*- C -*-
- * $Id: handle.c 30559 2011-01-16 06:30:33Z yugui $
+ * $Id: handle.c 31176 2011-03-25 06:46:57Z naruse $
  */
 
 #include <ruby.h>
@@ -48,7 +48,7 @@ dlhandle_memsize(const void *ptr)
 
 static const rb_data_type_t dlhandle_data_type = {
     "dl/handle",
-    0, dlhandle_free, dlhandle_memsize,
+    {0, dlhandle_free, dlhandle_memsize,},
 };
 
 /*
@@ -310,7 +310,7 @@ dlhandle_sym(void *handle, const char *name)
 #if defined(FUNC_STDCALL)
     if( !func ){
 	int  i;
-	int  len = strlen(name);
+	int  len = (int)strlen(name);
 	char *name_n;
 #if defined(__CYGWIN__) || defined(_WIN32) || defined(__MINGW32__)
 	{

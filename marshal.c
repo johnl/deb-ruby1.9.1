@@ -14,6 +14,7 @@
 #include "ruby/st.h"
 #include "ruby/util.h"
 #include "ruby/encoding.h"
+#include "internal.h"
 
 #include <math.h>
 #ifdef HAVE_FLOAT_H
@@ -25,7 +26,7 @@
 
 #define BITSPERSHORT (2*CHAR_BIT)
 #define SHORTMASK ((1<<BITSPERSHORT)-1)
-#define SHORTDN(x) RSHIFT(x,BITSPERSHORT)
+#define SHORTDN(x) RSHIFT((x),BITSPERSHORT)
 
 #if SIZEOF_SHORT == SIZEOF_BDIGITS
 #define SHORTLEN(x) (x)
@@ -186,7 +187,7 @@ memsize_dump_arg(const void *ptr)
 
 static const rb_data_type_t dump_arg_data = {
     "dump_arg",
-    mark_dump_arg, free_dump_arg, memsize_dump_arg
+    {mark_dump_arg, free_dump_arg, memsize_dump_arg,},
 };
 
 static const char *
@@ -245,6 +246,8 @@ w_bytes(const char *s, long n, struct dump_arg *arg)
     w_long(n, arg);
     w_nbyte(s, n, arg);
 }
+
+#define w_cstr(s, arg) w_bytes((s), strlen(s), (arg))
 
 static void
 w_short(int x, struct dump_arg *arg)
@@ -309,35 +312,6 @@ w_long(long x, struct dump_arg *arg)
 #define MANT_BITS 8
 #endif
 
-static int
-save_mantissa(double d, char *buf)
-{
-    int e, i = 0;
-    unsigned long m;
-    double n;
-
-    d = modf(ldexp(frexp(fabs(d), &e), DECIMAL_MANT), &d);
-    if (d > 0) {
-	buf[i++] = 0;
-	do {
-	    d = modf(ldexp(d, MANT_BITS), &n);
-	    m = (unsigned long)n;
-#if MANT_BITS > 24
-	    buf[i++] = (char)(m >> 24);
-#endif
-#if MANT_BITS > 16
-	    buf[i++] = (char)(m >> 16);
-#endif
-#if MANT_BITS > 8
-	    buf[i++] = (char)(m >> 8);
-#endif
-	    buf[i++] = (char)m;
-	} while (d > 0);
-	while (!buf[i - 1]) --i;
-    }
-    return i;
-}
-
 static double
 load_mantissa(double d, const char *buf, long len)
 {
@@ -371,7 +345,6 @@ load_mantissa(double d, const char *buf, long len)
 }
 #else
 #define load_mantissa(d, buf, len) (d)
-#define save_mantissa(d, buf) 0
 #endif
 
 #ifdef DBL_DIG
@@ -383,29 +356,54 @@ load_mantissa(double d, const char *buf, long len)
 static void
 w_float(double d, struct dump_arg *arg)
 {
+    char *ruby_dtoa(double d_, int mode, int ndigits, int *decpt, int *sign, char **rve);
     char buf[FLOAT_DIG + (DECIMAL_MANT + 7) / 8 + 10];
 
     if (isinf(d)) {
-	if (d < 0) strcpy(buf, "-inf");
-	else       strcpy(buf, "inf");
+	if (d < 0) w_cstr("-inf", arg);
+	else       w_cstr("inf", arg);
     }
     else if (isnan(d)) {
-	strcpy(buf, "nan");
+	w_cstr("nan", arg);
     }
     else if (d == 0.0) {
-	if (1.0/d < 0) strcpy(buf, "-0");
-	else           strcpy(buf, "0");
+	if (1.0/d < 0) w_cstr("-0", arg);
+	else           w_cstr("0", arg);
     }
     else {
-	size_t len;
-
-	/* xxx: should not use system's sprintf(3) */
-	snprintf(buf, sizeof(buf), "%.*g", FLOAT_DIG, d);
-	len = strlen(buf);
-	w_bytes(buf, len + save_mantissa(d, buf + len), arg);
-	return;
+	int decpt, sign, digs, len = 0;
+	char *e, *p = ruby_dtoa(d, 0, 0, &decpt, &sign, &e);
+	if (sign) buf[len++] = '-';
+	digs = (int)(e - p);
+	if (decpt < -3 || decpt > digs) {
+	    buf[len++] = p[0];
+	    if (--digs > 0) buf[len++] = '.';
+	    memcpy(buf + len, p + 1, digs);
+	    len += digs;
+	    len += snprintf(buf + len, sizeof(buf) - len, "e%d", decpt - 1);
+	}
+	else if (decpt > 0) {
+	    memcpy(buf + len, p, decpt);
+	    len += decpt;
+	    if ((digs -= decpt) > 0) {
+		buf[len++] = '.';
+		memcpy(buf + len, p + decpt, digs);
+		len += digs;
+	    }
+	}
+	else {
+	    buf[len++] = '0';
+	    buf[len++] = '.';
+	    if (decpt) {
+		memset(buf + len, '0', -decpt);
+		len -= decpt;
+	    }
+	    memcpy(buf + len, p, digs);
+	    len += digs;
+	}
+	xfree(p);
+	w_bytes(buf, len, arg);
     }
-    w_bytes(buf, strlen(buf), arg);
 }
 
 static void
@@ -422,7 +420,7 @@ w_symbol(ID id, struct dump_arg *arg)
     else {
 	sym = rb_id2str(id);
 	if (!sym) {
-	    rb_raise(rb_eTypeError, "can't dump anonymous ID %ld", id);
+	    rb_raise(rb_eTypeError, "can't dump anonymous ID %"PRIdVALUE, id);
 	}
 	encidx = rb_enc_get_index(sym);
 	if (encidx == rb_usascii_encindex() ||
@@ -593,7 +591,7 @@ w_object(VALUE obj, struct dump_arg *arg, int limit)
     st_table *ivtbl = 0;
     st_data_t num;
     int hasiv = 0;
-#define has_ivars(obj, ivtbl) ((ivtbl = rb_generic_ivar_table(obj)) != 0 || \
+#define has_ivars(obj, ivtbl) (((ivtbl) = rb_generic_ivar_table(obj)) != 0 || \
 			       (!SPECIAL_CONST_P(obj) && !ENCODING_IS_ASCII8BIT(obj)))
 
     if (limit == 0) {
@@ -610,9 +608,6 @@ w_object(VALUE obj, struct dump_arg *arg, int limit)
 	return;
     }
 
-    if ((hasiv = has_ivars(obj, ivtbl)) != 0) {
-	w_byte(TYPE_IVAR, arg);
-    }
     if (obj == Qnil) {
 	w_byte(TYPE_NIL, arg);
     }
@@ -649,6 +644,8 @@ w_object(VALUE obj, struct dump_arg *arg, int limit)
 
 	    v = rb_funcall(obj, s_mdump, 0, 0);
 	    check_dump_arg(arg, s_mdump);
+	    hasiv = has_ivars(obj, ivtbl);
+	    if (hasiv) w_byte(TYPE_IVAR, arg);
 	    w_class(TYPE_USRMARSHAL, obj, arg, FALSE);
 	    w_object(v, arg, limit);
 	    if (hasiv) w_ivar(obj, ivtbl, &c_arg);
@@ -664,6 +661,8 @@ w_object(VALUE obj, struct dump_arg *arg, int limit)
 	    if (TYPE(v) != T_STRING) {
 		rb_raise(rb_eTypeError, "_dump() must return string");
 	    }
+	    hasiv = has_ivars(obj, ivtbl);
+	    if (hasiv) w_byte(TYPE_IVAR, arg);
 	    if ((hasiv2 = has_ivars(v, ivtbl2)) != 0 && !hasiv) {
 		w_byte(TYPE_IVAR, arg);
 	    }
@@ -681,6 +680,7 @@ w_object(VALUE obj, struct dump_arg *arg, int limit)
 
         st_add_direct(arg->data, obj, arg->data->num_entries);
 
+	hasiv = has_ivars(obj, ivtbl);
         {
             st_data_t compat_data;
             rb_alloc_func_t allocator = rb_get_alloc_func(RBASIC(obj)->klass);
@@ -691,8 +691,10 @@ w_object(VALUE obj, struct dump_arg *arg, int limit)
                 VALUE real_obj = obj;
                 obj = compat->dumper(real_obj);
                 st_insert(arg->compat_tbl, (st_data_t)obj, (st_data_t)real_obj);
+		if (obj != real_obj && !ivtbl) hasiv = 0;
             }
         }
+	if (hasiv) w_byte(TYPE_IVAR, arg);
 
 	switch (BUILTIN_TYPE(obj)) {
 	  case T_CLASS:
@@ -863,7 +865,7 @@ clear_dump_arg(struct dump_arg *arg)
 
 /*
  * call-seq:
- *      dump( obj [, anIO] , limit=--1 ) -> anIO
+ *      dump( obj [, anIO] , limit=-1 ) -> anIO
  *
  * Serializes obj and all descendant objects. If anIO is
  * specified, the serialized data will be written to it, otherwise the
@@ -875,7 +877,7 @@ clear_dump_arg(struct dump_arg *arg)
  *       def initialize(str)
  *         @str = str
  *       end
- *       def sayHello
+ *       def say_hello
  *         @str
  *       end
  *     end
@@ -885,7 +887,7 @@ clear_dump_arg(struct dump_arg *arg)
  *     o = Klass.new("hello\n")
  *     data = Marshal.dump(o)
  *     obj = Marshal.load(data)
- *     obj.sayHello   #=> "hello\n"
+ *     obj.say_hello  #=> "hello\n"
  *
  * Marshal can't dump following objects:
  * * anonymous Class/Module.
@@ -998,10 +1000,10 @@ memsize_load_arg(const void *ptr)
 
 static const rb_data_type_t load_arg_data = {
     "load_arg",
-    mark_load_arg, free_load_arg, memsize_load_arg
+    {mark_load_arg, free_load_arg, memsize_load_arg,},
 };
 
-#define r_entry(v, arg) r_entry0(v, (arg)->data->num_entries, arg)
+#define r_entry(v, arg) r_entry0((v), (arg)->data->num_entries, (arg))
 static VALUE r_entry0(VALUE v, st_index_t num, struct load_arg *arg);
 static VALUE r_object(struct load_arg *arg);
 static ID r_symbol(struct load_arg *arg);
@@ -1136,11 +1138,11 @@ id2encidx(ID id, VALUE val)
 static ID
 r_symlink(struct load_arg *arg)
 {
-    ID id;
+    st_data_t id;
     long num = r_long(arg);
 
     if (st_lookup(arg->symbols, num, &id)) {
-	return id;
+	return (ID)id;
     }
     rb_raise(rb_eArgError, "bad symbol");
 }

@@ -19,7 +19,7 @@
 #
 # === Doesn't depend on strftime
 #
-# This library doesn't use +strftime+.  Especially #rfc2822 doesn't depend
+# This library doesn't use +Time#strftime+.  Especially #rfc2822 doesn't depend
 # on +strftime+ because:
 #
 # * %a and %b are locale sensitive
@@ -35,8 +35,12 @@
 #   %z is required to generate zone in date-time of RFC 2822
 #   but it is not portable.
 #
+# Note that +Time#strftime+ doesn't use +strftime()+ function in libc since Ruby 1.9.
+# This means +Time#strftime+ is locale-insensitive since Ruby 1.9.
+# The above statements are not valid now.
+#
 
-require 'date/format'
+require 'date'
 
 #
 # Implements the extensions to the Time class that are described in the
@@ -515,7 +519,7 @@ class Time
   def xmlschema(fraction_digits=0)
     sprintf('%0*d-%02d-%02dT%02d:%02d:%02d',
       year < 0 ? 5 : 4, year, mon, day, hour, min, sec) +
-    if fraction_digits == 0
+    if fraction_digits <= 0
       ''
     else
       '.' + sprintf('%0*d', fraction_digits, (subsec * 10**fraction_digits).floor)

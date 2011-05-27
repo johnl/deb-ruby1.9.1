@@ -31,6 +31,10 @@
 
 #include "regint.h"
 
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility push(default)
+#endif
+
 /* node type */
 #define NT_STR         0
 #define NT_CCLASS      1
@@ -96,7 +100,7 @@
 #define NSTR_AMBIG              (1<<1)
 #define NSTR_DONT_GET_OPT_INFO  (1<<2)
 
-#define NSTRING_LEN(node)             ((node)->u.str.end - (node)->u.str.s)
+#define NSTRING_LEN(node) (OnigDistance)((node)->u.str.end - (node)->u.str.s)
 #define NSTRING_SET_RAW(node)          (node)->u.str.flag |= NSTR_RAW
 #define NSTRING_CLEAR_RAW(node)        (node)->u.str.flag &= ~NSTR_RAW
 #define NSTRING_SET_AMBIG(node)        (node)->u.str.flag |= NSTR_AMBIG
@@ -349,6 +353,10 @@ extern int    onig_free_shared_cclass_table P_((void));
 #ifdef USE_NAMED_GROUP
 extern int onig_print_names(FILE*, regex_t*);
 #endif
+#endif
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility pop
 #endif
 
 #endif /* ONIGURUMA_REGPARSE_H */

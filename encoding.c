@@ -2,7 +2,7 @@
 
   encoding.c -
 
-  $Author: naruse $
+  $Author: nobu $
   created at: Thu May 24 17:23:27 JST 2007
 
   Copyright (C) 2007 Yukihiro Matsumoto
@@ -22,6 +22,17 @@
 #endif
 #endif
 #include "ruby/util.h"
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility push(default)
+int rb_enc_register(const char *name, rb_encoding *encoding);
+void rb_enc_set_base(const char *name, const char *orig);
+void rb_encdb_declare(const char *name);
+int rb_encdb_replicate(const char *name, const char *orig);
+int rb_encdb_dummy(const char *name);
+int rb_encdb_alias(const char *alias, const char *orig);
+#pragma GCC visibility pop
+#endif
 
 static ID id_encoding;
 VALUE rb_cEncoding;
@@ -59,7 +70,8 @@ enc_memsize(const void *p)
 }
 
 static const rb_data_type_t encoding_data_type = {
-    "encoding", 0, 0, enc_memsize,
+    "encoding",
+    {0, 0, enc_memsize,},
 };
 
 #define is_data_encoding(obj) (RTYPEDDATA_P(obj) && RTYPEDDATA_TYPE(obj) == &encoding_data_type)
@@ -424,20 +436,23 @@ rb_enc_unicode_p(rb_encoding *enc)
     return name[0] == 'U' && name[1] == 'T' && name[2] == 'F' && name[4] != '7';
 }
 
-static const char *
+/*
+ * Returns copied alias name when the key is added for st_table,
+ * else returns NULL.
+ */
+static int
 enc_alias_internal(const char *alias, int idx)
 {
-    alias = strdup(alias);
-    st_insert(enc_table.names, (st_data_t)alias, (st_data_t)idx);
-    return alias;
+    return st_insert2(enc_table.names, (st_data_t)alias, (st_data_t)idx,
+	    (st_data_t(*)(st_data_t))strdup);
 }
 
 static int
 enc_alias(const char *alias, int idx)
 {
     if (!valid_encoding_name_p(alias)) return -1;
-    alias = enc_alias_internal(alias, idx);
-    set_encoding_const(alias, rb_enc_from_index(idx));
+    if (!enc_alias_internal(alias, idx))
+	set_encoding_const(alias, rb_enc_from_index(idx));
     return idx;
 }
 
@@ -739,10 +754,10 @@ rb_enc_compatible(VALUE str1, VALUE str2)
     enc1 = rb_enc_from_index(idx1);
     enc2 = rb_enc_from_index(idx2);
 
-    if (TYPE(str2) == T_STRING && RSTRING_LEN(str2) == 0)
-	return (idx1 == ENCINDEX_US_ASCII && rb_enc_asciicompat(enc2)) ? enc2 : enc1;
-    if (TYPE(str1) == T_STRING && RSTRING_LEN(str1) == 0)
-	return (idx2 == ENCINDEX_US_ASCII && rb_enc_asciicompat(enc1)) ? enc1 : enc2;
+    if (BUILTIN_TYPE(str2) == T_STRING && RSTRING_LEN(str2) == 0)
+	return enc1;
+    if (BUILTIN_TYPE(str1) == T_STRING && RSTRING_LEN(str1) == 0)
+	return (rb_enc_asciicompat(enc1) && rb_enc_str_asciionly_p(str2)) ? enc1 : enc2;
     if (!rb_enc_asciicompat(enc1) || !rb_enc_asciicompat(enc2)) {
 	return 0;
     }
@@ -1022,7 +1037,7 @@ enc_list(VALUE klass)
 static VALUE
 enc_find(VALUE klass, VALUE enc)
 {
-    return rb_enc_from_encoding(to_encoding(enc));
+    return rb_enc_from_encoding(rb_to_encoding(enc));
 }
 
 /*
@@ -1231,7 +1246,25 @@ rb_enc_default_external(void)
  *
  * Returns default external encoding.
  *
- * It is initialized by the locale or -E option.
+ * The default external encoding is used by default for strings created from
+ * the following locations:
+ *
+ * * CSV
+ * * File data read from disk
+ * * SDBM
+ * * StringIO
+ * * Zlib::GzipReader
+ * * Zlib::GzipWriter
+ * * String#inspect
+ * * Regexp#inspect
+ *
+ * While strings created from these locations will have this encoding, the
+ * encoding may not be valid.  Be sure to check String#valid_encoding?.
+ *
+ * File data written to disk will be transcoded to the default external
+ * encoding when written.
+ *
+ * The default external encoding is initialized by the locale or -E option.
  */
 static VALUE
 get_default_external(VALUE klass)
@@ -1253,7 +1286,14 @@ rb_enc_set_default_external(VALUE encoding)
  * call-seq:
  *   Encoding.default_external = enc
  *
- * Sets default external encoding.
+ * Sets default external encoding.  You should not set
+ * Encoding::default_external in ruby code as strings created before changing
+ * the value may have a different encoding from strings created after thevalue
+ * was changed., instead you should use <tt>ruby -E</tt> to invoke ruby with
+ * the correct default_external.
+ *
+ * See Encoding::default_external for information on how the default external
+ * encoding is used.
  */
 static VALUE
 set_default_external(VALUE klass, VALUE encoding)
@@ -1285,9 +1325,32 @@ rb_enc_default_internal(void)
  * call-seq:
  *   Encoding.default_internal -> enc
  *
- * Returns default internal encoding.
+ * Returns default internal encoding.  Strings will be transcoded to the
+ * default internal encoding in the following places if the default internal
+ * encoding is not nil:
  *
- * It is initialized by the source internal_encoding or -E option.
+ * * CSV
+ * * Etc.sysconfdir and Etc.systmpdir
+ * * File data read from disk
+ * * File names from Dir
+ * * Integer#chr
+ * * String#inspect and Regexp#inspect
+ * * Strings returned from Curses
+ * * Strings returned from Readline
+ * * Strings returned from SDBM
+ * * Time#zone
+ * * Values from ENV
+ * * Values in ARGV including $PROGRAM_NAME
+ * * __FILE__
+ *
+ * Additionally String#encode and String#encode! use the default internal
+ * encoding if no encoding is given.
+ *
+ * The locale encoding (__ENCODING__), not default_internal, is used as the
+ * encoding of created strings.
+ *
+ * Encoding::default_internal is initialized by the source file's
+ * internal_encoding or -E option.
  */
 static VALUE
 get_default_internal(VALUE klass)
@@ -1306,8 +1369,14 @@ rb_enc_set_default_internal(VALUE encoding)
  * call-seq:
  *   Encoding.default_internal = enc or nil
  *
- * Sets default internal encoding.
- * Or removes default internal encoding when passed nil.
+ * Sets default internal encoding or removes default internal encoding when
+ * passed nil.  You should not set Encoding::default_internal in ruby code as
+ * strings created before changing the value may have a different encoding
+ * from strings created after the change.  Instead you should use
+ * <tt>ruby -E</tt> to invoke ruby with the correct default_internal.
+ *
+ * See Encoding::default_internal for information on how the default internal
+ * encoding is used.
  */
 static VALUE
 set_default_internal(VALUE klass, VALUE encoding)
@@ -1322,6 +1391,7 @@ set_default_internal(VALUE klass, VALUE encoding)
  *   Encoding.locale_charmap -> string
  *
  * Returns the locale charmap name.
+ * It returns nil if no appropriate information.
  *
  *   Debian GNU/Linux
  *     LANG=C
@@ -1537,10 +1607,10 @@ Init_Encoding(void)
     }
 }
 
-/* locale insensitive functions */
+/* locale insensitive ctype functions */
 
 #define ctype_test(c, ctype) \
-    (rb_isascii(c) && ONIGENC_IS_ASCII_CODE_CTYPE((c), ctype))
+    (rb_isascii(c) && ONIGENC_IS_ASCII_CODE_CTYPE((c), (ctype)))
 
 int rb_isalnum(int c) { return ctype_test(c, ONIGENC_CTYPE_ALNUM); }
 int rb_isalpha(int c) { return ctype_test(c, ONIGENC_CTYPE_ALPHA); }

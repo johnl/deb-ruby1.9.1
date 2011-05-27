@@ -2,7 +2,7 @@
 
   util.c -
 
-  $Author: yugui $
+  $Author: akr $
   created at: Fri Mar 10 17:22:34 JST 1995
 
   Copyright (C) 1993-2008 Yukihiro Matsumoto
@@ -180,7 +180,7 @@ ruby_strtoul(const char *str, char **endptr, int base)
 #endif
 
 #ifndef S_ISDIR
-#   define S_ISDIR(m) ((m & S_IFMT) == S_IFDIR)
+#   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
 #endif
 
 #if defined(__CYGWIN32__) || defined(_WIN32)
@@ -234,8 +234,9 @@ ruby_strtoul(const char *str, char **endptr, int base)
  * suffix = ".bak" (style 1)
  *                foo.bar => foo.bak
  *                foo.bak => foo.$$$	(fallback)
- *                foo.$$$ => foo.~~~	(fallback)
  *                makefile => makefile.bak
+ * suffix = ".$$$" (style 1)
+ *                foo.$$$ => foo.~~~	(fallback)
  *
  * suffix = "~" (style 2)
  *                foo.c => foo.c~
@@ -258,7 +259,7 @@ static int valid_filename(const char *s);
 static const char suffix1[] = ".$$$";
 static const char suffix2[] = ".~~~";
 
-#define strEQ(s1,s2) (strcmp(s1,s2) == 0)
+#define strEQ(s1,s2) (strcmp((s1),(s2)) == 0)
 
 extern const char *ruby_find_basename(const char *, long *, long *);
 extern const char *ruby_find_extname(const char *, long *);
@@ -266,9 +267,8 @@ extern const char *ruby_find_extname(const char *, long *);
 void
 ruby_add_suffix(VALUE str, const char *suffix)
 {
-    int baselen;
-    int extlen = strlen(suffix);
-    char *p, *q;
+    long baselen;
+    long extlen = strlen(suffix);
     long slen;
     char buf[1024];
     const char *name;
@@ -277,7 +277,7 @@ ruby_add_suffix(VALUE str, const char *suffix)
 
     name = StringValueCStr(str);
     slen = strlen(name);
-    if (slen > sizeof(buf) - 1)
+    if (slen > (long)(sizeof(buf) - 1))
 	rb_fatal("Cannot do inplace edit on long filename (%ld characters)",
 		 slen);
 
@@ -302,19 +302,21 @@ ruby_add_suffix(VALUE str, const char *suffix)
 	rb_str_cat(str, suffix, extlen);
     }
     else {
+	char *p = buf, *q;
 	strncpy(buf, name, slen);
 	if (ext)
-	    p = buf + (ext - name);
+	    p += (ext - name);
 	else
-	    p = buf + slen;
+	    p += slen;
 	p[len] = '\0';
 	if (suffix[1] == '\0') {  /* Style 2 */
+	    q = (char *)ruby_find_basename(buf, &baselen, 0);
 	    if (len <= 3) {
+		if (len == 0 && baselen >= 8 && p + 3 <= buf + sizeof(buf)) p[len++] = '.'; /* DOSISH */
 		p[len] = *suffix;
 		p[++len] = '\0';
 	    }
-	    else if ((q = (char *)ruby_find_basename(buf, &baselen, 0)) &&
-		     baselen < 8) {
+	    else if (q && baselen < 8) {
 		q += baselen;
 		*q++ = *suffix;
 		if (ext) {
@@ -371,12 +373,12 @@ valid_filename(const char *s)
 #define D ((int*)d)
 
 #define mmprepare(base, size) do {\
- if (((long)base & (0x3)) == 0)\
-   if (size >= 16) mmkind = 1;\
-   else            mmkind = 0;\
- else              mmkind = -1;\
- high = (size & (~0xf));\
- low  = (size &  0x0c);\
+ if (((VALUE)(base) & (0x3)) == 0)\
+   if ((size) >= 16) mmkind = 1;\
+   else              mmkind = 0;\
+ else                mmkind = -1;\
+ high = ((size) & (~0xf));\
+ low  = ((size) &  0x0c);\
 } while (0)\
 
 #define mmarg mmkind, size, high, low
@@ -441,11 +443,11 @@ static void mmrot3_(register char *a, register char *b, register char *c, int mm
 
 typedef struct { char *LL, *RR; } stack_node; /* Stack structure for L,l,R,r */
 #define PUSH(ll,rr) do { top->LL = (ll); top->RR = (rr); ++top; } while (0)  /* Push L,l,R,r */
-#define POP(ll,rr)  do { --top; ll = top->LL; rr = top->RR; } while (0)      /* Pop L,l,R,r */
+#define POP(ll,rr)  do { --top; (ll) = top->LL; (rr) = top->RR; } while (0)      /* Pop L,l,R,r */
 
-#define med3(a,b,c) ((*cmp)(a,b,d)<0 ?                                   \
-                       ((*cmp)(b,c,d)<0 ? b : ((*cmp)(a,c,d)<0 ? c : a)) : \
-                       ((*cmp)(b,c,d)>0 ? b : ((*cmp)(a,c,d)<0 ? a : c)))
+#define med3(a,b,c) ((*cmp)((a),(b),d)<0 ?                                   \
+                       ((*cmp)((b),(c),d)<0 ? (b) : ((*cmp)((a),(c),d)<0 ? (c) : (a))) : \
+                       ((*cmp)((b),(c),d)>0 ? (b) : ((*cmp)((a),(c),d)<0 ? (a) : (c))))
 
 void
 ruby_qsort(void* base, const size_t nel, const size_t size,
@@ -837,7 +839,7 @@ ruby_getcwd(void)
 
 #ifdef DEBUG
 #include "stdio.h"
-#define Bug(x) {fprintf(stderr, "%s\n", x); exit(1);}
+#define Bug(x) {fprintf(stderr, "%s\n", (x)); exit(1);}
 #endif
 
 #include "stdlib.h"
@@ -922,24 +924,24 @@ typedef union { double d; ULong L[2]; } U;
 
 #ifdef YES_ALIAS
 typedef double double_u;
-#  define dval(x) x
+#  define dval(x) (x)
 #  ifdef IEEE_LITTLE_ENDIAN
-#    define word0(x) (((ULong *)&x)[1])
-#    define word1(x) (((ULong *)&x)[0])
+#    define word0(x) (((ULong *)&(x))[1])
+#    define word1(x) (((ULong *)&(x))[0])
 #  else
-#    define word0(x) (((ULong *)&x)[0])
-#    define word1(x) (((ULong *)&x)[1])
+#    define word0(x) (((ULong *)&(x))[0])
+#    define word1(x) (((ULong *)&(x))[1])
 #  endif
 #else
 typedef U double_u;
 #  ifdef IEEE_LITTLE_ENDIAN
-#    define word0(x) (x.L[1])
-#    define word1(x) (x.L[0])
+#    define word0(x) ((x).L[1])
+#    define word1(x) ((x).L[0])
 #  else
-#    define word0(x) (x.L[0])
-#    define word1(x) (x.L[1])
+#    define word0(x) ((x).L[0])
+#    define word1(x) ((x).L[1])
 #  endif
-#  define dval(x) (x.d)
+#  define dval(x) ((x).d)
 #endif
 
 /* The following definition of Storeinc is appropriate for MIPS processors.
@@ -947,11 +949,11 @@ typedef U double_u;
  * #define Storeinc(a,b,c) (*a++ = b << 16 | c & 0xffff)
  */
 #if defined(IEEE_LITTLE_ENDIAN) + defined(VAX) + defined(__arm__)
-#define Storeinc(a,b,c) (((unsigned short *)a)[1] = (unsigned short)b, \
-((unsigned short *)a)[0] = (unsigned short)c, a++)
+#define Storeinc(a,b,c) (((unsigned short *)(a))[1] = (unsigned short)(b), \
+((unsigned short *)(a))[0] = (unsigned short)(c), (a)++)
 #else
-#define Storeinc(a,b,c) (((unsigned short *)a)[0] = (unsigned short)b, \
-((unsigned short *)a)[1] = (unsigned short)c, a++)
+#define Storeinc(a,b,c) (((unsigned short *)(a))[0] = (unsigned short)(b), \
+((unsigned short *)(a))[1] = (unsigned short)(c), (a)++)
 #endif
 
 /* #define P DBL_MANT_DIG */
@@ -1074,12 +1076,12 @@ typedef U double_u;
 #endif
 
 #ifdef RND_PRODQUOT
-#define rounded_product(a,b) a = rnd_prod(a, b)
-#define rounded_quotient(a,b) a = rnd_quot(a, b)
+#define rounded_product(a,b) ((a) = rnd_prod((a), (b)))
+#define rounded_quotient(a,b) ((a) = rnd_quot((a), (b)))
 extern double rnd_prod(double, double), rnd_quot(double, double);
 #else
-#define rounded_product(a,b) a *= b
-#define rounded_quotient(a,b) a /= b
+#define rounded_product(a,b) ((a) *= (b))
+#define rounded_quotient(a,b) ((a) /= (b))
 #endif
 
 #define Big0 (Frac_mask1 | Exp_msk1*(DBL_MAX_EXP+Bias-1))
@@ -1178,8 +1180,8 @@ Bfree(Bigint *v)
     }
 }
 
-#define Bcopy(x,y) memcpy((char *)&x->sign, (char *)&y->sign, \
-y->wds*sizeof(Long) + 2*sizeof(int))
+#define Bcopy(x,y) memcpy((char *)&(x)->sign, (char *)&(y)->sign, \
+(y)->wds*sizeof(Long) + 2*sizeof(int))
 
 static Bigint *
 multadd(Bigint *b, int m, int a)   /* multiply by m and add a */
@@ -2120,22 +2122,38 @@ break2:
 	    static const char hexdigit[] = "0123456789abcdef0123456789ABCDEF";
 	    s0 = ++s;
 	    adj = 0;
-	    aadj = -1;
+	    aadj = 1.0;
+	    nd0 = -4;
 
-            if  (!s[1]) {
-                rb_warn("malformed value for Float(): %s. Ruby 1.9.3 for later will raise an ArgumentError for the value.", s00);
-            }
-	    while (*++s && (s1 = strchr(hexdigit, *s))) {
-		adj *= 16;
-		adj += (s1 - hexdigit) & 15;
+	    if (!*++s || !(s1 = strchr(hexdigit, *s))) goto ret0;
+	    while (*s == '0') s++;
+	    if ((s1 = strchr(hexdigit, *s)) != NULL) {
+		do {
+		    adj += aadj * ((s1 - hexdigit) & 15);
+		    nd0 += 4;
+		    aadj /= 16;
+		} while (*++s && (s1 = strchr(hexdigit, *s)));
 	    }
 
 	    if (*s == '.') {
-		aadj = 1.;
-		while (*++s && (s1 = strchr(hexdigit, *s))) {
-		    aadj /= 16;
-		    adj += aadj * ((s1 - hexdigit) & 15);
+		dsign = 1;
+		if (!*++s || !(s1 = strchr(hexdigit, *s))) goto ret0;
+		if (nd0 < 0) {
+		    while (*s == '0') {
+			s++;
+			nd0 -= 4;
+		    }
 		}
+		for (; *s && (s1 = strchr(hexdigit, *s)); ++s) {
+		    adj += aadj * ((s1 - hexdigit) & 15);
+		    if ((aadj /= 16) == 0.0) {
+			while (strchr(hexdigit, *++s));
+			break;
+		    }
+		}
+	    }
+	    else {
+		dsign = 0;
 	    }
 
 	    if (*s == 'P' || *s == 'p') {
@@ -2143,23 +2161,26 @@ break2:
 		if (abs(dsign) == 1) s++;
 		else dsign = 1;
 
-               nd = 0;
-               c = *s;
-               if (c < '0' || '9' < c) goto ret0;
-               do {
+		nd = 0;
+		c = *s;
+		if (c < '0' || '9' < c) goto ret0;
+		do {
 		    nd *= 10;
 		    nd += c;
 		    nd -= '0';
-                   c = *++s;
-               } while ('0' <= c && c <= '9');
-		dval(rv) = ldexp(adj, nd * dsign);
+		    c = *++s;
+		    /* Float("0x0."+("0"*267)+"1fp2095") */
+		    if (nd + dsign * nd0 > 2095) {
+			while ('0' <= c && c <= '9') c = *++s;
+			break;
+		    }
+		} while ('0' <= c && c <= '9');
+		nd0 += nd * dsign;
 	    }
 	    else {
-		if (aadj != -1) {
-                    rb_warn("malformed value for Float(): %s. Ruby 1.9.3 for later will raise an ArgumentError for the value.", s00);
-                }
-		dval(rv) = adj;
+		if (dsign) goto ret0;
 	    }
+	    dval(rv) = ldexp(adj, nd0);
 	    goto ret;
 	}
         nz0 = 1;
@@ -3138,7 +3159,7 @@ nrv_alloc(const char *s, char **rve, size_t n)
     return rv;
 }
 
-#define rv_strdup(s, rve) nrv_alloc(s, rve, strlen(s)+1)
+#define rv_strdup(s, rve) nrv_alloc((s), (rve), strlen(s)+1)
 
 #ifndef MULTIPLE_THREADS
 /* freedtoa(s) must be used to free values s returned by dtoa
@@ -3153,6 +3174,10 @@ freedtoa(char *s)
     xfree(s);
 }
 #endif
+
+static const char INFSTR[] = "Infinity";
+static const char NANSTR[] = "NaN";
+static const char ZEROSTR[] = "0";
 
 /* dtoa for IEEE arithmetic (dmg): convert double to ASCII string.
  *
@@ -3272,9 +3297,9 @@ ruby_dtoa(double d_, int mode, int ndigits, int *decpt, int *sign, char **rve)
         *decpt = 9999;
 #ifdef IEEE_Arith
         if (!word1(d) && !(word0(d) & 0xfffff))
-            return rv_strdup("Infinity", rve);
+            return rv_strdup(INFSTR, rve);
 #endif
-        return rv_strdup("NaN", rve);
+        return rv_strdup(NANSTR, rve);
     }
 #endif
 #ifdef IBM
@@ -3282,7 +3307,7 @@ ruby_dtoa(double d_, int mode, int ndigits, int *decpt, int *sign, char **rve)
 #endif
     if (!dval(d)) {
         *decpt = 1;
-        return rv_strdup("0", rve);
+        return rv_strdup(ZEROSTR, rve);
     }
 
 #ifdef SET_INEXACT
@@ -3906,14 +3931,12 @@ ruby_each_words(const char *str, void (*func)(const char*, int, void*), void *ar
 
 #define	DBL_MANH_SIZE	20
 #define	DBL_MANL_SIZE	32
-#define	INFSTR	"Infinity"
-#define	NANSTR	"NaN"
 #define	DBL_ADJ	(DBL_MAX_EXP - 2)
 #define	SIGFIGS	((DBL_MANT_DIG + 3) / 4 + 1)
 #define dexp_get(u) ((int)(word0(u) >> Exp_shift) & ~Exp_msk1)
-#define dexp_set(u,v) (word0(u) = (((int)(word0(u)) & ~Exp_mask) | (v << Exp_shift)))
-#define dmanh_get(u) ((int)(word0(u) & Frac_mask))
-#define dmanl_get(u) ((int)word1(u))
+#define dexp_set(u,v) (word0(u) = (((int)(word0(u)) & ~Exp_mask) | ((v) << Exp_shift)))
+#define dmanh_get(u) ((uint32_t)(word0(u) & Frac_mask))
+#define dmanl_get(u) ((uint32_t)word1(u))
 
 
 /*
@@ -3941,7 +3964,7 @@ ruby_each_words(const char *str, void (*func)(const char*, int, void*), void *ar
  * Outputs:	decpt, sign, rve
  */
 char *
-BSD__hdtoa(double d, const char *xdigs, int ndigits, int *decpt, int *sign,
+ruby_hdtoa(double d, const char *xdigs, int ndigits, int *decpt, int *sign,
     char **rve)
 {
 	U u;
@@ -3960,15 +3983,15 @@ BSD__hdtoa(double d, const char *xdigs, int ndigits, int *decpt, int *sign,
 
 	if (isinf(d)) { /* FP_INFINITE */
 	    *decpt = INT_MAX;
-	    return (nrv_alloc(INFSTR, rve, sizeof(INFSTR) - 1));
+	    return rv_strdup(INFSTR, rve);
 	}
 	else if (isnan(d)) { /* FP_NAN */
 	    *decpt = INT_MAX;
-	    return (nrv_alloc(NANSTR, rve, sizeof(NANSTR) - 1));
+	    return rv_strdup(NANSTR, rve);
 	}
 	else if (d == 0.0) { /* FP_ZERO */
 	    *decpt = 1;
-	    return (nrv_alloc("0", rve, 1));
+	    return rv_strdup(ZEROSTR, rve);
 	}
 	else if (dexp_get(u)) { /* FP_NORMAL */
 	    *decpt = dexp_get(u) - DBL_ADJ;
@@ -3986,15 +4009,18 @@ BSD__hdtoa(double d, const char *xdigs, int ndigits, int *decpt, int *sign,
 	 * enough space for all the digits.
 	 */
 	bufsize = (ndigits > 0) ? ndigits : SIGFIGS;
-	s0 = rv_alloc(bufsize);
+	s0 = rv_alloc(bufsize+1);
 
 	/* Round to the desired number of digits. */
 	if (SIGFIGS > ndigits && ndigits > 0) {
 		float redux = 1.0f;
+		volatile double d;
 		int offset = 4 * ndigits + DBL_MAX_EXP - 4 - DBL_MANT_DIG;
 		dexp_set(u, offset);
-		u.d += redux;
-		u.d -= redux;
+		d = u.d;
+		d += redux;
+		d -= redux;
+		u.d = d;
 		*decpt += dexp_get(u) - offset;
 	}
 

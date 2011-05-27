@@ -12,7 +12,10 @@ class TestRDocTopLevel < XrefTestCase
 
   def test_class_all_classes_and_modules
     expected = %w[
-      C1 C2 C2::C3 C2::C3::H1 C3 C3::H1 C3::H2 C4 C4::C4 C5 C5::C1 M1 M1::M2
+      C1 C2 C2::C3 C2::C3::H1 C3 C3::H1 C3::H2 C4 C4::C4 C5 C5::C1
+      Child
+      M1 M1::M2
+      Parent
     ]
 
     assert_equal expected,
@@ -22,9 +25,21 @@ class TestRDocTopLevel < XrefTestCase
   def test_class_classes
     expected = %w[
       C1 C2 C2::C3 C2::C3::H1 C3 C3::H1 C3::H2 C4 C4::C4 C5 C5::C1
+      Child Parent
     ]
 
     assert_equal expected, RDoc::TopLevel.classes.map { |m| m.full_name }.sort
+  end
+
+  def test_class_complete
+    @c2.add_module_alias @c2_c3, 'A1', @top_level
+
+    RDoc::TopLevel.complete :public
+
+    a1 = @xref_data.find_class_or_module 'C2::A1'
+
+    assert_equal 'C2::A1', a1.full_name
+    refute_empty a1.aliases
   end
 
   def test_class_files
@@ -94,13 +109,11 @@ class TestRDocTopLevel < XrefTestCase
   end
 
   def test_last_modified
-    assert_equal 'Unknown', @top_level.last_modified
-
+    assert_equal nil, @top_level.last_modified
     stat = Object.new
     def stat.mtime() 0 end
     @top_level.file_stat = stat
-
-    assert_equal '0', @top_level.last_modified
+    assert_equal 0, @top_level.last_modified
   end
 
   def test_name

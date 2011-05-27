@@ -1,12 +1,10 @@
 /* -*- C -*-
- * $Id: cfunc.c 30559 2011-01-16 06:30:33Z yugui $
+ * $Id: cfunc.c 30843 2011-02-11 14:17:24Z akr $
  */
 
 #include <ruby.h>
 #include <errno.h>
 #include "dl.h"
-
-VALUE rb_big2ulong_pack(VALUE x);
 
 VALUE rb_cDLCFunc;
 
@@ -70,7 +68,7 @@ dlcfunc_memsize(const void *ptr)
 
 const rb_data_type_t dlcfunc_data_type = {
     "dl/cfunc",
-    0, dlcfunc_free, dlcfunc_memsize,
+    {0, dlcfunc_free, dlcfunc_memsize,},
 };
 
 VALUE
@@ -300,10 +298,10 @@ rb_dlcfunc_inspect(VALUE self)
 
 
 # define DECL_FUNC_CDECL(f,ret,args,val) \
-    ret (FUNC_CDECL(*f))(args) = (ret (FUNC_CDECL(*))(args))(VALUE)(val)
+    ret (FUNC_CDECL(*(f)))(args) = (ret (FUNC_CDECL(*))(args))(VALUE)(val)
 #ifdef FUNC_STDCALL
 # define DECL_FUNC_STDCALL(f,ret,args,val) \
-    ret (FUNC_STDCALL(*f))(args) = (ret (FUNC_STDCALL(*))(args))(VALUE)(val)
+    ret (FUNC_STDCALL(*(f)))(args) = (ret (FUNC_STDCALL(*))(args))(VALUE)(val)
 #endif
 
 #define CALL_CASE switch( RARRAY_LEN(ary) ){ \
@@ -568,13 +566,15 @@ rb_dlcfunc_call(VALUE self, VALUE ary)
     }
 #endif
     else{
-	rb_raise(rb_eDLError,
-#ifndef LONG_LONG_VALUE
-		 "unsupported call type: %lx",
-#else
-		 "unsupported call type: %llx",
-#endif
-		 cfunc->calltype);
+	const char *name = rb_id2name(cfunc->calltype);
+	if( name ){
+	    rb_raise(rb_eDLError, "unsupported call type: %s",
+		     name);
+	}
+	else{
+	    rb_raise(rb_eDLError, "unsupported call type: %"PRIxVALUE,
+		     cfunc->calltype);
+	}
     }
 
     rb_dl_set_last_error(self, INT2NUM(errno));

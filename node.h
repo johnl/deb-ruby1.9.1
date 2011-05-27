@@ -2,7 +2,7 @@
 
   node.h -
 
-  $Author: muraken $
+  $Author: akr $
   created at: Fri May 28 15:14:02 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -233,8 +233,8 @@ enum node_type {
 };
 
 typedef struct RNode {
-    unsigned long flags;
-    char *nd_file;
+    VALUE flags;
+    VALUE nd_reserved;		/* ex nd_file */
     union {
 	struct RNode *node;
 	ID id;
@@ -269,7 +269,7 @@ typedef struct RNode {
 
 #define nd_type(n) ((int) (((RNODE(n))->flags & NODE_TYPEMASK)>>NODE_TYPESHIFT))
 #define nd_set_type(n,t) \
-    RNODE(n)->flags=((RNODE(n)->flags&~NODE_TYPEMASK)|((((unsigned long)t)<<NODE_TYPESHIFT)&NODE_TYPEMASK))
+    RNODE(n)->flags=((RNODE(n)->flags&~NODE_TYPEMASK)|((((unsigned long)(t))<<NODE_TYPESHIFT)&NODE_TYPEMASK))
 
 #define NODE_LSHIFT (NODE_TYPESHIFT+7)
 #define NODE_LMASK  (((SIGNED_VALUE)1<<(sizeof(VALUE)*CHAR_BIT-NODE_LSHIFT))-1)
@@ -448,9 +448,15 @@ typedef struct RNode {
 #define NEW_PRELUDE(p,b) NEW_NODE(NODE_PRELUDE,p,b,0)
 #define NEW_OPTBLOCK(a) NEW_NODE(NODE_OPTBLOCK,a,0,0)
 
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility push(default)
+#endif
+
 VALUE rb_parser_new(void);
 VALUE rb_parser_end_seen_p(VALUE);
 VALUE rb_parser_encoding(VALUE);
+VALUE rb_parser_get_yydebug(VALUE);
+VALUE rb_parser_set_yydebug(VALUE, VALUE);
 
 NODE *rb_parser_compile_cstr(volatile VALUE, const char*, const char*, int, int);
 NODE *rb_parser_compile_string(volatile VALUE, const char*, VALUE, int);
@@ -472,6 +478,17 @@ struct rb_global_entry *rb_global_entry(ID);
 VALUE rb_gvar_get(struct rb_global_entry *);
 VALUE rb_gvar_set(struct rb_global_entry *, VALUE);
 VALUE rb_gvar_defined(struct rb_global_entry *);
+const struct kwtable *rb_reserved_word(const char *, unsigned int);
+
+struct parser_params;
+void *rb_parser_malloc(struct parser_params *, size_t);
+void *rb_parser_realloc(struct parser_params *, void *, size_t);
+void *rb_parser_calloc(struct parser_params *, size_t, size_t);
+void rb_parser_free(struct parser_params *, void *);
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility pop
+#endif
 
 #if defined(__cplusplus)
 #if 0

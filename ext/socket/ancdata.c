@@ -334,7 +334,7 @@ ancillary_timestamp(VALUE self)
         struct bintime bt;
 	VALUE d, timev;
         memcpy((char*)&bt, RSTRING_PTR(data), sizeof(bt));
-	d = ULL2NUM(0x100000000UL);
+	d = ULL2NUM(0x100000000ULL);
 	d = mul(d,d);
 	timev = add(TIMET2NUM(bt.sec), quo(ULL2NUM(bt.frac), d));
         result = rb_time_num_new(timev, Qnil);
@@ -1598,7 +1598,7 @@ bsock_recvmsg_internal(int argc, VALUE *argv, VALUE sock, int nonblock)
         if (NIL_P(vmaxctllen) && (mh.msg_flags & MSG_CTRUNC)) {
 #define BIG_ENOUGH_SPACE 65536
             if (BIG_ENOUGH_SPACE < maxctllen &&
-                mh.msg_controllen < maxctllen - BIG_ENOUGH_SPACE) {
+                mh.msg_controllen < (socklen_t)(maxctllen - BIG_ENOUGH_SPACE)) {
                 /* there are big space bug truncated.
                  * file descriptors limit? */
                 if (!gc_done) {

@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey_dsa.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_pkey_dsa.c 31523 2011-05-11 22:27:14Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -13,8 +13,8 @@
 #include "ossl.h"
 
 #define GetPKeyDSA(obj, pkey) do { \
-    GetPKey(obj, pkey); \
-    if (EVP_PKEY_type(pkey->type) != EVP_PKEY_DSA) { /* PARANOIA? */ \
+    GetPKey((obj), (pkey)); \
+    if (EVP_PKEY_type((pkey)->type) != EVP_PKEY_DSA) { /* PARANOIA? */ \
 	ossl_raise(rb_eRuntimeError, "THIS IS NOT A DSA!"); \
     } \
 } while (0)
@@ -162,22 +162,29 @@ ossl_dsa_initialize(int argc, VALUE *argv, VALUE self)
 	dsa = PEM_read_bio_DSAPrivateKey(in, NULL, ossl_pem_passwd_cb, passwd);
 	if (!dsa) {
 	    (void)BIO_reset(in);
-	    dsa = PEM_read_bio_DSAPublicKey(in, NULL, NULL, NULL);
-	}
-	if (!dsa) {
-	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dsa = PEM_read_bio_DSA_PUBKEY(in, NULL, NULL, NULL);
 	}
 	if (!dsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dsa = d2i_DSAPrivateKey_bio(in, NULL);
 	}
 	if (!dsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dsa = d2i_DSA_PUBKEY_bio(in, NULL);
 	}
+	if (!dsa) {
+	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
+	    dsa = PEM_read_bio_DSAPublicKey(in, NULL, NULL, NULL);
+	}
 	BIO_free(in);
-	if (!dsa) ossl_raise(eDSAError, "Neither PUB key nor PRIV key:");
+	if (!dsa) {
+	    (void)ERR_get_error();
+	    ossl_raise(eDSAError, "Neither PUB key nor PRIV key:");
+	}
     }
     if (!EVP_PKEY_assign_DSA(pkey, dsa)) {
 	DSA_free(dsa);
@@ -257,7 +264,7 @@ ossl_dsa_export(int argc, VALUE *argv, VALUE self)
 	    ossl_raise(eDSAError, NULL);
 	}
     } else {
-	if (!PEM_write_bio_DSAPublicKey(out, pkey->pkey.dsa)) {
+	if (!PEM_write_bio_DSA_PUBKEY(out, pkey->pkey.dsa)) {
 	    BIO_free(out);
 	    ossl_raise(eDSAError, NULL);
 	}
@@ -396,7 +403,7 @@ ossl_dsa_sign(VALUE self, VALUE data)
 	ossl_raise(eDSAError, "Private DSA key needed!");
     }
     str = rb_str_new(0, ossl_dsa_buf_size(pkey));
-    if (!DSA_sign(0, (unsigned char *)RSTRING_PTR(data), RSTRING_LEN(data),
+    if (!DSA_sign(0, (unsigned char *)RSTRING_PTR(data), RSTRING_LENINT(data),
 		  (unsigned char *)RSTRING_PTR(str),
 		  &buf_len, pkey->pkey.dsa)) { /* type is ignored (0) */
 	ossl_raise(eDSAError, NULL);
@@ -421,8 +428,8 @@ ossl_dsa_verify(VALUE self, VALUE digest, VALUE sig)
     StringValue(digest);
     StringValue(sig);
     /* type is ignored (0) */
-    ret = DSA_verify(0, (unsigned char *)RSTRING_PTR(digest), RSTRING_LEN(digest),
-		     (unsigned char *)RSTRING_PTR(sig), RSTRING_LEN(sig), pkey->pkey.dsa);
+    ret = DSA_verify(0, (unsigned char *)RSTRING_PTR(digest), RSTRING_LENINT(digest),
+		     (unsigned char *)RSTRING_PTR(sig), RSTRING_LENINT(sig), pkey->pkey.dsa);
     if (ret < 0) {
 	ossl_raise(eDSAError, NULL);
     }
@@ -445,8 +452,8 @@ OSSL_PKEY_BN(dsa, priv_key)
 void
 Init_ossl_dsa()
 {
-#if 0 /* let rdoc know about mOSSL and mPKey */
-    mOSSL = rb_define_module("OpenSSL");
+#if 0
+    mOSSL = rb_define_module("OpenSSL"); /* let rdoc know about mOSSL and mPKey */
     mPKey = rb_define_module_under(mOSSL, "PKey");
 #endif
 

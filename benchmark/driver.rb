@@ -48,7 +48,7 @@ class BenchmarkDriver
 
   def progress_message *args
     unless STDOUT.tty?
-      STDERR.print(*args) 
+      STDERR.print(*args)
       STDERR.flush
     end
   end
@@ -205,7 +205,7 @@ class BenchmarkDriver
     }
 
     if $? != 0
-      raise "Benchmark process exited with abnormal status (#{$?})"
+      raise "\`#{cmd}\' exited with abnormal status (#{$?})"
     end
 
     m.real

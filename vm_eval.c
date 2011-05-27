@@ -2,7 +2,7 @@
 
   vm_eval.c -
 
-  $Author: yugui $
+  $Author: matz $
   created at: Sat May 24 16:02:32 JST 2008
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -459,12 +459,12 @@ NORETURN(static void raise_method_missing(rb_thread_t *th, int argc, const VALUE
  *  values.
  *
  *     class Roman
- *       def romanToInt(str)
+ *       def roman_to_int(str)
  *         # ...
  *       end
  *       def method_missing(methId)
  *         str = methId.id2name
- *         romanToInt(str)
+ *         roman_to_int(str)
  *       end
  *     end
  *
@@ -842,6 +842,7 @@ rb_iterate(VALUE (* it_proc) (VALUE), VALUE data1,
     rb_thread_t *th = GET_THREAD();
     rb_control_frame_t *volatile cfp = th->cfp;
 
+    node->nd_aid = rb_frame_this_func();
     TH_PUSH_TAG(th);
     state = TH_EXEC_TAG();
     if (state == 0) {
@@ -1014,7 +1015,8 @@ eval_string_with_cref(VALUE self, VALUE src, VALUE scope, NODE *cref, const char
 	th->base_block = 0;
 
 	if (0) {		/* for debug */
-	    printf("%s\n", RSTRING_PTR(rb_iseq_disasm(iseqval)));
+	    VALUE disasm = rb_iseq_disasm(iseqval);
+	    printf("%s\n", StringValuePtr(disasm));
 	}
 
 	/* save new env */
@@ -1080,12 +1082,12 @@ eval_string(VALUE self, VALUE src, VALUE scope, const char *file, int line)
  *  optional <em>filename</em> and <em>lineno</em> parameters are
  *  present, they will be used when reporting syntax errors.
  *
- *     def getBinding(str)
+ *     def get_binding(str)
  *       return binding
  *     end
  *     str = "hello"
  *     eval "str + ' Fred'"                      #=> "hello Fred"
- *     eval "str + ' Fred'", getBinding("bye")   #=> "bye Fred"
+ *     eval "str + ' Fred'", get_binding("bye")  #=> "bye Fred"
  */
 
 VALUE

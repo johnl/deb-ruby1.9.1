@@ -11,13 +11,13 @@
 
 #include <math.h>
 
-#if VMDEBUG > 0
+#if (VMDEBUG > 0) || defined(__clang)
 #define DECL_SC_REG(type, r, reg) register type reg_##r
 
-#elif __GNUC__ && __x86_64__ && !__clang__
+#elif __GNUC__ && __x86_64__
 #define DECL_SC_REG(type, r, reg) register type reg_##r __asm__("r" reg)
 
-#elif __GNUC__ && __i386__ && !__clang__
+#elif __GNUC__ && __i386__
 #define DECL_SC_REG(type, r, reg) register type reg_##r __asm__("e" reg)
 
 #else
@@ -40,7 +40,7 @@ vm_exec_core(rb_thread_t *th, VALUE initial)
 
 #if OPT_STACK_CACHING
 #if 0
-#elif __GNUC__ && __x86_64
+#elif __GNUC__ && __x86_64 && !__clang__
     DECL_SC_REG(VALUE, a, "12");
     DECL_SC_REG(VALUE, b, "13");
 #else
@@ -49,12 +49,12 @@ vm_exec_core(rb_thread_t *th, VALUE initial)
 #endif
 #endif
 
-#if __GNUC__ && __i386__
+#if __GNUC__ && __i386__ && !__clang__
     DECL_SC_REG(VALUE *, pc, "di");
     DECL_SC_REG(rb_control_frame_t *, cfp, "si");
 #define USE_MACHINE_REGS 1
 
-#elif __GNUC__ && __x86_64__
+#elif __GNUC__ && __x86_64__ && !__clang__
     DECL_SC_REG(VALUE *, pc, "14");
     DECL_SC_REG(rb_control_frame_t *, cfp, "15");
 #define USE_MACHINE_REGS 1

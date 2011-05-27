@@ -2,13 +2,14 @@
 
   vm.c -
 
-  $Author: yugui $
+  $Author: kazu $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
 **********************************************************************/
 
 #include "ruby/ruby.h"
+#include "ruby/vm.h"
 #include "ruby/st.h"
 #include "ruby/encoding.h"
 
@@ -172,6 +173,27 @@ vm_get_ruby_level_caller_cfp(rb_thread_t *th, rb_control_frame_t *cfp)
     return 0;
 }
 
+/* at exit */
+
+void
+ruby_vm_at_exit(void (*func)(rb_vm_t *))
+{
+    rb_ary_push((VALUE)&GET_VM()->at_exit, (VALUE)func);
+}
+
+static void
+ruby_vm_run_at_exit_hooks(rb_vm_t *vm)
+{
+    VALUE hook = (VALUE)&vm->at_exit;
+
+    while (RARRAY_LEN(hook) > 0) {
+	typedef void rb_vm_at_exit_func(rb_vm_t*);
+	rb_vm_at_exit_func *func = (rb_vm_at_exit_func*)rb_ary_pop(hook);
+	(*func)(vm);
+    }
+    rb_ary_free(hook);
+}
+
 /* Env */
 
 /*
@@ -221,7 +243,7 @@ env_free(void * const ptr)
 {
     RUBY_FREE_ENTER("env");
     if (ptr) {
-	const rb_env_t * const env = ptr;
+	rb_env_t *const env = ptr;
 	RUBY_FREE_UNLESS_NULL(env->env);
 	ruby_xfree(ptr);
     }
@@ -244,7 +266,7 @@ env_memsize(const void *ptr)
 
 static const rb_data_type_t env_data_type = {
     "VM/env",
-    env_mark, env_free, env_memsize,
+    {env_mark, env_free, env_memsize,},
 };
 
 static VALUE
@@ -453,16 +475,10 @@ rb_vm_stack_to_heap(rb_thread_t * const th)
 static VALUE
 vm_make_proc_from_block(rb_thread_t *th, rb_block_t *block)
 {
-    VALUE proc = block->proc;
-
-    if (block->proc) {
-	return block->proc;
+    if (!block->proc) {
+	block->proc = rb_vm_make_proc(th, block, rb_cProc);
     }
-
-    proc = rb_vm_make_proc(th, block, rb_cProc);
-    block->proc = proc;
-
-    return proc;
+    return block->proc;
 }
 
 VALUE
@@ -477,14 +493,14 @@ rb_vm_make_proc(rb_thread_t *th, const rb_block_t *block, VALUE klass)
     }
 
     if (GC_GUARDED_PTR_REF(cfp->lfp[0])) {
-	    rb_proc_t *p;
+	rb_proc_t *p;
 
-	    blockprocval = vm_make_proc_from_block(
-		th, (rb_block_t *)GC_GUARDED_PTR_REF(*cfp->lfp));
+	blockprocval = vm_make_proc_from_block(
+	    th, (rb_block_t *)GC_GUARDED_PTR_REF(*cfp->lfp));
 
-	    GetProcPtr(blockprocval, p);
-	    *cfp->lfp = GC_GUARDED_PTR(&p->block);
-	}
+	GetProcPtr(blockprocval, p);
+	*cfp->lfp = GC_GUARDED_PTR(&p->block);
+    }
 
     envval = rb_vm_make_env_object(th, cfp);
 
@@ -954,7 +970,7 @@ static st_table *vm_opt_method_table = 0;
 static void
 rb_vm_check_redefinition_opt_method(const rb_method_entry_t *me)
 {
-    VALUE bop;
+    st_data_t bop;
     if (!me->def || me->def->type == VM_METHOD_TYPE_CFUNC) {
 	if (st_lookup(vm_opt_method_table, (st_data_t)me, &bop)) {
 	    ruby_vm_redefined_flag[bop] = 1;
@@ -1443,7 +1459,7 @@ rb_thread_current_status(const rb_thread_t *th)
     }
     else if (cfp->me->def->original_id) {
 	str = rb_sprintf("`%s#%s' (cfunc)",
-			 RSTRING_PTR(rb_class_name(cfp->me->klass)),
+			 rb_class2name(cfp->me->klass),
 			 rb_id2name(cfp->me->def->original_id));
     }
 
@@ -1452,11 +1468,11 @@ rb_thread_current_status(const rb_thread_t *th)
 
 VALUE
 rb_vm_call_cfunc(VALUE recv, VALUE (*func)(VALUE), VALUE arg,
-		 const rb_block_t *blockptr, VALUE filename, VALUE filepath)
+		 const rb_block_t *blockptr, VALUE filename)
 {
     rb_thread_t *th = GET_THREAD();
     const rb_control_frame_t *reg_cfp = th->cfp;
-    volatile VALUE iseqval = rb_iseq_new(0, filename, filename, filepath, 0, ISEQ_TYPE_TOP);
+    volatile VALUE iseqval = rb_iseq_new(0, filename, filename, Qnil, 0, ISEQ_TYPE_TOP);
     VALUE val;
 
     vm_push_frame(th, DATA_PTR(iseqval), VM_FRAME_MAGIC_TOP,
@@ -1525,11 +1541,10 @@ rb_vm_mark(void *ptr)
 #define vm_free 0
 
 int
-ruby_vm_destruct(void *ptr)
+ruby_vm_destruct(rb_vm_t *vm)
 {
     RUBY_FREE_ENTER("vm");
-    if (ptr) {
-	rb_vm_t *vm = ptr;
+    if (vm) {
 	rb_thread_t *th = vm->main_thread;
 #if defined(ENABLE_VM_OBJSPACE) && ENABLE_VM_OBJSPACE
 	struct rb_objspace *objspace = vm->objspace;
@@ -1543,15 +1558,15 @@ ruby_vm_destruct(void *ptr)
 	    st_free_table(vm->living_threads);
 	    vm->living_threads = 0;
 	}
-	rb_thread_lock_unlock(&vm->global_vm_lock);
-	rb_thread_lock_destroy(&vm->global_vm_lock);
-	ruby_xfree(vm);
-	ruby_current_vm = 0;
 #if defined(ENABLE_VM_OBJSPACE) && ENABLE_VM_OBJSPACE
 	if (objspace) {
 	    rb_objspace_free(objspace);
 	}
 #endif
+	ruby_vm_run_at_exit_hooks(vm);
+	rb_vm_gvl_destroy(vm);
+	ruby_xfree(vm);
+	ruby_current_vm = 0;
     }
     RUBY_FREE_LEAVE("vm");
     return 0;
@@ -1571,7 +1586,7 @@ vm_memsize(const void *ptr)
 
 static const rb_data_type_t vm_data_type = {
     "VM",
-    rb_vm_mark, vm_free, vm_memsize,
+    {rb_vm_mark, vm_free, vm_memsize,},
 };
 
 static void
@@ -1579,6 +1594,8 @@ vm_init2(rb_vm_t *vm)
 {
     MEMZERO(vm, rb_vm_t, 1);
     vm->src_encoding_index = -1;
+    vm->at_exit.basic.flags = (T_ARRAY | RARRAY_EMBED_FLAG) & ~RARRAY_EMBED_LEN_MASK; /* len set 0 */
+    vm->at_exit.basic.klass = 0;
 }
 
 /* Thread */
@@ -1706,27 +1723,15 @@ thread_free(void *ptr)
 	}
 
 	if (th->locking_mutex != Qfalse) {
-	    rb_bug("thread_free: locking_mutex must be NULL (%p:%ld)", (void *)th, th->locking_mutex);
+	    rb_bug("thread_free: locking_mutex must be NULL (%p:%p)", (void *)th, (void *)th->locking_mutex);
 	}
 	if (th->keeping_mutexes != NULL) {
-	    rb_bug("thread_free: keeping_mutexes must be NULL (%p:%p)", (void *)th, th->keeping_mutexes);
+	    rb_bug("thread_free: keeping_mutexes must be NULL (%p:%p)", (void *)th, (void *)th->keeping_mutexes);
 	}
 
 	if (th->local_storage) {
 	    st_free_table(th->local_storage);
 	}
-
-#if USE_VALUE_CACHE
-	{
-	    VALUE *ptr = th->value_cache_ptr;
-	    while (*ptr) {
-		VALUE v = *ptr;
-		RBASIC(v)->flags = 0;
-		RBASIC(v)->klass = 0;
-		ptr++;
-	    }
-	}
-#endif
 
 	if (th->vm && th->vm->main_thread == th) {
 	    RUBY_GC_INFO("main thread\n");
@@ -1739,6 +1744,8 @@ thread_free(void *ptr)
 #endif
 	    ruby_xfree(ptr);
 	}
+        if (ruby_current_thread == th)
+            ruby_current_thread = NULL;
     }
     RUBY_FREE_LEAVE("thread");
 }
@@ -1763,11 +1770,14 @@ thread_memsize(const void *ptr)
     }
 }
 
-static const rb_data_type_t thread_data_type = {
+#define thread_data_type ruby_thread_data_type
+const rb_data_type_t ruby_thread_data_type = {
     "VM/thread",
-    rb_thread_mark,
-    thread_free,
-    thread_memsize,
+    {
+	rb_thread_mark,
+	thread_free,
+	thread_memsize,
+    },
 };
 
 static VALUE
@@ -1785,7 +1795,7 @@ thread_alloc(VALUE klass)
 }
 
 static void
-th_init2(rb_thread_t *th, VALUE self)
+th_init(rb_thread_t *th, VALUE self)
 {
     th->self = self;
 
@@ -1801,16 +1811,7 @@ th_init2(rb_thread_t *th, VALUE self)
     th->status = THREAD_RUNNABLE;
     th->errinfo = Qnil;
     th->last_status = Qnil;
-
-#if USE_VALUE_CACHE
-    th->value_cache_ptr = &th->value_cache[0];
-#endif
-}
-
-static void
-th_init(rb_thread_t *th, VALUE self)
-{
-    th_init2(th, self);
+    th->waiting_fd = -1;
 }
 
 static VALUE
@@ -1836,6 +1837,8 @@ rb_thread_alloc(VALUE klass)
     return self;
 }
 
+VALUE rb_iseq_clone(VALUE iseqval, VALUE newcbase);
+
 static void
 vm_define_method(rb_thread_t *th, VALUE obj, ID id, VALUE iseqval,
 		 rb_num_t is_singleton, NODE *cref)
@@ -1844,6 +1847,12 @@ vm_define_method(rb_thread_t *th, VALUE obj, ID id, VALUE iseqval,
     int noex = (int)cref->nd_visi;
     rb_iseq_t *miseq;
     GetISeqPtr(iseqval, miseq);
+
+    if (miseq->klass) {
+	iseqval = rb_iseq_clone(iseqval, 0);
+	RB_GC_GUARD(iseqval);
+	GetISeqPtr(iseqval, miseq);
+    }
 
     if (NIL_P(klass)) {
 	rb_raise(rb_eTypeError, "no class/module to add method");
@@ -1856,16 +1865,14 @@ vm_define_method(rb_thread_t *th, VALUE obj, ID id, VALUE iseqval,
 		     rb_id2name(id), rb_obj_classname(obj));
 	}
 
-	if (OBJ_FROZEN(obj)) {
-	    rb_error_frozen("object");
-	}
-
+	rb_check_frozen(obj);
 	klass = rb_singleton_class(obj);
 	noex = NOEX_PUBLIC;
     }
 
     /* dup */
     COPY_CREF(miseq->cref_stack, cref);
+    miseq->cref_stack->nd_visi = NOEX_PUBLIC;
     miseq->klass = klass;
     miseq->defined_method_id = id;
     rb_add_method(klass, id, VM_METHOD_TYPE_ISEQ, miseq, noex);
@@ -2040,10 +2047,6 @@ Init_VM(void)
     rb_ary_push(opts, rb_str_new2("call threaded code"));
 #endif
 
-#if OPT_BASIC_OPERATIONS
-    rb_ary_push(opts, rb_str_new2("optimize basic operation"));
-#endif
-
 #if OPT_STACK_CACHING
     rb_ary_push(opts, rb_str_new2("stack caching"));
 #endif
@@ -2144,7 +2147,7 @@ Init_BareVM(void)
     ruby_current_vm = vm;
 
     Init_native_thread();
-    th_init2(th, 0);
+    th_init(th, 0);
     th->vm = vm;
     ruby_thread_init_stack(th);
 }

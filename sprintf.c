@@ -2,7 +2,7 @@
 
   sprintf.c -
 
-  $Author: yugui $
+  $Author: naruse $
   created at: Fri Oct 15 10:39:26 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -30,9 +30,7 @@ static void fmt_setup(char*,size_t,int,int,int,int);
 static char*
 remove_sign_bits(char *str, int base)
 {
-    char *s, *t;
-
-    s = t = str;
+    char *t = str;
 
     if (base == 16) {
 	while (*t == 'f') {
@@ -94,13 +92,13 @@ sign_bits(int base, const char *p)
 
 #define PUSH(s, l) do { \
     CHECK(l);\
-    memcpy(&buf[blen], s, l);\
+    memcpy(&buf[blen], (s), (l));\
     blen += (l);\
 } while (0)
 
 #define FILL(c, l) do { \
     CHECK(l);\
-    memset(&buf[blen], c, l);\
+    memset(&buf[blen], (c), (l));\
     blen += (l);\
 } while (0)
 
@@ -112,29 +110,29 @@ sign_bits(int base, const char *p)
     (posarg = nextarg++, GETNTHARG(posarg)))
 
 #define GETPOSARG(n) (posarg > 0 ? \
-    (rb_raise(rb_eArgError, "numbered(%d) after unnumbered(%d)", n, posarg), 0) : \
+    (rb_raise(rb_eArgError, "numbered(%d) after unnumbered(%d)", (n), posarg), 0) : \
     posarg == -2 ? \
-    (rb_raise(rb_eArgError, "numbered(%d) after named", n), 0) : \
-    ((n < 1) ? (rb_raise(rb_eArgError, "invalid index - %d$", n), 0) : \
+    (rb_raise(rb_eArgError, "numbered(%d) after named", (n)), 0) : \
+    (((n) < 1) ? (rb_raise(rb_eArgError, "invalid index - %d$", (n)), 0) : \
 	       (posarg = -1, GETNTHARG(n))))
 
 #define GETNTHARG(nth) \
-    ((nth >= argc) ? (rb_raise(rb_eArgError, "too few arguments"), 0) : argv[nth])
+    (((nth) >= argc) ? (rb_raise(rb_eArgError, "too few arguments"), 0) : argv[(nth)])
 
 #define GETNAMEARG(id, name, len) ( \
     posarg > 0 ? \
     (rb_raise(rb_eArgError, "named%.*s after unnumbered(%d)", (len), (name), posarg), 0) : \
     posarg == -1 ? \
     (rb_raise(rb_eArgError, "named%.*s after numbered", (len), (name)), 0) :	\
-    (posarg = -2, rb_hash_lookup2(get_hash(&hash, argc, argv), id, Qundef)))
+    (posarg = -2, rb_hash_lookup2(get_hash(&hash, argc, argv), (id), Qundef)))
 
 #define GETNUM(n, val) \
     for (; p < end && rb_enc_isdigit(*p, enc); p++) {	\
-	int next_n = 10 * n + (*p - '0'); \
-        if (next_n / 10 != n) {\
+	int next_n = 10 * (n) + (*p - '0'); \
+        if (next_n / 10 != (n)) {\
 	    rb_raise(rb_eArgError, #val " too big"); \
 	} \
-	n = next_n; \
+	(n) = next_n; \
     } \
     if (p >= end) { \
 	rb_raise(rb_eArgError, "malformed format string - %%*[0-9]"); \
@@ -143,7 +141,7 @@ sign_bits(int base, const char *p)
 #define GETASTER(val) do { \
     t = p++; \
     n = 0; \
-    GETNUM(n, val); \
+    GETNUM(n, (val)); \
     if (*p == '$') { \
 	tmp = GETPOSARG(n); \
     } \
@@ -151,7 +149,7 @@ sign_bits(int base, const char *p)
 	tmp = GETARG(); \
 	p = t; \
     } \
-    val = NUM2INT(tmp); \
+    (val) = NUM2INT(tmp); \
 } while (0)
 
 static VALUE
@@ -746,7 +744,7 @@ rb_str_format(int argc, const VALUE *argv, VALUE fmt)
 		char sc = 0;
 		long v = 0;
 		int base, bignum = 0;
-		int len, pos;
+		int len;
 
 		switch (*p) {
 		  case 'd':
@@ -910,7 +908,6 @@ rb_str_format(int argc, const VALUE *argv, VALUE fmt)
 		    len = rb_long2int(RSTRING_END(tmp) - s);
 		}
 
-		pos = -1;
 		if (dots) {
 		    prec -= 2;
 		    width -= 2;
@@ -1121,9 +1118,14 @@ fmt_setup(char *buf, size_t size, int c, int flags, int width, int prec)
 #  define quad_t LONG_LONG
 #  define u_quad_t unsigned LONG_LONG
 # endif
+#elif SIZEOF_LONG != SIZEOF_LONG_LONG && SIZEOF_LONG_LONG == 8
+# define _HAVE_SANE_QUAD_
+# define quad_t LONG_LONG
+# define u_quad_t unsigned LONG_LONG
 #endif
 #define FLOATING_POINT 1
 #define BSD__dtoa ruby_dtoa
+#define BSD__hdtoa ruby_hdtoa
 #include "vsnprintf.c"
 
 static int

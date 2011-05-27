@@ -65,6 +65,10 @@ class TestRDocRIStore < MiniTest::Unit::TestCase
     assert File.file?(path), "#{path} is not a file"
   end
 
+  def refute_file path
+    refute File.exist?(path), "#{path} exists"
+  end
+
   def test_attributes
     @s.cache[:attributes]['Object'] = %w[attr]
 
@@ -92,6 +96,14 @@ class TestRDocRIStore < MiniTest::Unit::TestCase
     assert_equal File.join(@tmpdir, 'Object'), @s.class_path('Object')
     assert_equal File.join(@tmpdir, 'Object', 'SubClass'),
                  @s.class_path('Object::SubClass')
+  end
+
+  def test_dry_run
+    refute @s.dry_run
+
+    @s.dry_run = true
+
+    assert @s.dry_run
   end
 
   def test_friendly_path
@@ -198,16 +210,31 @@ class TestRDocRIStore < MiniTest::Unit::TestCase
       :instance_methods => { 'Object' => %w[method] },
       :modules => %w[Object Object::SubClass],
       :ancestors => {
-        'Object'           => %w[Object],
+        'Object'           => %w[],
         'Object::SubClass' => %w[Incl Object],
       },
     }
+
+    expected[:ancestors]['Object'] = %w[BasicObject] if defined?(::BasicObject)
 
     open File.join(@tmpdir, 'cache.ri'), 'rb' do |io|
       cache = Marshal.load io.read
 
       assert_equal expected, cache
     end
+  end
+
+  def test_save_cache_dry_run
+    @s.dry_run = true
+
+    @s.save_class @klass
+    @s.save_method @klass, @meth
+    @s.save_method @klass, @cmeth
+    @s.save_class @nest_klass
+
+    @s.save_cache
+
+    refute_file File.join(@tmpdir, 'cache.ri')
   end
 
   def test_save_cache_duplicate_methods
@@ -225,8 +252,10 @@ class TestRDocRIStore < MiniTest::Unit::TestCase
     assert_directory File.join(@tmpdir, 'Object')
     assert_file File.join(@tmpdir, 'Object', 'cdesc-Object.ri')
 
+    object_ancestors = defined?(::BasicObject) ? %w[BasicObject] : []
+
     assert_cache({}, {}, { 'Object' => ['attr_accessor attr'] }, %w[Object],
-                 'Object' => %w[Object])
+                 'Object' => object_ancestors)
 
     assert_equal @klass, @s.load_class('Object')
   end
@@ -243,6 +272,15 @@ class TestRDocRIStore < MiniTest::Unit::TestCase
                  'Object' => %w[])
 
     assert_equal @klass, @s.load_class('Object')
+  end
+
+  def test_save_class_dry_run
+    @s.dry_run = true
+
+    @s.save_class @klass
+
+    refute_file File.join(@tmpdir, 'Object')
+    refute_file File.join(@tmpdir, 'Object', 'cdesc-Object.ri')
   end
 
   def test_save_class_merge
@@ -269,8 +307,10 @@ class TestRDocRIStore < MiniTest::Unit::TestCase
     assert_directory File.join(@tmpdir, 'Object')
     assert_file File.join(@tmpdir, 'Object', 'cdesc-Object.ri')
 
+    object_ancestors = defined?(::BasicObject) ? %w[BasicObject] : []
+
     assert_cache({}, {}, { 'Object' => ['attr_accessor attr'] }, %w[Object],
-                 'Object' => %w[Object])
+                 'Object' => object_ancestors)
 
     assert_equal @klass, @s.load_class('Object')
   end
@@ -294,6 +334,15 @@ class TestRDocRIStore < MiniTest::Unit::TestCase
     assert_cache({ 'Object' => %w[method] }, {}, {}, [])
 
     assert_equal @meth, @s.load_method('Object', '#method')
+  end
+
+  def test_save_method_dry_run
+    @s.dry_run = true
+
+    @s.save_method @klass, @meth
+
+    refute_file File.join(@tmpdir, 'Object')
+    refute_file File.join(@tmpdir, 'Object', 'method-i.ri')
   end
 
   def test_save_method_nested

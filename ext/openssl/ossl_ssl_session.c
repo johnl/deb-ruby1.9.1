@@ -5,15 +5,15 @@
 #include "ossl.h"
 
 #define GetSSLSession(obj, sess) do { \
-	Data_Get_Struct(obj, SSL_SESSION, sess); \
-	if (!sess) { \
+	Data_Get_Struct((obj), SSL_SESSION, (sess)); \
+	if (!(sess)) { \
 		ossl_raise(rb_eRuntimeError, "SSL Session wasn't initialized."); \
 	} \
 } while (0)
 
 #define SafeGetSSLSession(obj, sess) do { \
-	OSSL_Check_Kind(obj, cSSLSession); \
-	GetSSLSession(obj, sess); \
+	OSSL_Check_Kind((obj), cSSLSession); \
+	GetSSLSession((obj), (sess)); \
 } while (0)
 
 
@@ -205,7 +205,7 @@ static VALUE ossl_ssl_session_to_der(VALUE self)
 
 	if (len <= 0)
 		ossl_raise(eSSLSession, "i2d_SSL_SESSION");
-	else if (len >= sizeof(buf))
+	else if (len >= (int)sizeof(buf))
 		ossl_raise(eSSLSession, "i2d_SSL_SESSION too large");
 
 	return rb_str_new((const char *) p, len);
@@ -278,8 +278,8 @@ static VALUE ossl_ssl_session_to_text(VALUE self)
 
 void Init_ossl_ssl_session(void)
 {
-#if 0 /* let rdoc know about mOSSL */
-	mOSSL = rb_define_module("OpenSSL");
+#if 0
+	mOSSL = rb_define_module("OpenSSL"); /* let rdoc know about mOSSL */
 	mSSL = rb_define_module_under(mOSSL, "SSL");
 #endif
 	cSSLSession = rb_define_class_under(mSSL, "Session", rb_cObject);

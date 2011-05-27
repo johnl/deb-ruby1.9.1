@@ -141,7 +141,7 @@ class TestModule < Test::Unit::TestCase
       :bClass3
     end
   end
-  
+
   class CClass < BClass
     def self.cClass
     end
@@ -403,6 +403,11 @@ class TestModule < Test::Unit::TestCase
       p Module.constants - ary, Module.constants(true), Module.constants(false)
     INPUT
     assert_in_out_err([], src, %w([:M] [:WALTER] []), [])
+
+    klass = Class.new do
+      const_set(:X, 123)
+    end
+    assert_equal(false, klass.class_eval { Module.constants }.include?(:X))
   end
 
   module M1
@@ -919,5 +924,148 @@ class TestModule < Test::Unit::TestCase
     assert_raise(NoMethodError) do
       y.bar
     end
+  end
+
+  def test_uninitialized_toplevel_constant
+    bug3123 = '[ruby-dev:40951]'
+    e = assert_raise(NameError) {eval("Bug3123", TOPLEVEL_BINDING)}
+    assert_not_match(/Object::/, e.message, bug3123)
+  end
+
+  def test_attr_inherited_visibility
+    bug3406 = '[ruby-core:30638]'
+    c = Class.new do
+      class << self
+        private
+        def attr_accessor(*); super; end
+      end
+      attr_accessor :x
+    end.new
+    assert_nothing_raised(bug3406) {c.x = 1}
+    assert_equal(1, c.x, bug3406)
+  end
+
+  def test_private_constant
+    c = Class.new
+    c.const_set(:FOO, "foo")
+    assert_equal("foo", c::FOO)
+    c.private_constant(:FOO)
+    assert_raise(NameError) { c::FOO }
+    assert_equal("foo", c.class_eval("FOO"))
+    assert_equal("foo", c.const_get("FOO"))
+    $VERBOSE, verbose = nil, $VERBOSE
+    c.const_set(:FOO, "foo")
+    $VERBOSE = verbose
+    assert_raise(NameError) { c::FOO }
+  end
+
+  class PrivateClass
+  end
+  private_constant :PrivateClass
+
+  def test_define_module_under_private_constant
+    assert_raise(NameError) do
+      eval %q{class TestModule::PrivateClass; end}
+    end
+    assert_raise(NameError) do
+      eval %q{module TestModule::PrivateClass::TestModule; end}
+    end
+    eval %q{class PrivateClass; end}
+    eval %q{module PrivateClass::TestModule; end}
+    assert_instance_of(Module, PrivateClass::TestModule)
+    PrivateClass.class_eval { remove_const(:TestModule) }
+  end
+
+  def test_public_constant
+    c = Class.new
+    c.const_set(:FOO, "foo")
+    assert_equal("foo", c::FOO)
+    c.private_constant(:FOO)
+    assert_raise(NameError) { c::FOO }
+    assert_equal("foo", c.class_eval("FOO"))
+    c.public_constant(:FOO)
+    assert_equal("foo", c::FOO)
+  end
+
+  def test_constants_with_private_constant
+    assert(!(::TestModule).constants.include?(:PrivateClass))
+  end
+
+  def test_toplevel_private_constant
+    src = <<-INPUT
+      class Object
+        private_constant :Object
+      end
+      p Object
+      begin
+        p ::Object
+      rescue
+        p :ok
+      end
+    INPUT
+    assert_in_out_err([], src, %w(Object :ok), [])
+  end
+
+  def test_constant_lookup_in_method_defined_by_class_eval
+    src = <<-INPUT
+      class A
+        B = 42
+      end
+
+      A.class_eval do
+        def self.f
+          B
+        end
+
+        def f
+          B
+        end
+      end
+
+      begin
+        A.f
+      rescue NameError
+        puts "A.f"
+      end
+      begin
+        A.new.f
+      rescue NameError
+        puts "A.new.f"
+      end
+    INPUT
+    assert_in_out_err([], src, %w(A.f A.new.f), [])
+  end
+
+  def test_constant_lookup_in_toplevel_class_eval
+    src = <<-INPUT
+      module X
+        A = 123
+      end
+      begin
+        X.class_eval { A }
+      rescue NameError => e
+        puts e
+      end
+    INPUT
+    assert_in_out_err([], src, ["uninitialized constant A"], [])
+  end
+
+  def test_constant_lookup_in_module_in_class_eval
+    src = <<-INPUT
+      class A
+        B = 42
+      end
+
+      A.class_eval do
+        module C
+          begin
+            B
+          rescue NameError
+            puts "NameError"
+          end
+        end
+      end
+    INPUT
+    assert_in_out_err([], src, ["NameError"], [])
   end
 end

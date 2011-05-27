@@ -21,7 +21,7 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 #define NKF_VERSION "2.1.1"
-#define NKF_RELEASE_DATE "2010-04-28"
+#define NKF_RELEASE_DATE "2011-03-25"
 #define COPY_RIGHT \
     "Copyright (C) 1987, FUJITSU LTD. (I.Ichikawa).\n" \
     "Copyright (C) 1996-2010, The nkf Project."
@@ -821,7 +821,7 @@ nkf_buf_new(int length)
     buf->capa = length;
     buf->len = 0;
     return buf;
-} 
+}
 
 #if 0
 static void
@@ -3878,7 +3878,7 @@ static const unsigned char *mime_pattern[] = {
 
 /* 該当するコードの優先度を上げるための目印 */
 nkf_char (*mime_priority_func[])(nkf_char c2, nkf_char c1, nkf_char c0) = {
-    e_iconv, s_iconv, 0, 0, 0, 0,
+    e_iconv, s_iconv, 0, 0, 0, 0, 0,
 #if defined(UTF8_INPUT_ENABLE)
     w_iconv, w_iconv,
 #endif
@@ -4259,7 +4259,7 @@ numchar_getc(FILE *f)
     nkf_char (*u)(nkf_char c ,FILE *f) = i_nungetc;
     int i = 0, j;
     nkf_char buf[12];
-    long c = -1;
+    nkf_char c = -1;
 
     buf[i] = (*g)(f);
     if (buf[i] == '&'){
@@ -4635,7 +4635,7 @@ static const char basis_64[] =
 
 #define MIMEOUT_BUF_LENGTH 74
 static struct {
-    char buf[MIMEOUT_BUF_LENGTH+1];
+    unsigned char buf[MIMEOUT_BUF_LENGTH+1];
     int count;
 } mimeout_state;
 
@@ -4947,7 +4947,7 @@ mime_putc(nkf_char c)
 		    i = 0;
 
 		    for (; i < mimeout_state.count - len; ++i) {
-			if (!strncmp(mimeout_state.buf+i, str, len)) {
+			if (!strncmp((char *)(mimeout_state.buf+i), str, len)) {
 			    i += len - 2;
 			    break;
 			}
@@ -5874,7 +5874,7 @@ finished:
 
 /*
  * int options(unsigned char *cp)
- * 
+ *
  * return values:
  *    0: success
  *   -1: ArgumentError

@@ -225,6 +225,10 @@
 
 #include "regenc.h"
 
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility push(default)
+#endif
+
 #ifdef MIN
 #undef MIN
 #endif
@@ -399,7 +403,7 @@ typedef struct _BBuf {
 } while (0)
 
 #define BBUF_WRITE(buf,pos,bytes,n) do{\
-  int used = (pos) + (n);\
+  int used = (pos) + (int)(n);\
   if ((buf)->alloc < (unsigned int )used) BBUF_EXPAND((buf),used);\
   xmemcpy((buf)->p + (pos), (bytes), (n));\
   if ((buf)->used < (unsigned int )used) (buf)->used = used;\
@@ -782,7 +786,7 @@ typedef struct {
 
 typedef struct {
   short int opcode;
-  char*     name;
+  const char* name;
   short int arg_type;
 } OnigOpInfoType;
 
@@ -798,7 +802,7 @@ extern void onig_print_statistics P_((FILE* f));
 
 extern UChar* onig_error_code_to_format P_((int code));
 extern void  onig_snprintf_with_pattern PV_((UChar buf[], int bufsize, OnigEncoding enc, UChar* pat, UChar* pat_end, const UChar *fmt, ...));
-extern int  onig_bbuf_init P_((BBuf* buf, int size));
+extern int  onig_bbuf_init P_((BBuf* buf, OnigDistance size));
 extern int  onig_compile P_((regex_t* reg, const UChar* pattern, const UChar* pattern_end, OnigErrorInfo* einfo, const char *sourcefile, int sourceline));
 extern void onig_chain_reduce P_((regex_t* reg));
 extern void onig_chain_link_add P_((regex_t* to, regex_t* add));
@@ -837,5 +841,11 @@ extern int onigenc_property_list_add_property P_((UChar* name, const OnigCodePoi
 typedef int (*ONIGENC_INIT_PROPERTY_LIST_FUNC_TYPE)(void);
 
 extern int onigenc_property_list_init P_((ONIGENC_INIT_PROPERTY_LIST_FUNC_TYPE));
+
+extern size_t onig_memsize P_((const regex_t *reg));
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility pop
+#endif
 
 #endif /* ONIGURUMA_REGINT_H */

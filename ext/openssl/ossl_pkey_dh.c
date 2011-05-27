@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey_dh.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_pkey_dh.c 31244 2011-04-06 06:14:05Z naruse $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -13,8 +13,8 @@
 #include "ossl.h"
 
 #define GetPKeyDH(obj, pkey) do { \
-    GetPKey(obj, pkey); \
-    if (EVP_PKEY_type(pkey->type) != EVP_PKEY_DH) { /* PARANOIA? */ \
+    GetPKey((obj), (pkey)); \
+    if (EVP_PKEY_type((pkey)->type) != EVP_PKEY_DH) { /* PARANOIA? */ \
 	ossl_raise(rb_eRuntimeError, "THIS IS NOT A DH!") ; \
     } \
 } while (0)
@@ -170,10 +170,14 @@ ossl_dh_initialize(int argc, VALUE *argv, VALUE self)
 	dh = PEM_read_bio_DHparams(in, NULL, NULL, NULL);
 	if (!dh){
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dh = d2i_DHparams_bio(in, NULL);
 	}
 	BIO_free(in);
-	if (!dh) ossl_raise(eDHError, NULL);
+	if (!dh) {
+	    (void)ERR_get_error();
+	    ossl_raise(eDHError, NULL);
+	}
     }
     if (!EVP_PKEY_assign_DH(pkey, dh)) {
 	DH_free(dh);
@@ -473,8 +477,8 @@ ossl_create_dh(unsigned char *p, size_t plen, unsigned char *g, size_t glen)
     DH *dh;
 
     if ((dh = DH_new()) == NULL) ossl_raise(eDHError, NULL);
-    dh->p = BN_bin2bn(p, plen, NULL);
-    dh->g = BN_bin2bn(g, glen, NULL);
+    dh->p = BN_bin2bn(p, rb_long2int(plen), NULL);
+    dh->g = BN_bin2bn(g, rb_long2int(glen), NULL);
     if (dh->p == NULL || dh->g == NULL){
         DH_free(dh);
 	ossl_raise(eDHError, NULL);
@@ -489,8 +493,8 @@ ossl_create_dh(unsigned char *p, size_t plen, unsigned char *g, size_t glen)
 void
 Init_ossl_dh()
 {
-#if 0 /* let rdoc know about mOSSL and mPKey */
-    mOSSL = rb_define_module("OpenSSL");
+#if 0
+    mOSSL = rb_define_module("OpenSSL"); /* let rdoc know about mOSSL and mPKey */
     mPKey = rb_define_module_under(mOSSL, "PKey");
 #endif
 

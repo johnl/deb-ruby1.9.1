@@ -1,5 +1,5 @@
 /*
-  complex.c: Coded by Tadayoshi Funaba 2008,2009
+  complex.c: Coded by Tadayoshi Funaba 2008-2011
 
   This implementation is based on Keiju Ishitsuka's Complex library
   which is written in ruby.
@@ -28,7 +28,7 @@ static ID id_abs, id_abs2, id_arg, id_cmp, id_conj, id_convert,
 inline static VALUE \
 f_##n(VALUE x, VALUE y)\
 {\
-    return rb_funcall(x, op, 1, y);\
+    return rb_funcall(x, (op), 1, y);\
 }
 
 #define fun1(n) \
@@ -162,8 +162,21 @@ fun1(numerator)
 fun1(real)
 fun1(real_p)
 
-fun1(to_f)
-fun1(to_i)
+inline static VALUE
+f_to_i(VALUE x)
+{
+    if (TYPE(x) == T_STRING)
+	return rb_str_to_inum(x, 10, 0);
+    return rb_funcall(x, id_to_i, 0);
+}
+inline static VALUE
+f_to_f(VALUE x)
+{
+    if (TYPE(x) == T_STRING)
+	return DBL2NUM(rb_str_to_dbl(x, 0));
+    return rb_funcall(x, id_to_f, 0);
+}
+
 fun1(to_r)
 fun1(to_s)
 
@@ -359,7 +372,7 @@ f_complex_new_bang2(VALUE klass, VALUE x, VALUE y)
 #ifdef CANON
 static int canonicalization = 0;
 
-void
+RUBY_FUNC_EXPORTED void
 nucomp_canonicalization(int f)
 {
     canonicalization = f;
@@ -493,7 +506,7 @@ imp1(cosh)
 imp1(exp)
 imp2(hypot)
 
-#define m_hypot(x,y) m_hypot_bang(x,y)
+#define m_hypot(x,y) m_hypot_bang((x),(y))
 
 extern VALUE rb_math_log(int argc, VALUE *argv);
 
@@ -576,6 +589,11 @@ f_complex_polar(VALUE klass, VALUE x, VALUE y)
  *    Complex.polar(abs[, arg])  ->  complex
  *
  * Returns a complex object which denotes the given polar form.
+ *
+ *   Complex.polar(3, 0)           #=> (3.0+0.0i)
+ *   Complex.polar(3, Math::PI/2)  #=> (1.836909530733566e-16+3.0i)
+ *   Complex.polar(3, Math::PI)    #=> (-3.0+3.673819061467132e-16i)
+ *   Complex.polar(3, -Math::PI/2) #=> (1.836909530733566e-16-3.0i)
  */
 static VALUE
 nucomp_s_polar(int argc, VALUE *argv, VALUE klass)
@@ -824,7 +842,7 @@ f_reciprocal(VALUE x)
 static VALUE
 nucomp_expt(VALUE self, VALUE other)
 {
-    if (k_exact_zero_p(other))
+    if (k_numeric_p(other) && k_exact_zero_p(other))
 	return f_complex_new_bang1(CLASS_OF(self), ONE);
 
     if (k_rational_p(other) && f_one_p(f_denominator(other)))
@@ -985,6 +1003,9 @@ nucomp_abs2(VALUE self)
  *    cmp.phase  ->  float
  *
  * Returns the angle part of its polar form.
+ *
+ *   Complex.polar(3, Math::PI/2).arg #=> 1.5707963267948966
+ *
  */
 static VALUE
 nucomp_arg(VALUE self)
@@ -1077,7 +1098,7 @@ extern VALUE rb_lcm(VALUE x, VALUE y);
  * call-seq:
  *    cmp.denominator  ->  integer
  *
- * Returns the denominator (lcm of both denominator, real and imag).
+ * Returns the denominator (lcm of both denominator - real and imag).
  *
  * See numerator.
  */
@@ -1422,25 +1443,16 @@ make_patterns(void)
 }
 
 #define id_match rb_intern("match")
-#define f_match(x,y) rb_funcall(x, id_match, 1, y)
+#define f_match(x,y) rb_funcall((x), id_match, 1, (y))
 
 #define id_aref rb_intern("[]")
-#define f_aref(x,y) rb_funcall(x, id_aref, 1, y)
+#define f_aref(x,y) rb_funcall((x), id_aref, 1, (y))
 
 #define id_post_match rb_intern("post_match")
-#define f_post_match(x) rb_funcall(x, id_post_match, 0)
-
-#define id_split rb_intern("split")
-#define f_split(x,y) rb_funcall(x, id_split, 1, y)
-
-#define id_include_p rb_intern("include?")
-#define f_include_p(x,y) rb_funcall(x, id_include_p, 1, y)
-
-#define id_count rb_intern("count")
-#define f_count(x,y) rb_funcall(x, id_count, 1, y)
+#define f_post_match(x) rb_funcall((x), id_post_match, 0)
 
 #define id_gsub_bang rb_intern("gsub!")
-#define f_gsub_bang(x,y,z) rb_funcall(x, id_gsub_bang, 2, y, z)
+#define f_gsub_bang(x,y,z) rb_funcall((x), id_gsub_bang, 2, (y), (z))
 
 static VALUE
 string_to_c_internal(VALUE self)
@@ -1504,17 +1516,17 @@ string_to_c_internal(VALUE self)
 	r = INT2FIX(0);
 	i = INT2FIX(0);
 	if (!NIL_P(sr)) {
-	    if (f_include_p(sr, a_slash))
+	    if (strchr(RSTRING_PTR(sr), '/'))
 		r = f_to_r(sr);
-	    else if (f_gt_p(f_count(sr, a_dot_and_an_e), INT2FIX(0)))
+	    else if (strpbrk(RSTRING_PTR(sr), ".eE"))
 		r = f_to_f(sr);
 	    else
 		r = f_to_i(sr);
 	}
 	if (!NIL_P(si)) {
-	    if (f_include_p(si, a_slash))
+	    if (strchr(RSTRING_PTR(si), '/'))
 		i = f_to_r(si);
-	    else if (f_gt_p(f_count(si, a_dot_and_an_e), INT2FIX(0)))
+	    else if (strpbrk(RSTRING_PTR(si), ".eE"))
 		i = f_to_f(si);
 	    else
 		i = f_to_i(si);
@@ -1539,7 +1551,7 @@ string_to_c_strict(VALUE self)
 }
 
 #define id_gsub rb_intern("gsub")
-#define f_gsub(x,y,z) rb_funcall(x, id_gsub, 2, y, z)
+#define f_gsub(x,y,z) rb_funcall((x), id_gsub, 2, (y), (z))
 
 /*
  * call-seq:
@@ -1646,7 +1658,7 @@ nucomp_s_convert(int argc, VALUE *argv, VALUE klass)
     if (argc == 1) {
 	if (k_numeric_p(a1) && !f_real_p(a1))
 	    return a1;
-	/* expect raise exception for consistency */
+	/* should raise exception for consistency */
 	if (!k_numeric_p(a1))
 	    return rb_convert_type(a1, T_COMPLEX, "Complex", "to_c");
     }

@@ -277,19 +277,16 @@ class Delegator < BasicObject
   # Untaint both the object returned by \_\_getobj\_\_ and self.
   #
 
-  [:trust, :untrust, :taint, :untaint].each do |method|
+  ##
+  # :method: freeze
+  # Freeze both the object returned by \_\_getobj\_\_ and self.
+  #
+
+  [:trust, :untrust, :taint, :untaint, :freeze].each do |method|
     define_method method do
       __getobj__.send(method)
       super()
     end
-  end
-
-  #
-  # Freeze self and target at once.
-  #
-  def freeze
-    __getobj__.freeze
-    super
   end
 
   @delegator_api = self.public_instance_methods
@@ -408,7 +405,7 @@ if __FILE__ == $0
   foo2 = SimpleDelegator.new(foo)
   p foo2
   foo2.instance_eval{print "foo\n"}
-  p foo.test == foo2.test	# => true
+  p foo.test == foo2.test       # => true
   p foo2.iter{[55,true]}        # => true
-  foo2.error			# raise error!
+  foo2.error                    # raise error!
 end

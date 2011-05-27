@@ -11,7 +11,7 @@
 # modify this program under the same terms as Ruby itself,
 # Ruby Distribute License or GNU General Public License.
 #
-# $Id: protocol.rb 25189 2009-10-02 12:04:37Z akr $
+# $Id: protocol.rb 30473 2011-01-06 00:24:45Z tenderlove $
 #++
 #
 # WARNING: This file is going to remove.
@@ -60,6 +60,10 @@ module Net # :nodoc:
 
     def inspect
       "#<#{self.class} io=#{@io}>"
+    end
+
+    def eof?
+      @io.eof?
     end
 
     def closed?
@@ -167,6 +171,8 @@ module Net # :nodoc:
         write0 str
       }
     end
+
+    alias << write
 
     def writeline(str)
       writing {
