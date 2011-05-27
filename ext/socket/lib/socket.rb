@@ -29,7 +29,13 @@ class Addrinfo
     end
   end
 
-  def connect_internal(local_addrinfo)
+  # creates a new Socket connected to the address of +local_addrinfo+.
+  #
+  # If no arguments are given, the address of the socket is not bound.
+  #
+  # If a block is given the created socket is yielded for each address.
+  #
+  def connect_internal(local_addrinfo) # :yields: socket
     sock = Socket.new(self.pfamily, self.socktype, self.protocol)
     begin
       sock.ipv6only! if self.ipv6?
@@ -577,7 +583,7 @@ class Socket < BasicSocket
   def self.udp_server_recv(sockets)
     sockets.each {|r|
       begin
-        msg, sender_addrinfo, rflags, *controls = r.recvmsg_nonblock
+        msg, sender_addrinfo, _, *controls = r.recvmsg_nonblock
       rescue IO::WaitReadable
         next
       end

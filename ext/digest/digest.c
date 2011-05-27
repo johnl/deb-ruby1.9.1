@@ -2,14 +2,14 @@
 
   digest.c -
 
-  $Author: knu $
+  $Author: nobu $
   created at: Fri May 25 08:57:27 JST 2001
 
   Copyright (C) 1995-2001 Yukihiro Matsumoto
   Copyright (C) 2001-2006 Akinori MUSHA
 
   $RoughId: digest.c,v 1.16 2001/07/13 15:38:27 knu Exp $
-  $Id: digest.c 26339 2010-01-17 19:12:10Z knu $
+  $Id: digest.c 31627 2011-05-18 13:41:54Z nobu $
 
 ************************************************/
 
@@ -415,6 +415,13 @@ rb_digest_class_s_hexdigest(int argc, VALUE *argv, VALUE klass)
     return hexencode_str_new(rb_funcall2(klass, id_digest, argc, argv));
 }
 
+/* :nodoc: */
+static VALUE
+rb_digest_class_init(VALUE self)
+{
+    return self;
+}
+
 /*
  * Document-class: Digest::Base
  *
@@ -429,14 +436,14 @@ get_digest_base_metadata(VALUE klass)
     VALUE obj;
     rb_digest_metadata_t *algo;
 
-    for (p = klass; p; p = RCLASS_SUPER(p)) {
+    for (p = klass; !NIL_P(p); p = rb_class_superclass(p)) {
         if (rb_ivar_defined(p, id_metadata)) {
             obj = rb_ivar_get(p, id_metadata);
             break;
         }
     }
 
-    if (!p)
+    if (NIL_P(p))
         rb_raise(rb_eRuntimeError, "Digest::Base cannot be directly inherited in Ruby");
 
     Data_Get_Struct(obj, rb_digest_metadata_t, algo);
@@ -622,6 +629,7 @@ Init_digest(void)
      * class Digest::Class
      */
     rb_cDigest_Class = rb_define_class_under(rb_mDigest, "Class", rb_cObject);
+    rb_define_method(rb_cDigest_Class, "initialize",  rb_digest_class_init, 0);
     rb_include_module(rb_cDigest_Class, rb_mDigest_Instance);
 
     /* class methods */

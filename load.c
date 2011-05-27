@@ -9,12 +9,12 @@
 
 VALUE ruby_dln_librefs;
 
-#define IS_RBEXT(e) (strcmp(e, ".rb") == 0)
-#define IS_SOEXT(e) (strcmp(e, ".so") == 0 || strcmp(e, ".o") == 0)
+#define IS_RBEXT(e) (strcmp((e), ".rb") == 0)
+#define IS_SOEXT(e) (strcmp((e), ".so") == 0 || strcmp((e), ".o") == 0)
 #ifdef DLEXT2
-#define IS_DLEXT(e) (strcmp(e, DLEXT) == 0 || strcmp(e, DLEXT2) == 0)
+#define IS_DLEXT(e) (strcmp((e), DLEXT) == 0 || strcmp((e), DLEXT2) == 0)
 #else
-#define IS_DLEXT(e) (strcmp(e, DLEXT) == 0)
+#define IS_DLEXT(e) (strcmp((e), DLEXT) == 0)
 #endif
 
 
@@ -40,14 +40,6 @@ rb_get_expanded_load_path(void)
     VALUE ary;
     long i;
 
-    for (i = 0; i < RARRAY_LEN(load_path); ++i) {
-	VALUE str = rb_check_string_type(RARRAY_PTR(load_path)[i]);
-	if (NIL_P(str) || !rb_is_absolute_path(RSTRING_PTR(str)))
-	    goto relative_path_found;
-    }
-    return load_path;
-
-  relative_path_found:
     ary = rb_ary_new2(RARRAY_LEN(load_path));
     for (i = 0; i < RARRAY_LEN(load_path); ++i) {
 	VALUE path = rb_file_expand_path(RARRAY_PTR(load_path)[i], Qnil);
@@ -250,6 +242,10 @@ rb_feature_provided(const char *feature, const char **loading)
 static void
 rb_provide_feature(VALUE feature)
 {
+    if (OBJ_FROZEN(get_loaded_features())) {
+	rb_raise(rb_eRuntimeError,
+		 "$LOADED_FEATURES is frozen; cannot append feature");
+    }
     rb_ary_push(get_loaded_features(), feature);
 }
 
@@ -260,6 +256,7 @@ rb_provide(const char *feature)
 }
 
 NORETURN(static void load_failed(VALUE));
+VALUE rb_realpath_internal(VALUE basedir, VALUE path, int strict);
 
 static void
 rb_load_internal(VALUE fname, int wrap)
@@ -297,7 +294,7 @@ rb_load_internal(VALUE fname, int wrap)
 	th->mild_compile_error++;
 	node = (NODE *)rb_load_file(RSTRING_PTR(fname));
 	loaded = TRUE;
-	iseq = rb_iseq_new_top(node, rb_str_new2("<top (required)>"), fname, fname, Qfalse);
+	iseq = rb_iseq_new_top(node, rb_str_new2("<top (required)>"), fname, rb_realpath_internal(Qnil, fname, 1), Qfalse);
 	th->mild_compile_error--;
 	rb_iseq_eval(iseq);
     }
@@ -448,6 +445,14 @@ rb_f_require(VALUE obj, VALUE fname)
     return rb_require_safe(fname, rb_safe_level());
 }
 
+/*
+ * call-seq:
+ *   require_relative(string) -> true or false
+ *
+ * Ruby tries to load the library named _string_ relative to the requiring
+ * file's path.  If the file's path cannot be determined a LoadError is raised.
+ * If a file is loaded +true+ is returned and false otherwise.
+ */
 VALUE
 rb_f_require_relative(VALUE obj, VALUE fname)
 {
@@ -550,7 +555,7 @@ search_required(VALUE fname, volatile VALUE *path, int safe_level)
 static void
 load_failed(VALUE fname)
 {
-    VALUE mesg = rb_str_buf_new_cstr("no such file to load -- ");
+    VALUE mesg = rb_str_buf_new_cstr("cannot load such file -- ");
     rb_str_append(mesg, fname);	/* should be ASCII compatible */
     rb_exc_raise(rb_exc_new3(rb_eLoadError, mesg));
 }
@@ -597,7 +602,7 @@ rb_require_safe(VALUE fname, int safe)
 
 		  case 's':
 		    handle = (long)rb_vm_call_cfunc(rb_vm_top_self(), load_ext,
-						    path, 0, path, path);
+						    path, 0, path);
 		    rb_ary_push(ruby_dln_librefs, LONG2NUM(handle));
 		    break;
 		}
@@ -639,12 +644,12 @@ init_ext_call(VALUE arg)
     return Qnil;
 }
 
-void
+RUBY_FUNC_EXPORTED void
 ruby_init_ext(const char *name, void (*init)(void))
 {
     if (load_lock(name)) {
 	rb_vm_call_cfunc(rb_vm_top_self(), init_ext_call, (VALUE)init,
-			 0, rb_str_new2(name), Qnil);
+			 0, rb_str_new2(name));
 	rb_provide(name);
 	load_unlock(name, 1);
     }
@@ -740,7 +745,7 @@ void
 Init_load()
 {
 #undef rb_intern
-#define rb_intern(str) rb_intern2(str, strlen(str))
+#define rb_intern(str) rb_intern2((str), strlen(str))
     rb_vm_t *vm = GET_VM();
     static const char var_load_path[] = "$:";
     ID id_load_path = rb_intern2(var_load_path, sizeof(var_load_path)-1);

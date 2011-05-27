@@ -1,7 +1,7 @@
 /* $RoughId: sha1init.c,v 1.2 2001/07/13 19:49:10 knu Exp $ */
-/* $Id: sha1init.c 28341 2010-06-16 09:38:14Z knu $ */
+/* $Id: sha1init.c 27437 2010-04-22 08:04:13Z nobu $ */
 
-#include "../digest.h"
+#include "digest.h"
 #if defined(HAVE_OPENSSL_SHA_H)
 #include "sha1ossl.h"
 #else

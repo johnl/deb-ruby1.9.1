@@ -2,7 +2,7 @@
 
   main.c -
 
-  $Author: akr $
+  $Author: shyouhei $
   created at: Fri Aug 19 13:19:58 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -14,6 +14,9 @@
 #include "debug.h"
 #ifdef HAVE_LOCALE_H
 #include <locale.h>
+#endif
+#ifdef RUBY_DEBUG_ENV
+#include <stdlib.h>
 #endif
 
 RUBY_GLOBAL_SETUP

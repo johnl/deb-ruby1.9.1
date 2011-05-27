@@ -2,7 +2,7 @@
 
   object.c -
 
-  $Author: yugui $
+  $Author: nobu $
   created at: Thu Jul 15 12:01:24 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -19,6 +19,8 @@
 #include <ctype.h>
 #include <math.h>
 #include <float.h>
+#include "constant.h"
+#include "internal.h"
 
 VALUE rb_cBasicObject;
 VALUE rb_mKernel;
@@ -96,6 +98,16 @@ rb_obj_equal(VALUE obj1, VALUE obj2)
     return Qfalse;
 }
 
+/*
+ * Generates a <code>Fixnum</code> hash value for this object.
+ * This function must have the property that a.eql?(b) implies
+ * a.hash <code>==</code> b.hash.
+ * The hash value is used by class <code>Hash</code>.
+ * Any hash value that exceeds the capacity of a <code>Fixnum</code> will be
+ * truncated before being used.
+ *
+ *      "waffle".hash #=> -910576647
+ */
 VALUE
 rb_obj_hash(VALUE obj)
 {
@@ -221,6 +233,10 @@ init_copy(VALUE dest, VALUE obj)
 	    st_free_table(RCLASS_IV_TBL(dest));
 	    RCLASS_IV_TBL(dest) = 0;
 	}
+	if (RCLASS_CONST_TBL(dest)) {
+	    rb_free_const_table(RCLASS_CONST_TBL(dest));
+	    RCLASS_CONST_TBL(dest) = 0;
+	}
 	if (RCLASS_IV_TBL(obj)) {
 	    RCLASS_IV_TBL(dest) = st_copy(RCLASS_IV_TBL(obj));
 	}
@@ -262,7 +278,7 @@ rb_obj_clone(VALUE obj)
     }
     clone = rb_obj_alloc(rb_obj_class(obj));
     RBASIC(clone)->klass = rb_singleton_class_clone(obj);
-    RBASIC(clone)->flags = (RBASIC(obj)->flags | FL_TEST(clone, FL_TAINT) | FL_TEST(clone, FL_UNTRUSTED)) & ~(FL_FREEZE|FL_FINALIZE);
+    RBASIC(clone)->flags = (RBASIC(obj)->flags | FL_TEST(clone, FL_TAINT) | FL_TEST(clone, FL_UNTRUSTED)) & ~(FL_FREEZE|FL_FINALIZE|FL_MARK);
     init_copy(clone, obj);
     rb_funcall(clone, id_init_clone, 1, obj);
     RBASIC(clone)->flags |= RBASIC(obj)->flags & FL_FREEZE;
@@ -668,9 +684,9 @@ rb_obj_tap(VALUE obj)
  * Document-method: initialize
  *
  * call-seq:
- *    BasicObject.new( *args )
+ *    BasicObject.new
  *
- * Returns a new BasicObject. Arguments are ignored.
+ * Returns a new BasicObject.
  */
 
 /*
@@ -712,9 +728,7 @@ rb_obj_taint(VALUE obj)
 {
     rb_secure(4);
     if (!OBJ_TAINTED(obj)) {
-	if (OBJ_FROZEN(obj)) {
-	    rb_error_frozen("object");
-	}
+	rb_check_frozen(obj);
 	OBJ_TAINT(obj);
     }
     return obj;
@@ -733,9 +747,7 @@ rb_obj_untaint(VALUE obj)
 {
     rb_secure(3);
     if (OBJ_TAINTED(obj)) {
-	if (OBJ_FROZEN(obj)) {
-	    rb_error_frozen("object");
-	}
+	rb_check_frozen(obj);
 	FL_UNSET(obj, FL_TAINT);
     }
     return obj;
@@ -768,9 +780,7 @@ rb_obj_untrust(VALUE obj)
 {
     rb_secure(4);
     if (!OBJ_UNTRUSTED(obj)) {
-	if (OBJ_FROZEN(obj)) {
-	    rb_error_frozen("object");
-	}
+	rb_check_frozen(obj);
 	OBJ_UNTRUST(obj);
     }
     return obj;
@@ -789,9 +799,7 @@ rb_obj_trust(VALUE obj)
 {
     rb_secure(3);
     if (OBJ_UNTRUSTED(obj)) {
-	if (OBJ_FROZEN(obj)) {
-	    rb_error_frozen("object");
-	}
+	rb_check_frozen(obj);
 	FL_UNSET(obj, FL_UNTRUSTED);
     }
     return obj;
@@ -1158,7 +1166,12 @@ rb_obj_not_match(VALUE obj1, VALUE obj2)
 }
 
 
-/* :nodoc: */
+/*
+ *  call-seq:
+ *     obj <=> other -> 0 or nil
+ *
+ *  Returns 0 if obj === other, otherwise nil.
+ */
 static VALUE
 rb_obj_cmp(VALUE obj1, VALUE obj2)
 {
@@ -1418,7 +1431,7 @@ rb_class_s_alloc(VALUE klass)
  *  the module object, and the block is evaluated in the context of this
  *  module using <code>module_eval</code>.
  *
- *     Fred = Module.new do
+ *     fred = Module.new do
  *       def meth1
  *         "hello"
  *       end
@@ -1427,9 +1440,12 @@ rb_class_s_alloc(VALUE klass)
  *       end
  *     end
  *     a = "my string"
- *     a.extend(Fred)   #=> "my string"
+ *     a.extend(fred)   #=> "my string"
  *     a.meth1          #=> "hello"
  *     a.meth2          #=> "bye"
+ *
+ *  Assign the module to a constant (name starting uppercase) if you
+ *  want to treat it like a regular module.
  */
 
 static VALUE
@@ -1445,12 +1461,32 @@ rb_mod_initialize(VALUE module)
 
 /*
  *  call-seq:
- *     Class.new(super_class=Object)   ->    a_class
+ *     Class.new(super_class=Object)               -> a_class
+ *     Class.new(super_class=Object) { |mod| ... } -> a_class
  *
  *  Creates a new anonymous (unnamed) class with the given superclass
  *  (or <code>Object</code> if no parameter is given). You can give a
  *  class a name by assigning the class object to a constant.
  *
+ *  If a block is given, it is passed the class object, and the block
+ *  is evaluated in the context of this class using
+ *  <code>class_eval</code>.
+ *
+ *     fred = Class.new do
+ *       def meth1
+ *         "hello"
+ *       end
+ *       def meth2
+ *         "bye"
+ *       end
+ *     end
+ *
+ *     a = fred.new     #=> #<#<Class:0x100381890>:0x100376b98>
+ *     a.meth1          #=> "hello"
+ *     a.meth2          #=> "bye"
+ *
+ *  Assign the class to a constant (name starting uppercase) if you
+ *  want to treat it like a regular class.
  */
 
 static VALUE
@@ -1566,7 +1602,7 @@ rb_class_new_instance(int argc, VALUE *argv, VALUE klass)
  *
  */
 
-static VALUE
+VALUE
 rb_class_superclass(VALUE klass)
 {
     VALUE super = RCLASS_SUPER(klass);
@@ -1749,10 +1785,10 @@ rb_mod_const_defined(int argc, VALUE *argv, VALUE mod)
     return RTEST(recur) ? rb_const_defined(mod, id) : rb_const_defined_at(mod, id);
 }
 
-VALUE rb_obj_methods(int argc, VALUE *argv, VALUE obj);
-VALUE rb_obj_protected_methods(int argc, VALUE *argv, VALUE obj);
-VALUE rb_obj_private_methods(int argc, VALUE *argv, VALUE obj);
-VALUE rb_obj_public_methods(int argc, VALUE *argv, VALUE obj);
+VALUE rb_obj_methods(int argc, VALUE *argv, VALUE obj); /* in class.c */
+VALUE rb_obj_protected_methods(int argc, VALUE *argv, VALUE obj); /* in class.c */
+VALUE rb_obj_private_methods(int argc, VALUE *argv, VALUE obj); /* in class.c */
+VALUE rb_obj_public_methods(int argc, VALUE *argv, VALUE obj); /* in class.c */
 
 /*
  *  call-seq:
@@ -2108,6 +2144,8 @@ rb_Integer(VALUE val)
  *     Integer(123.999)    #=> 123
  *     Integer("0x1a")     #=> 26
  *     Integer(Time.new)   #=> 1204973019
+ *     Integer("0930", 10) #=> 930
+ *     Integer("111", 2)   #=> 7
  */
 
 static VALUE
@@ -2218,6 +2256,8 @@ rb_str_to_dbl(VALUE str, int badcheck)
 {
     char *s;
     long len;
+    double ret;
+    VALUE v = 0;
 
     StringValue(str);
     s = RSTRING_PTR(str);
@@ -2227,14 +2267,16 @@ rb_str_to_dbl(VALUE str, int badcheck)
 	    rb_raise(rb_eArgError, "string for Float contains null byte");
 	}
 	if (s[len]) {		/* no sentinel somehow */
-	    char *p = ALLOCA_N(char, len+1);
-
+	    char *p =  ALLOCV(v, len);
 	    MEMCPY(p, s, char, len);
 	    p[len] = '\0';
 	    s = p;
 	}
     }
-    return rb_cstr_to_dbl(s, badcheck);
+    ret = rb_cstr_to_dbl(s, badcheck);
+    if (v)
+	ALLOCV_END(v);
+    return ret;
 }
 
 VALUE
@@ -2329,7 +2371,10 @@ rb_num2dbl(VALUE val)
 VALUE
 rb_String(VALUE val)
 {
-    return rb_convert_type(val, T_STRING, "String", "to_s");
+    VALUE tmp = rb_check_string_type(val);
+    if (NIL_P(tmp))
+	tmp = rb_convert_type(val, T_STRING, "String", "to_s");
+    return tmp;
 }
 
 
@@ -2488,7 +2533,7 @@ Init_Object(void)
 #undef rb_intern
 #define rb_intern(str) rb_intern_const(str)
 
-    rb_define_private_method(rb_cBasicObject, "initialize", rb_obj_dummy, -1);
+    rb_define_private_method(rb_cBasicObject, "initialize", rb_obj_dummy, 0);
     rb_define_alloc_func(rb_cBasicObject, rb_class_allocate_instance);
     rb_define_method(rb_cBasicObject, "==", rb_obj_equal, 1);
     rb_define_method(rb_cBasicObject, "equal?", rb_obj_equal, 1);
@@ -2621,6 +2666,8 @@ Init_Object(void)
     rb_define_method(rb_cModule, "class_variable_get", rb_mod_cvar_get, 1);
     rb_define_method(rb_cModule, "class_variable_set", rb_mod_cvar_set, 2);
     rb_define_method(rb_cModule, "class_variable_defined?", rb_mod_cvar_defined, 1);
+    rb_define_method(rb_cModule, "public_constant", rb_mod_public_constant, -1);
+    rb_define_method(rb_cModule, "private_constant", rb_mod_private_constant, -1);
 
     rb_define_method(rb_cClass, "allocate", rb_obj_alloc, 0);
     rb_define_method(rb_cClass, "new", rb_class_new_instance, -1);

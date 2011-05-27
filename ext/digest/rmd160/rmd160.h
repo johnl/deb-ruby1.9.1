@@ -1,6 +1,6 @@
 /*	$NetBSD: rmd160.h,v 1.2 2000/07/07 10:47:06 ad Exp $	*/
 /*	$RoughId: rmd160.h,v 1.3 2002/02/24 08:14:31 knu Exp $	*/
-/*	$Id: rmd160.h 28341 2010-06-16 09:38:14Z knu $	*/
+/*	$Id: rmd160.h 27437 2010-04-22 08:04:13Z nobu $	*/
 
 /********************************************************************\
  *
@@ -26,7 +26,7 @@
 #ifndef _RMD160_H_
 #define _RMD160_H_
 
-#include "../defs.h"
+#include "defs.h"
 
 typedef struct {
 	uint32_t	state[5];	/* state (ABCDE) */

@@ -80,17 +80,17 @@ module Psych
     def parse_time string
       date, time = *(string.split(/[ tT]/, 2))
       (yy, m, dd) = date.split('-').map { |x| x.to_i }
-      md = time.match(/(\d+:\d+:\d+)(\.\d*)?\s*(Z|[-+]\d+(:\d\d)?)?/)
+      md = time.match(/(\d+:\d+:\d+)(?:\.(\d*))?\s*(Z|[-+]\d+(:\d\d)?)?/)
 
       (hh, mm, ss) = md[1].split(':').map { |x| x.to_i }
-      us = (md[2] ? Rational(md[2].sub(/^\./, '0.')) : 0) * 1000000
+      us = (md[2] ? Rational("0.#{md[2]}") : 0) * 1000000
 
       time = Time.utc(yy, m, dd, hh, mm, ss, us)
 
       return time if 'Z' == md[3]
       return Time.at(time.to_i, us) unless md[3]
 
-      tz = md[3].split(':').map { |digit| Integer(digit, 10) }
+      tz = md[3].match(/^([+\-]?\d{1,2})\:?(\d{1,2})?$/)[1..-1].compact.map { |digit| Integer(digit, 10) }
       offset = tz.first * 3600
 
       if offset < 0

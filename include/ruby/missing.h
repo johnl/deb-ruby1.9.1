@@ -3,7 +3,7 @@
   missing.h - prototype for *.c in ./missing, and
   	      for missing timeval struct
 
-  $Author: mame $
+  $Author: kosaki $
   created at: Sat May 11 23:46:03 JST 2002
 
 ************************************************/
@@ -16,6 +16,12 @@ extern "C" {
 #if 0
 } /* satisfy cc-mode */
 #endif
+#endif
+
+#include "ruby/config.h"
+#include <stddef.h>
+#ifdef RUBY_EXTCONF_H
+#include RUBY_EXTCONF_H
 #endif
 
 #if defined(HAVE_SYS_TIME_H)
@@ -45,8 +51,15 @@ struct timezone {
 };
 #endif
 
+#ifdef RUBY_EXPORT
+#undef RUBY_EXTERN
+#endif
 #ifndef RUBY_EXTERN
 #define RUBY_EXTERN extern
+#endif
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility push(default)
 #endif
 
 #ifndef HAVE_ACOSH
@@ -176,6 +189,14 @@ RUBY_EXTERN int ruby_getpeername(int, struct sockaddr *, socklen_t *);
 RUBY_EXTERN int ruby_getsockname(int, struct sockaddr *, socklen_t *);
 RUBY_EXTERN int ruby_shutdown(int, int);
 RUBY_EXTERN int ruby_close(int);
+#endif
+
+#ifndef HAVE_SETPROCTITLE
+RUBY_EXTERN void setproctitle(const char *fmt, ...);
+#endif
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility pop
 #endif
 
 #if defined(__cplusplus)

@@ -6,11 +6,13 @@ class LightTester < Test::Unit::TestCase
   include REXMLTestUtils
   include REXML::Light
 
-  def test_parse_large 
-    parser = REXML::Parsers::LightParser.new(fixture_path("documentation.xml"))
-    root = parser.parse
+  def test_parse_large
+    xml_string = fixture_path("documentation.xml")
+    parser = REXML::Parsers::LightParser.new(xml_string)
+    tag, content = parser.parse
+    assert_equal([:document, :text], [tag, content.first])
   end
-  
+
   # FIXME INCOMPLETE
   # This is because the light API is not yet ready to be used to produce
   # trees.
@@ -20,7 +22,7 @@ class LightTester < Test::Unit::TestCase
     foo = doc.add_element( 'foo' )
     assert_equal( "foo", foo.name )
   end
-  
+
   def test_add_attribute
     foo = Node.new( "a" )
     foo["attr"] = "bar"

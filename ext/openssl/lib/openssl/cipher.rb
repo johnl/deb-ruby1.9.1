@@ -11,12 +11,8 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: cipher.rb 25189 2009-10-02 12:04:37Z akr $
+  $Id: cipher.rb 31148 2011-03-22 04:39:04Z nahi $
 =end
-
-##
-# Should we care what if somebody require this file directly?
-#require 'openssl'
 
 module OpenSSL
   class Cipher

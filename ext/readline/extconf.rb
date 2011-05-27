@@ -3,7 +3,7 @@ require "mkmf"
 $readline_headers = ["stdio.h"]
 
 def have_readline_header(header)
-  if have_header(header)
+  if have_header(header, &$readline_extra_check)
     $readline_headers.push(header)
     return true
   else
@@ -28,15 +28,23 @@ dir_config('ncurses')
 dir_config('termcap')
 dir_config("readline")
 enable_libedit = enable_config("libedit")
+
 have_library("user32", nil) if /cygwin/ === RUBY_PLATFORM
 have_library("ncurses", "tgetnum") ||
   have_library("termcap", "tgetnum") ||
   have_library("curses", "tgetnum")
 
-if enable_libedit
+case enable_libedit
+when true
   unless (have_readline_header("editline/readline.h") ||
           have_readline_header("readline/readline.h")) &&
           have_library("edit", "readline")
+    exit
+  end
+when nil
+  unless ((have_readline_header("readline/readline.h") &&
+           have_readline_header("readline/history.h")) &&
+           have_library("readline", "readline"))
     exit
   end
 else
@@ -50,6 +58,7 @@ else
   end
 end
 
+have_readline_func("rl_getc")
 have_readline_func("rl_getc_function")
 have_readline_func("rl_filename_completion_function")
 have_readline_func("rl_username_completion_function")
@@ -72,6 +81,7 @@ have_readline_var("rl_point")
 /mswin|bccwin|mingw/ !~ RUBY_PLATFORM && have_readline_var("rl_catch_sigwinch")
 /mswin|bccwin|mingw/ !~ RUBY_PLATFORM && have_readline_var("rl_catch_signals")
 have_readline_func("rl_cleanup_after_signal")
+have_readline_func("rl_free_line_state")
 have_readline_func("rl_clear_signals")
 have_readline_func("rl_set_screen_size")
 have_readline_func("rl_get_screen_size")

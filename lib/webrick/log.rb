@@ -1,4 +1,4 @@
-#
+#--
 # log.rb -- Log Class
 #
 # Author: IPR -- Internet Programming with Ruby -- writers
@@ -9,11 +9,22 @@
 # $IPR: log.rb,v 1.26 2002/10/06 17:06:10 gotoyuzo Exp $
 
 module WEBrick
+
+  ##
+  # A generic logging class
+
   class BasicLog
     # log-level constant
     FATAL, ERROR, WARN, INFO, DEBUG = 1, 2, 3, 4, 5
 
     attr_accessor :level
+
+    ##
+    # Initializes a new logger for +log_file+ that outputs messages at +level+
+    # or higher.  +log_file+ can be a filename, an IO-like object that
+    # responds to #<< or nil which outputs to $stderr.
+    #
+    # If no level is given INFO is chosen by default
 
     def initialize(log_file=nil, level=nil)
       @level = level || INFO
@@ -60,7 +71,7 @@ module WEBrick
     private
 
     def format(arg)
-      str = if arg.is_a?(Exception)
+      if arg.is_a?(Exception)
         "#{arg.class}: #{arg.message}\n\t" <<
         arg.backtrace.join("\n\t") << "\n"
       elsif arg.respond_to?(:to_str)
@@ -70,6 +81,9 @@ module WEBrick
       end
     end
   end
+
+  ##
+  # A logging class with timestamps
 
   class Log < BasicLog
     attr_accessor :time_format

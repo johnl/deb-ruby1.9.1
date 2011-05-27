@@ -1,8 +1,4 @@
-begin
-  require "openssl"
-rescue LoadError
-end
-require "test/unit"
+require_relative 'utils'
 
 if defined?(OpenSSL)
 
@@ -120,14 +116,14 @@ class OpenSSL::TestX509Name < Test::Unit::TestCase
     assert_equal(OpenSSL::ASN1::UTF8STRING, ary[2][2])
 
     dn2 = "DC=org, DC=ruby-lang, CN=www.ruby-lang.org"
-    name = OpenSSL::X509::Name.parse(dn)
+    name = OpenSSL::X509::Name.parse(dn2)
     ary = name.to_a
     assert_equal(dn, name.to_s)
     assert_equal("org", ary[0][1])
     assert_equal("ruby-lang", ary[1][1])
     assert_equal("www.ruby-lang.org", ary[2][1])
 
-    name = OpenSSL::X509::Name.parse(dn, @obj_type_tmpl)
+    name = OpenSSL::X509::Name.parse(dn2, @obj_type_tmpl)
     ary = name.to_a
     assert_equal(OpenSSL::ASN1::IA5STRING, ary[0][2])
     assert_equal(OpenSSL::ASN1::IA5STRING, ary[1][2])
@@ -260,6 +256,20 @@ class OpenSSL::TestX509Name < Test::Unit::TestCase
     assert_equal(OpenSSL::ASN1::UTF8STRING, ary[2][2])
     assert_equal(OpenSSL::ASN1::IA5STRING, ary[3][2])
     assert_equal(OpenSSL::ASN1::PRINTABLESTRING, ary[4][2])
+  end
+
+  def test_equals2
+    n1 = OpenSSL::X509::Name.parse 'CN=a'
+    n2 = OpenSSL::X509::Name.parse 'CN=a'
+
+    assert_equal n1, n2
+  end
+
+  def test_spaceship
+    n1 = OpenSSL::X509::Name.parse 'CN=a'
+    n2 = OpenSSL::X509::Name.parse 'CN=b'
+
+    assert_equal -1, n1 <=> n2
   end
 end
 

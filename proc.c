@@ -2,7 +2,7 @@
 
   proc.c - Proc, Binding, Env
 
-  $Author: yugui $
+  $Author: nobu $
   created at: Wed Jan 17 12:13:14 2007
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -10,6 +10,7 @@
 **********************************************************************/
 
 #include "eval_intern.h"
+#include "internal.h"
 #include "gc.h"
 
 struct METHOD {
@@ -28,7 +29,6 @@ VALUE rb_iseq_parameters(const rb_iseq_t *iseq, int is_proc);
 
 static VALUE bmcall(VALUE, VALUE);
 static int method_arity(VALUE);
-static int rb_obj_is_method(VALUE m);
 rb_iseq_t *rb_method_get_iseq(VALUE method);
 
 /* Proc */
@@ -71,9 +71,11 @@ proc_memsize(const void *ptr)
 
 static const rb_data_type_t proc_data_type = {
     "proc",
-    proc_mark,
-    proc_free,
-    proc_memsize,
+    {
+	proc_mark,
+	proc_free,
+	proc_memsize,
+    },
 };
 
 VALUE
@@ -268,9 +270,11 @@ binding_memsize(const void *ptr)
 
 static const rb_data_type_t binding_data_type = {
     "binding",
-    binding_mark,
-    binding_free,
-    binding_memsize,
+    {
+	binding_mark,
+	binding_free,
+	binding_memsize,
+    },
 };
 
 static VALUE
@@ -333,10 +337,10 @@ rb_binding_new(void)
  *  calling +eval+ to execute the evaluated command in this
  *  environment. Also see the description of class +Binding+.
  *
- *     def getBinding(param)
+ *     def get_binding(param)
  *       return binding
  *     end
- *     b = getBinding("hello")
+ *     b = get_binding("hello")
  *     eval("param", b)   #=> "hello"
  */
 
@@ -355,10 +359,10 @@ rb_f_binding(VALUE self)
  *  <em>lineno</em> parameters are present, they will be used when
  *  reporting syntax errors.
  *
- *     def getBinding(param)
+ *     def get_binding(param)
  *       return binding
  *     end
- *     b = getBinding("hello")
+ *     b = get_binding("hello")
  *     b.eval("param")   #=> "hello"
  */
 
@@ -882,15 +886,22 @@ bm_memsize(const void *ptr)
 
 static const rb_data_type_t method_data_type = {
     "method",
-    bm_mark,
-    bm_free,
-    bm_memsize,
+    {
+	bm_mark,
+	bm_free,
+	bm_memsize,
+    },
 };
 
-static inline int
+VALUE
 rb_obj_is_method(VALUE m)
 {
-    return rb_typeddata_is_kind_of(m, &method_data_type);
+    if (rb_typeddata_is_kind_of(m, &method_data_type)) {
+	return Qtrue;
+    }
+    else {
+	return Qfalse;
+    }
 }
 
 static VALUE
@@ -2201,15 +2212,15 @@ Init_Proc(void)
  *       def initialize(n)
  *         @secret = n
  *       end
- *       def getBinding
+ *       def get_binding
  *         return binding()
  *       end
  *     end
  *
  *     k1 = Demo.new(99)
- *     b1 = k1.getBinding
+ *     b1 = k1.get_binding
  *     k2 = Demo.new(-3)
- *     b2 = k2.getBinding
+ *     b2 = k2.get_binding
  *
  *     eval("@secret", b1)   #=> 99
  *     eval("@secret", b2)   #=> -3

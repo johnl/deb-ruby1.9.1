@@ -2,7 +2,7 @@
 
   class.c -
 
-  $Author: yugui $
+  $Author: nobu $
   created at: Tue Aug 10 15:05:44 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -26,7 +26,9 @@
 #include "ruby/ruby.h"
 #include "ruby/st.h"
 #include "method.h"
+#include "constant.h"
 #include "vm_core.h"
+#include "internal.h"
 #include <ctype.h>
 
 extern st_table *rb_class_tbl;
@@ -52,6 +54,7 @@ class_alloc(VALUE flags, VALUE klass)
     OBJSETUP(obj, klass, flags);
     obj->ptr = ext;
     RCLASS_IV_TBL(obj) = 0;
+    RCLASS_CONST_TBL(obj) = 0;
     RCLASS_M_TBL(obj) = 0;
     RCLASS_SUPER(obj) = 0;
     RCLASS_IV_INDEX_TBL(obj) = 0;
@@ -141,6 +144,15 @@ clone_method(ID mid, const rb_method_entry_t *me, struct clone_method_data *data
     return ST_CONTINUE;
 }
 
+static int
+clone_const(ID key, const rb_const_entry_t *ce, st_table *tbl)
+{
+    rb_const_entry_t *nce = ALLOC(rb_const_entry_t);
+    *nce = *ce;
+    st_insert(tbl, key, (st_data_t)nce);
+    return ST_CONTINUE;
+}
+
 /* :nodoc: */
 VALUE
 rb_mod_init_copy(VALUE clone, VALUE orig)
@@ -152,22 +164,28 @@ rb_mod_init_copy(VALUE clone, VALUE orig)
     }
     RCLASS_SUPER(clone) = RCLASS_SUPER(orig);
     if (RCLASS_IV_TBL(orig)) {
-	ID id;
+	st_data_t id;
 
 	if (RCLASS_IV_TBL(clone)) {
 	    st_free_table(RCLASS_IV_TBL(clone));
 	}
 	RCLASS_IV_TBL(clone) = st_copy(RCLASS_IV_TBL(orig));
 	CONST_ID(id, "__classpath__");
-	st_delete(RCLASS_IV_TBL(clone), (st_data_t*)&id, 0);
+	st_delete(RCLASS_IV_TBL(clone), &id, 0);
 	CONST_ID(id, "__classid__");
-	st_delete(RCLASS_IV_TBL(clone), (st_data_t*)&id, 0);
+	st_delete(RCLASS_IV_TBL(clone), &id, 0);
+    }
+    if (RCLASS_CONST_TBL(orig)) {
+	if (RCLASS_CONST_TBL(clone)) {
+	    rb_free_const_table(RCLASS_CONST_TBL(clone));
+	}
+	RCLASS_CONST_TBL(clone) = st_init_numtable();
+	st_foreach(RCLASS_CONST_TBL(orig), clone_const, (st_data_t)RCLASS_CONST_TBL(clone));
     }
     if (RCLASS_M_TBL(orig)) {
 	struct clone_method_data data;
 
 	if (RCLASS_M_TBL(clone)) {
-	    extern void rb_free_m_table(st_table *tbl);
 	    rb_free_m_table(RCLASS_M_TBL(clone));
 	}
 	data.tbl = RCLASS_M_TBL(clone) = st_init_numtable();
@@ -205,7 +223,7 @@ rb_singleton_class_clone(VALUE obj)
     else {
 	struct clone_method_data data;
 	/* copy singleton(unnamed) class */
-	VALUE clone = class_alloc(RBASIC(klass)->flags, 0);
+	VALUE clone = class_alloc((RBASIC(klass)->flags & ~(FL_MARK)), 0);
 
 	if (BUILTIN_TYPE(obj) == T_CLASS) {
 	    RBASIC(clone)->klass = (VALUE)clone;
@@ -217,6 +235,10 @@ rb_singleton_class_clone(VALUE obj)
 	RCLASS_SUPER(clone) = RCLASS_SUPER(klass);
 	if (RCLASS_IV_TBL(klass)) {
 	    RCLASS_IV_TBL(clone) = st_copy(RCLASS_IV_TBL(klass));
+	}
+	if (RCLASS_CONST_TBL(klass)) {
+	    RCLASS_CONST_TBL(clone) = st_init_numtable();
+	    st_foreach(RCLASS_CONST_TBL(klass), clone_const, (st_data_t)RCLASS_CONST_TBL(clone));
 	}
 	RCLASS_M_TBL(clone) = st_init_numtable();
 	data.tbl = RCLASS_M_TBL(clone);
@@ -253,7 +275,7 @@ rb_singleton_class_attached(VALUE klass, VALUE obj)
  * @retval 1 if \a k is a meta^(n)-class of Class class (n >= 0)
  * @retval 0 otherwise
  */
-#define META_CLASS_OF_CLASS_CLASS_P(k)  (METACLASS_OF(k) == k)
+#define META_CLASS_OF_CLASS_CLASS_P(k)  (METACLASS_OF(k) == (k))
 
 
 /*!
@@ -264,7 +286,7 @@ rb_singleton_class_attached(VALUE klass, VALUE obj)
  * @note this macro creates a new eigenclass if necessary.
  */
 #define ENSURE_EIGENCLASS(klass) \
- (rb_ivar_get(METACLASS_OF(klass), id_attached) == klass ? METACLASS_OF(klass) : make_metaclass(klass))
+ (rb_ivar_get(METACLASS_OF(klass), id_attached) == (klass) ? METACLASS_OF(klass) : make_metaclass(klass))
 
 
 /*!
@@ -609,7 +631,11 @@ include_class_new(VALUE module, VALUE super)
     if (!RCLASS_IV_TBL(module)) {
 	RCLASS_IV_TBL(module) = st_init_numtable();
     }
+    if (!RCLASS_CONST_TBL(module)) {
+	RCLASS_CONST_TBL(module) = st_init_numtable();
+    }
     RCLASS_IV_TBL(klass) = RCLASS_IV_TBL(module);
+    RCLASS_CONST_TBL(klass) = RCLASS_CONST_TBL(module);
     RCLASS_M_TBL(klass) = RCLASS_M_TBL(module);
     RCLASS_SUPER(klass) = super;
     if (TYPE(module) == T_ICLASS) {
@@ -663,7 +689,8 @@ rb_include_module(VALUE klass, VALUE module)
 	    }
 	}
 	c = RCLASS_SUPER(c) = include_class_new(module, RCLASS_SUPER(c));
-	changed = 1;
+	if (RMODULE_M_TBL(module) && RMODULE_M_TBL(module)->num_entries)
+	    changed = 1;
       skip:
 	module = RCLASS_SUPER(module);
     }
@@ -957,19 +984,19 @@ rb_class_public_instance_methods(int argc, VALUE *argv, VALUE mod)
  *  call-seq:
  *     obj.methods    -> array
  *
- *  Returns a list of the names of methods publicly accessible in
+ *  Returns a list of the names of public and protected methods of
  *  <i>obj</i>. This will include all the methods accessible in
  *  <i>obj</i>'s ancestors.
  *
  *     class Klass
- *       def kMethod()
+ *       def klass_method()
  *       end
  *     end
  *     k = Klass.new
- *     k.methods[0..9]    #=> [:kMethod, :freeze, :nil?, :is_a?,
- *                        #    :class, :instance_variable_set,
- *                        #    :methods, :extend, :__send__, :instance_eval]
- *     k.methods.length   #=> 42
+ *     k.methods[0..9]    #=> [:klass_method, :nil?, :===,
+ *                        #    :==~, :!, :eql?
+ *                        #    :hash, :<=>, :class, :singleton_class]
+ *     k.methods.length   #=> 57
  */
 
 VALUE
@@ -1200,7 +1227,7 @@ rb_undef_method(VALUE klass, const char *name)
 
 #define SPECIAL_SINGLETON(x,c) do {\
     if (obj == (x)) {\
-	return c;\
+	return (c);\
     }\
 } while (0)
 
@@ -1226,7 +1253,7 @@ singleton_class_of(VALUE obj)
 	SPECIAL_SINGLETON(Qnil, rb_cNilClass);
 	SPECIAL_SINGLETON(Qfalse, rb_cFalseClass);
 	SPECIAL_SINGLETON(Qtrue, rb_cTrueClass);
-	rb_bug("unknown immediate %ld", obj);
+	rb_bug("unknown immediate %p", (void *)obj);
     }
 
     if (FL_TEST(RBASIC(obj)->klass, FL_SINGLETON) &&
@@ -1278,7 +1305,7 @@ rb_singleton_class(VALUE obj)
     VALUE klass = singleton_class_of(obj);
 
     /* ensures an exposed class belongs to its own eigenclass */
-    if (TYPE(obj) == T_CLASS) ENSURE_EIGENCLASS(klass);
+    if (TYPE(obj) == T_CLASS) (void)ENSURE_EIGENCLASS(klass);
 
     return klass;
 }
@@ -1379,9 +1406,10 @@ rb_scan_args(int argc, const VALUE *argv, const char *fmt, ...)
     const char *p = fmt;
     VALUE *var;
     va_list vargs;
-    int f_var = 0, f_block = 0;
+    int f_var = 0, f_hash = 0, f_block = 0;
     int n_lead = 0, n_opt = 0, n_trail = 0, n_mand;
     int argi = 0;
+    VALUE hash = Qnil;
 
     if (ISDIGIT(*p)) {
 	n_lead = *p - '0';
@@ -1405,6 +1433,10 @@ rb_scan_args(int argc, const VALUE *argv, const char *fmt, ...)
 	}
     }
   block_arg:
+    if (*p == ':') {
+	f_hash = 1;
+	p++;
+    }
     if (*p == '&') {
 	f_block = 1;
 	p++;
@@ -1419,6 +1451,23 @@ rb_scan_args(int argc, const VALUE *argv, const char *fmt, ...)
 
     va_start(vargs, fmt);
 
+    /* capture an option hash - phase 1: pop */
+    if (f_hash && n_mand < argc) {
+	VALUE last = argv[argc - 1];
+
+	if (NIL_P(last)) {
+	    /* nil is taken as an empty option hash only if it is not
+	       ambiguous; i.e. '*' is not specified and arguments are
+	       given more than sufficient */
+	    if (!f_var && n_mand + n_opt < argc)
+		argc--;
+	}
+	else {
+	    hash = rb_check_convert_type(last, T_HASH, "Hash", "to_hash");
+	    if (!NIL_P(hash))
+		argc--;
+	}
+    }
     /* capture leading mandatory arguments */
     for (i = n_lead; i-- > 0; ) {
 	var = va_arg(vargs, VALUE *);
@@ -1454,6 +1503,11 @@ rb_scan_args(int argc, const VALUE *argv, const char *fmt, ...)
 	var = va_arg(vargs, VALUE *);
 	if (var) *var = argv[argi];
 	argi++;
+    }
+    /* capture an option hash - phase 2: assignment */
+    if (f_hash) {
+	var = va_arg(vargs, VALUE *);
+	if (var) *var = hash;
     }
     /* capture iterator block */
     if (f_block) {

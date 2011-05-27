@@ -7,8 +7,25 @@ require 'fileutils'
 # The store manages reading and writing ri data for a project (gem, path,
 # etc.) and maintains a cache of methods, classes and ancestors in the
 # store.
+#
+# The store maintains a #cache of its contents for faster lookup.  After
+# adding items to the store it must be flushed using #save_cache.  The cache
+# contains the following structures:
+#
+#    @cache = {
+#      :class_methods    => {}, # class name => class methods
+#      :instance_methods => {}, # class name => instance methods
+#      :attributes       => {}, # class name => attributes
+#      :modules          => [], # classes and modules in this store
+#      :ancestors        => {}, # class name => ancestor names
+#    }
 
 class RDoc::RI::Store
+
+  ##
+  # If true this Store will not write any files
+
+  attr_accessor :dry_run
 
   ##
   # Path this store reads or writes
@@ -21,14 +38,18 @@ class RDoc::RI::Store
 
   attr_accessor :type
 
+  ##
+  # The contents of the Store
+
   attr_reader :cache
 
   ##
   # Creates a new Store of +type+ that will load or save to +path+
 
   def initialize path, type = nil
-    @type = type
-    @path = path
+    @dry_run = false
+    @type    = type
+    @path    = path
 
     @cache = {
       :class_methods    => {},
@@ -172,9 +193,13 @@ class RDoc::RI::Store
 
   def save_cache
     # HACK mongrel-1.1.5 documents its files twice
+    @cache[:ancestors].       each do |_, m| m.uniq!; m.sort! end
     @cache[:attributes].      each do |_, m| m.uniq!; m.sort! end
     @cache[:class_methods].   each do |_, m| m.uniq!; m.sort! end
     @cache[:instance_methods].each do |_, m| m.uniq!; m.sort! end
+    @cache[:modules].uniq!; @cache[:modules].sort!
+
+    return if @dry_run
 
     open cache_path, 'wb' do |io|
       Marshal.dump @cache, io
@@ -185,7 +210,7 @@ class RDoc::RI::Store
   # Writes the ri data for +klass+
 
   def save_class klass
-    FileUtils.mkdir_p class_path(klass.full_name)
+    FileUtils.mkdir_p class_path(klass.full_name) unless @dry_run
 
     @cache[:modules] << klass.full_name
 
@@ -212,13 +237,15 @@ class RDoc::RI::Store
     @cache[:ancestors][klass.full_name].push(*ancestors)
 
     attributes = klass.attributes.map do |attribute|
-      "#{attribute.type} #{attribute.name}"
+      "#{attribute.definition} #{attribute.name}"
     end
 
     unless attributes.empty? then
       @cache[:attributes][klass.full_name] ||= []
       @cache[:attributes][klass.full_name].push(*attributes)
     end
+
+    return if @dry_run
 
     open path, 'wb' do |io|
       Marshal.dump klass, io
@@ -229,7 +256,7 @@ class RDoc::RI::Store
   # Writes the ri data for +method+ on +klass+
 
   def save_method klass, method
-    FileUtils.mkdir_p class_path(klass.full_name)
+    FileUtils.mkdir_p class_path(klass.full_name) unless @dry_run
 
     cache = if method.singleton then
               @cache[:class_methods]
@@ -238,6 +265,8 @@ class RDoc::RI::Store
             end
     cache[klass.full_name] ||= []
     cache[klass.full_name] << method.name
+
+    return if @dry_run
 
     open method_file(klass.full_name, method.full_name), 'wb' do |io|
       Marshal.dump method, io

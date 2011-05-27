@@ -92,7 +92,7 @@ DELIMITER
     doc = REXML::Document.new source
     assert_equal "myprog-config", doc.root.name
     count = 0
-    REXML::XPath.each(doc, "x:myprog-config/x:main/x:parameter", 
+    REXML::XPath.each(doc, "x:myprog-config/x:main/x:parameter",
       {"x"=>"http://someurl/program/version"}) { |element|
         assert_equal "name", element.attributes["name"]
       count += 1;
@@ -183,7 +183,7 @@ DELIMITER
     result = XPath.first(doc, xpath)
     assert_equal desired_result.to_s, result.to_s
   end
-  
+
   def test_xpath_whitespace_TobiasReif
     # same as above, with whitespace in XPath
     doc = Document.new(XML_STRING_01.dup)
@@ -193,7 +193,7 @@ DELIMITER
     failure_message = "\n[[[TR: AFAIK, whitespace should be allowed]]]\n"
     assert_equal(desired_result.to_s, result.to_s, failure_message)
   end
-  
+
   def test_xpath_02_TobiasReif
     doc = Document.new XML_STRING_01.dup
     desired_result = Document.new '<author>Thomas, David; Hunt, Andrew</author>'
@@ -211,7 +211,7 @@ DELIMITER
     failure_message = "\nHow to handle the apos inside the string inside the XPath?\nXPath = #{xpath}\n"
     assert_equal desired_result.to_s, result.to_s, failure_message
   end
-  
+
   def test_xpath_03_TobiasReif
     doc = Document.new XML_STRING_02.dup
     desired_result_string = "<entry type='Book'>
@@ -255,23 +255,21 @@ DELIMITER
 <position><aktuell datum="01-10-11">Technik</aktuell></position>
 <hauptspalte>
 <headline>Technik</headline>
-Die Technik ist das Rückgrat der meisten Geschäftsprozesse bei Home of the Brave. Deshalb sollen hier alle relevanten technischen Abläufe, Daten und Einrichtungen beschrieben werden, damit jeder im Bedarfsfall die nötigen Informationen, Anweisungen und Verhaltensempfehlungen nachlesen und/oder abrufen kann.
+Die Technik ist das R\xFCckgrat der meisten Gesch\xFCftsprozesse bei Home of the Brave. Deshalb sollen hier alle relevanten technischen Abl\xFCufe, Daten und Einrichtungen beschrieben werden, damit jeder im Bedarfsfall die n\xFCtigen Informationen, Anweisungen und Verhaltensempfehlungen nachlesen und/oder abrufen kann.
 </hauptspalte>
 <nebenspalte>
   <link ziel="Flash/">Flash</link><umbruch/>
-  Nützliches von Flashern für Flasher.<umbruch/>
+  N\xFCtzliches von Flashern f\xFCr Flasher.<umbruch/>
   <link neu="ja" ziel="Cvs/">CVS-FAQ</link><umbruch/>
   FAQ zur Benutzung von CVS bei HOB
 </nebenspalte>
 </intranet>
 EOF
     tn = XPath.first(doc, "//nebenspalte/text()[2]")
-    expected_iso = "Nützliches von Flashern für Flasher."
-                expected_utf = expected_iso.unpack('C*').pack('U*')
-                if expected_utf.respond_to? :encode
-      expected_iso.force_encoding("iso-8859-1")
-      expected_utf.force_encoding(Encoding::UTF_8)
-                end
+    expected_iso = "N\xFCtzliches von Flashern f\xFCr Flasher."
+    expected_utf = expected_iso.unpack('C*').pack('U*')
+    expected_iso.force_encoding(::Encoding::ISO_8859_1)
+    expected_utf.force_encoding(::Encoding::UTF_8)
     assert_equal(expected_utf, tn.to_s.strip)
     f = REXML::Formatters::Default.new
     f.write( tn, Output.new(o = "", "ISO-8859-1") )
@@ -305,7 +303,7 @@ EOF
 
     assert_nil XPath.first(doc,'//leg')
     assert_equal 'http://www.foo.com/human', doc.root.elements[1].namespace
-    assert_equal 'human leg', 
+    assert_equal 'human leg',
       XPath.first(doc, '//x:leg/text()', {'x'=>'http://www.foo.com/human'}).to_s
   end
 
@@ -314,8 +312,8 @@ EOF
     source = File.new(fixture_path('ProductionSupport.xml'))
     h = Hash.new
     doc = REXML::Document.new source
-    doc.elements.each("//CommonError") { |el| 
-      h[el.elements['Key'].text] = 'okay' 
+    doc.elements.each("//CommonError") { |el|
+      h[el.elements['Key'].text] = 'okay'
     }
     assert(h.include?('MotorInsuranceContract(Object)>>#error:'))
   end
@@ -428,7 +426,7 @@ EOF
       assert text !~ /&rbconfig/, "'#{text}' failed"
     end
 
-    #Error occurred in test_package_file_opens(TC_PackageInstall): 
+    #Error occurred in test_package_file_opens(TC_PackageInstall):
     # ArgumentError:
     #illegal access mode &rbconfig.prefix;/lib/rexml
     #
@@ -466,7 +464,7 @@ EOL
     end
   end
 
-  def test_maintain_dtd 
+  def test_maintain_dtd
     src = %q{<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE ivattacks SYSTEM "../../ivacm.dtd" [
 <!ENTITY % extern-packages SYSTEM "../../ivpackages.dtd">

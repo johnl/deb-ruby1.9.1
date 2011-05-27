@@ -51,6 +51,8 @@ class TestStringIO < Test::Unit::TestCase
     assert_equal("abc\n", StringIO.new("abc\n\ndef\n").gets)
     assert_equal("abc\n\ndef\n", StringIO.new("abc\n\ndef\n").gets(nil))
     assert_equal("abc\n\n", StringIO.new("abc\n\ndef\n").gets(""))
+    assert_raise(TypeError){StringIO.new("").gets(1, 1)}
+    assert_raise(TypeError){StringIO.new("").gets(nil, nil)}
   end
 
   def test_readlines
@@ -479,5 +481,14 @@ class TestStringIO < Test::Unit::TestCase
     assert_raise(RuntimeError, bug) {s.puts("foo")}
     assert_raise(RuntimeError, bug) {s.string = "foo"}
     assert_raise(RuntimeError, bug) {s.reopen("")}
+  end
+
+  def test_readlines_limit_0
+    assert_raise(ArgumentError, "[ruby-dev:43392]") { StringIO.new.readlines(0) }
+  end
+
+  def test_each_line_limit_0
+    assert_raise(ArgumentError, "[ruby-dev:43392]") { StringIO.new.each_line(0){} }
+    assert_raise(ArgumentError, "[ruby-dev:43392]") { StringIO.new.each_line("a",0){} }
   end
 end

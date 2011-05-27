@@ -2,7 +2,7 @@
 
   id.c -
 
-  $Author: akr $
+  $Author: nobu $
   created at: Thu Jul 12 04:37:51 2007
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -47,4 +47,5 @@ Init_id(void)
     REGISTER_SYMID(idSend, "send");
     REGISTER_SYMID(id__send__, "__send__");
     REGISTER_SYMID(idInitialize, "initialize");
+    REGISTER_SYMID(idUScore, "_");
 }

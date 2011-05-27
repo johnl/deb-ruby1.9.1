@@ -3,7 +3,7 @@
 
   thread_win32.c -
 
-  $Author: mame $
+  $Author: kosaki $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -14,6 +14,8 @@
 #include <process.h>
 
 #define WIN32_WAIT_TIMEOUT 10	/* 10 ms */
+#define RB_CONDATTR_CLOCK_MONOTONIC 1 /* no effect */
+
 #undef Sleep
 
 #define native_thread_yield() Sleep(0)
@@ -21,16 +23,107 @@
 
 static volatile DWORD ruby_native_thread_key = TLS_OUT_OF_INDEXES;
 
-static int native_mutex_lock(rb_thread_lock_t *);
-static int native_mutex_unlock(rb_thread_lock_t *);
-static int native_mutex_trylock(rb_thread_lock_t *);
-static void native_mutex_initialize(rb_thread_lock_t *);
+static int w32_wait_events(HANDLE *events, int count, DWORD timeout, rb_thread_t *th);
+static int native_mutex_lock(rb_thread_lock_t *lock);
+static int native_mutex_unlock(rb_thread_lock_t *lock);
 
-static void native_cond_signal(rb_thread_cond_t *cond);
-static void native_cond_broadcast(rb_thread_cond_t *cond);
-static void native_cond_wait(rb_thread_cond_t *cond, rb_thread_lock_t *mutex);
-static void native_cond_initialize(rb_thread_cond_t *cond);
-static void native_cond_destroy(rb_thread_cond_t *cond);
+static void
+w32_error(const char *func)
+{
+    LPVOID lpMsgBuf;
+    DWORD err = GetLastError();
+    if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		      FORMAT_MESSAGE_FROM_SYSTEM |
+		      FORMAT_MESSAGE_IGNORE_INSERTS,
+		      NULL,
+		      err,
+		      MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+		      (LPTSTR) & lpMsgBuf, 0, NULL) == 0)
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		      FORMAT_MESSAGE_FROM_SYSTEM |
+		      FORMAT_MESSAGE_IGNORE_INSERTS,
+		      NULL,
+		      err,
+		      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		      (LPTSTR) & lpMsgBuf, 0, NULL);
+    rb_bug("%s: %s", func, (char*)lpMsgBuf);
+}
+
+static int
+w32_mutex_lock(HANDLE lock)
+{
+    DWORD result;
+    while (1) {
+	thread_debug("native_mutex_lock: %p\n", lock);
+	result = w32_wait_events(&lock, 1, INFINITE, 0);
+	switch (result) {
+	  case WAIT_OBJECT_0:
+	    /* get mutex object */
+	    thread_debug("acquire mutex: %p\n", lock);
+	    return 0;
+	  case WAIT_OBJECT_0 + 1:
+	    /* interrupt */
+	    errno = EINTR;
+	    thread_debug("acquire mutex interrupted: %p\n", lock);
+	    return 0;
+	  case WAIT_TIMEOUT:
+	    thread_debug("timeout mutex: %p\n", lock);
+	    break;
+	  case WAIT_ABANDONED:
+	    rb_bug("win32_mutex_lock: WAIT_ABANDONED");
+	    break;
+	  default:
+	    rb_bug("win32_mutex_lock: unknown result (%ld)", result);
+	    break;
+	}
+    }
+    return 0;
+}
+
+static HANDLE
+w32_mutex_create(void)
+{
+    HANDLE lock = CreateMutex(NULL, FALSE, NULL);
+    if (lock == NULL) {
+	w32_error("native_mutex_initialize");
+    }
+    return lock;
+}
+
+#define GVL_DEBUG 0
+
+static void
+gvl_acquire(rb_vm_t *vm, rb_thread_t *th)
+{
+    w32_mutex_lock(vm->gvl.lock);
+    if (GVL_DEBUG) fprintf(stderr, "gvl acquire (%p): acquire\n", th);
+}
+
+static void
+gvl_release(rb_vm_t *vm)
+{
+    ReleaseMutex(vm->gvl.lock);
+}
+
+static void
+gvl_atfork(rb_vm_t *vm)
+{
+    rb_bug("gvl_atfork() is called on win32");
+}
+
+static void
+gvl_init(rb_vm_t *vm)
+{
+    if (GVL_DEBUG) fprintf(stderr, "gvl init\n");
+    vm->gvl.lock = w32_mutex_create();
+}
+
+static void
+gvl_destroy(rb_vm_t *vm)
+{
+    if (GVL_DEBUG) fprintf(stderr, "gvl destroy\n");
+    CloseHandle(vm->gvl.lock);
+}
 
 static rb_thread_t *
 ruby_thread_from_native(void)
@@ -64,20 +157,6 @@ Init_native_thread(void)
 }
 
 static void
-w32_error(const char *func)
-{
-    LPVOID lpMsgBuf;
-    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-		  FORMAT_MESSAGE_FROM_SYSTEM |
-		  FORMAT_MESSAGE_IGNORE_INSERTS,
-		  NULL,
-		  GetLastError(),
-		  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		  (LPTSTR) & lpMsgBuf, 0, NULL);
-    rb_bug("%s: %s", func, (char*)lpMsgBuf);
-}
-
-static void
 w32_set_event(HANDLE handle)
 {
     if (SetEvent(handle) == 0) {
@@ -103,7 +182,7 @@ w32_wait_events(HANDLE *events, int count, DWORD timeout, rb_thread_t *th)
     thread_debug("  w32_wait_events events:%p, count:%d, timeout:%ld, th:%p\n",
 		 events, count, timeout, th);
     if (th && (intr = th->native_thread_data.interrupt_event)) {
-	native_mutex_lock(&th->vm->global_vm_lock);
+	gvl_acquire(th->vm, th);
 	if (intr == th->native_thread_data.interrupt_event) {
 	    w32_reset_event(intr);
 	    if (RUBY_VM_INTERRUPTED(th)) {
@@ -116,17 +195,17 @@ w32_wait_events(HANDLE *events, int count, DWORD timeout, rb_thread_t *th)
 	    targets[count++] = intr;
 	    thread_debug("  * handle: %p (count: %d, intr)\n", intr, count);
 	}
-	native_mutex_unlock(&th->vm->global_vm_lock);
+	gvl_release(th->vm);
     }
 
     thread_debug("  WaitForMultipleObjects start (count: %d)\n", count);
     ret = WaitForMultipleObjects(count, targets, FALSE, timeout);
     thread_debug("  WaitForMultipleObjects end (ret: %lu)\n", ret);
 
-    if (ret == WAIT_OBJECT_0 + count - 1 && th) {
+    if (ret == (DWORD)(WAIT_OBJECT_0 + count - 1) && th) {
 	errno = EINTR;
     }
-    if (ret == -1 && THREAD_DEBUG) {
+    if (ret == WAIT_FAILED && THREAD_DEBUG) {
 	int i;
 	DWORD dmy;
 	for (i = 0; i < count; i++) {
@@ -167,7 +246,7 @@ w32_close_handle(HANDLE handle)
 static void
 w32_resume_thread(HANDLE handle)
 {
-    if (ResumeThread(handle) == -1) {
+    if (ResumeThread(handle) == (DWORD)-1) {
 	w32_error("w32_resume_thread");
     }
 }
@@ -252,32 +331,7 @@ static int
 native_mutex_lock(rb_thread_lock_t *lock)
 {
 #if USE_WIN32_MUTEX
-    DWORD result;
-    while (1) {
-	thread_debug("native_mutex_lock: %p\n", *lock);
-	result = w32_wait_events(&*lock, 1, INFINITE, 0);
-	switch (result) {
-	  case WAIT_OBJECT_0:
-	    /* get mutex object */
-	    thread_debug("acquire mutex: %p\n", *lock);
-	    return 0;
-	  case WAIT_OBJECT_0 + 1:
-	    /* interrupt */
-	    errno = EINTR;
-	    thread_debug("acquire mutex interrupted: %p\n", *lock);
-	    return 0;
-	  case WAIT_TIMEOUT:
-	    thread_debug("timeout mutex: %p\n", *lock);
-	    break;
-	  case WAIT_ABANDONED:
-	    rb_bug("win32_mutex_lock: WAIT_ABANDONED");
-	    break;
-	  default:
-	    rb_bug("win32_mutex_lock: unknown result (%d)", result);
-	    break;
-	}
-    }
-    return 0;
+    w32_mutex_lock(*lock);
 #else
     EnterCriticalSection(lock);
     return 0;
@@ -320,17 +374,12 @@ static void
 native_mutex_initialize(rb_thread_lock_t *lock)
 {
 #if USE_WIN32_MUTEX
-    *lock = CreateMutex(NULL, FALSE, NULL);
-    if (*lock == NULL) {
-	w32_error("native_mutex_initialize");
-    }
+    *lock = w32_mutex_create();
     /* thread_debug("initialize mutex: %p\n", *lock); */
 #else
     InitializeCriticalSection(lock);
 #endif
 }
-
-#define native_mutex_reinitialize_atfork(lock) (void)(lock)
 
 static void
 native_mutex_destroy(rb_thread_lock_t *lock)
@@ -344,12 +393,8 @@ native_mutex_destroy(rb_thread_lock_t *lock)
 
 struct cond_event_entry {
     struct cond_event_entry* next;
+    struct cond_event_entry* prev;
     HANDLE event;
-};
-
-struct rb_thread_cond_struct {
-    struct cond_event_entry *next;
-    struct cond_event_entry *last;
 };
 
 static void
@@ -357,9 +402,16 @@ native_cond_signal(rb_thread_cond_t *cond)
 {
     /* cond is guarded by mutex */
     struct cond_event_entry *e = cond->next;
+    struct cond_event_entry *head = (struct cond_event_entry*)cond;
 
-    if (e) {
-	cond->next = e->next;
+    if (e != head) {
+	struct cond_event_entry *next = e->next;
+	struct cond_event_entry *prev = e->prev;
+
+	prev->next = next;
+	next->prev = prev;
+	e->next = e->prev = e;
+
 	SetEvent(e->event);
     }
     else {
@@ -372,50 +424,136 @@ native_cond_broadcast(rb_thread_cond_t *cond)
 {
     /* cond is guarded by mutex */
     struct cond_event_entry *e = cond->next;
-    cond->next = 0;
+    struct cond_event_entry *head = (struct cond_event_entry*)cond;
 
-    while (e) {
+    while (e != head) {
+	struct cond_event_entry *next = e->next;
+	struct cond_event_entry *prev = e->prev;
+
 	SetEvent(e->event);
-	e = e->next;
+
+	prev->next = next;
+	next->prev = prev;
+	e->next = e->prev = e;
+
+	e = next;
     }
 }
 
-static void
-native_cond_wait(rb_thread_cond_t *cond, rb_thread_lock_t *mutex)
+
+static int
+__cond_timedwait(rb_thread_cond_t *cond, rb_thread_lock_t *mutex, unsigned long msec)
 {
     DWORD r;
     struct cond_event_entry entry;
+    struct cond_event_entry *head = (struct cond_event_entry*)cond;
 
-    entry.next = 0;
     entry.event = CreateEvent(0, FALSE, FALSE, 0);
 
     /* cond is guarded by mutex */
-    if (cond->next) {
-	cond->last->next = &entry;
-	cond->last = &entry;
-    }
-    else {
-	cond->next = &entry;
-	cond->last = &entry;
-    }
+    entry.next = head;
+    entry.prev = head->prev;
+    head->prev->next = &entry;
+    head->prev = &entry;
 
     native_mutex_unlock(mutex);
     {
-	r = WaitForSingleObject(entry.event, INFINITE);
-	if (r != WAIT_OBJECT_0) {
+	r = WaitForSingleObject(entry.event, msec);
+	if ((r != WAIT_OBJECT_0) && (r != WAIT_TIMEOUT)) {
 	    rb_bug("native_cond_wait: WaitForSingleObject returns %lu", r);
 	}
     }
     native_mutex_lock(mutex);
 
+    entry.prev->next = entry.next;
+    entry.next->prev = entry.prev;
+
     w32_close_handle(entry.event);
+    return (r == WAIT_OBJECT_0) ? 0 : ETIMEDOUT;
+}
+
+static int
+native_cond_wait(rb_thread_cond_t *cond, rb_thread_lock_t *mutex)
+{
+    return __cond_timedwait(cond, mutex, INFINITE);
+}
+
+static unsigned long
+abs_timespec_to_timeout_ms(struct timespec *ts)
+{
+    struct timeval tv;
+    struct timeval now;
+
+    gettimeofday(&now, NULL);
+    tv.tv_sec = ts->tv_sec;
+    tv.tv_usec = ts->tv_nsec / 1000;
+
+    if (!rb_w32_time_subtract(&tv, &now))
+	return 0;
+
+    return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+}
+
+static int
+native_cond_timedwait(rb_thread_cond_t *cond, rb_thread_lock_t *mutex, struct timespec *ts)
+{
+    unsigned long timeout_ms;
+
+    timeout_ms = abs_timespec_to_timeout_ms(ts);
+    if (!timeout_ms)
+	return ETIMEDOUT;
+
+    return __cond_timedwait(cond, mutex, timeout_ms);
+}
+
+#if SIZEOF_TIME_T == SIZEOF_LONG
+typedef unsigned long unsigned_time_t;
+#elif SIZEOF_TIME_T == SIZEOF_INT
+typedef unsigned int unsigned_time_t;
+#elif SIZEOF_TIME_T == SIZEOF_LONG_LONG
+typedef unsigned LONG_LONG unsigned_time_t;
+#else
+# error cannot find integer type which size is same as time_t.
+#endif
+
+#define TIMET_MAX (~(time_t)0 <= 0 ? (time_t)((~(unsigned_time_t)0) >> 1) : (time_t)(~(unsigned_time_t)0))
+
+static struct timespec
+native_cond_timeout(rb_thread_cond_t *cond, struct timespec timeout_rel)
+{
+    int ret;
+    struct timeval tv;
+    struct timespec timeout;
+    struct timespec now;
+
+    ret = gettimeofday(&tv, 0);
+    if (ret != 0)
+	rb_sys_fail(0);
+    now.tv_sec = tv.tv_sec;
+    now.tv_nsec = tv.tv_usec * 1000;
+
+  out:
+    timeout.tv_sec = now.tv_sec;
+    timeout.tv_nsec = now.tv_nsec;
+    timeout.tv_sec += timeout_rel.tv_sec;
+    timeout.tv_nsec += timeout_rel.tv_nsec;
+
+    if (timeout.tv_nsec >= 1000*1000*1000) {
+	timeout.tv_sec++;
+	timeout.tv_nsec -= 1000*1000*1000;
+    }
+
+    if (timeout.tv_sec < now.tv_sec)
+	timeout.tv_sec = TIMET_MAX;
+
+    return timeout;
 }
 
 static void
-native_cond_initialize(rb_thread_cond_t *cond)
+native_cond_initialize(rb_thread_cond_t *cond, int flags)
 {
-    cond->next = 0;
-    cond->last = 0;
+    cond->next = (struct cond_event_entry *)cond;
+    cond->prev = (struct cond_event_entry *)cond;
 }
 
 static void
@@ -458,7 +596,6 @@ static void
 native_thread_destroy(rb_thread_t *th)
 {
     HANDLE intr = InterlockedExchangePointer(&th->native_thread_data.interrupt_event, 0);
-    native_mutex_destroy(&th->interrupt_lock);
     thread_debug("close handle - intr: %p, thid: %p\n", intr, th->thread_id);
     w32_close_handle(intr);
 }
@@ -497,7 +634,7 @@ native_thread_create(rb_thread_t *th)
 
     if (THREAD_DEBUG) {
 	Sleep(0);
-	thread_debug("create: (th: %p, thid: %p, intr: %p), stack size: %d\n",
+	thread_debug("create: (th: %p, thid: %p, intr: %p), stack size: %"PRIdSIZE"\n",
 		     th, th->thread_id,
 		     th->native_thread_data.interrupt_event, stack_size);
     }
@@ -590,4 +727,17 @@ native_reset_timer_thread(void)
     }
 }
 
+#ifdef RUBY_ALLOCA_CHKSTK
+void
+ruby_alloca_chkstk(size_t len, void *sp)
+{
+    if (ruby_stack_length(NULL) * sizeof(VALUE) >= len) {
+	rb_thread_t *th = GET_THREAD();
+	if (!rb_thread_raised_p(th, RAISED_STACKOVERFLOW)) {
+	    rb_thread_raised_set(th, RAISED_STACKOVERFLOW);
+	    rb_exc_raise(sysstack_error);
+	}
+    }
+}
+#endif
 #endif /* THREAD_SYSTEM_DEPENDENT_IMPLEMENTATION */

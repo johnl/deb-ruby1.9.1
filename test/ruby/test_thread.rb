@@ -344,7 +344,7 @@ class TestThread < Test::Unit::TestCase
       t1 = Thread.new { sleep }
       Thread.pass
       t2 = Thread.new { loop { } }
-      t3 = Thread.new { }.join
+      Thread.new { }.join
       p [Thread.current, t1, t2].map{|t| t.object_id }.sort
       p Thread.list.map{|t| t.object_id }.sort
     INPUT
@@ -384,7 +384,7 @@ class TestThread < Test::Unit::TestCase
       end
     INPUT
 
-    assert_in_out_err(%w(-d), <<-INPUT, %w(false 2), /.+/)
+    assert_in_out_err(%w(--disable-gems -d), <<-INPUT, %w(false 2), %r".+")
       p Thread.abort_on_exception
       begin
         Thread.new { raise }
@@ -576,6 +576,15 @@ class TestThread < Test::Unit::TestCase
     end
     assert_nothing_raised {arr.hash}
     assert(obj[:visited])
+  end
+
+  def test_thread_instance_variable
+    bug4389 = '[ruby-core:35192]'
+    assert_in_out_err([], <<-INPUT, %w(), [], bug4389)
+      class << Thread.current
+        @data = :data
+      end
+    INPUT
   end
 end
 

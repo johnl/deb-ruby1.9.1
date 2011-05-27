@@ -1,7 +1,7 @@
 #
 #   irb/ruby-lex.rb - ruby lexcal analyzer
 #   	$Release Version: 0.9.6$
-#   	$Revision: 30131 $
+#   	$Revision: 31573 $
 #   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
 #
 # --
@@ -14,7 +14,7 @@ require "irb/slex"
 require "irb/ruby-token"
 
 class RubyLex
-  @RCS_ID='-$Id: ruby-lex.rb 30131 2010-12-08 08:09:11Z yugui $-'
+  @RCS_ID='-$Id: ruby-lex.rb 31573 2011-05-15 11:55:52Z nobu $-'
 
   extend Exception2MessageMapper
   def_exception(:AlreadyDefinedToken, "Already defined token(%s)")
@@ -148,7 +148,7 @@ class RubyLex
     end
     c = c2 unless c
     @rests.unshift c #c =
-      @seek -= 1
+    @seek -= 1
     if c == "\n"
       @line_no -= 1
       if idx = @readed.reverse.index("\n")
@@ -239,7 +239,7 @@ class RubyLex
 	    end
 	  end
 	  if @line != "\n"
-      @line.force_encoding(@io.encoding)
+            @line.force_encoding(@io.encoding)
 	    yield @line, @exp_line_no
 	  end
 	  break unless l
@@ -623,7 +623,7 @@ class RubyLex
 	tk_c = TkLPAREN
       end
       @indent_stack.push tk_c
-      tk = Token(tk_c)
+      Token(tk_c)
     end
 
     @OP.def_rule("[]", proc{|op, io| @lex_state == EXPR_FNAME}) do
@@ -1068,7 +1068,7 @@ class RubyLex
 	end
       end
       if @ltype == "/"
-       while peek(0) =~ /i|m|x|o|e|s|u|n/
+        while /[imxoesun]/ =~ peek(0)
 	  getc
 	end
       end
@@ -1100,7 +1100,7 @@ class RubyLex
       @indent = 0
       @indent_stack = []
       @lex_state = EXPR_BEG
-      
+
       loop do
 	@continue = false
 	prompt
@@ -1119,7 +1119,7 @@ class RubyLex
       @quoted = reserve_quoted
     end
   end
-  
+
   def identify_comment
     @ltype = "#"
 

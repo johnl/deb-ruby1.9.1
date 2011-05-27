@@ -2,17 +2,17 @@
 
   bubblebabble.c - BubbleBabble encoding support
 
-  $Author: knu $
+  $Author: nobu $
   created at: Fri Oct 13 18:31:42 JST 2006
 
   Copyright (C) 2006 Akinori MUSHA
 
-  $Id: bubblebabble.c 28341 2010-06-16 09:38:14Z knu $
+  $Id: bubblebabble.c 27437 2010-04-22 08:04:13Z nobu $
 
 ************************************************/
 
 #include "ruby.h"
-#include "../digest.h"
+#include "digest.h"
 
 static ID id_digest;
 

@@ -2,7 +2,7 @@
 
   vm_insnhelper.c - instruction helper functions.
 
-  $Author: yugui $
+  $Author: nobu $
 
   Copyright (C) 2007 Koichi Sasada
 
@@ -11,6 +11,8 @@
 /* finish iseq array */
 #include "insns.inc"
 #include <math.h>
+#include "constant.h"
+#include "internal.h"
 
 /* control stack frame */
 
@@ -131,15 +133,15 @@ argument_error(const rb_iseq_t *iseq, int miss_argc, int correct_argc)
 }
 
 #define VM_CALLEE_SETUP_ARG(ret, th, iseq, orig_argc, orig_argv, block) \
-    if (LIKELY(iseq->arg_simple & 0x01)) { \
+    if (LIKELY((iseq)->arg_simple & 0x01)) { \
 	/* simple check */ \
-	if (orig_argc != iseq->argc) { \
-	    argument_error(iseq, orig_argc, iseq->argc); \
+	if ((orig_argc) != (iseq)->argc) { \
+	    argument_error((iseq), (orig_argc), (iseq)->argc); \
 	} \
-	ret = 0; \
+	(ret) = 0; \
     } \
     else { \
-	ret = vm_callee_setup_arg_complex(th, iseq, orig_argc, orig_argv, block); \
+	(ret) = vm_callee_setup_arg_complex((th), (iseq), (orig_argc), (orig_argv), (block)); \
     }
 
 static inline int
@@ -628,7 +630,7 @@ vm_call_method(rb_thread_t *th, rb_control_frame_t *cfp,
 	    else if (!(flag & VM_CALL_OPT_SEND_BIT) && (me->flag & NOEX_MASK) & NOEX_PROTECTED) {
 		VALUE defined_class = me->klass;
 
-		if (TYPE(defined_class) == T_ICLASS) {
+		if (RB_TYPE_P(defined_class, T_ICLASS)) {
 		    defined_class = RBASIC(defined_class)->klass;
 		}
 
@@ -718,7 +720,7 @@ vm_yield_with_cfunc(rb_thread_t *th, const rb_block_t *block,
 	blockarg = Qnil;
     }
 
-    vm_push_frame(th, 0, VM_FRAME_MAGIC_IFUNC,
+    vm_push_frame(th, (rb_iseq_t *)ifunc, VM_FRAME_MAGIC_IFUNC,
 		  self, (VALUE)block->dfp,
 		  0, th->cfp->sp, block->lfp, 1);
 
@@ -1060,6 +1062,7 @@ vm_get_cref0(const rb_iseq_t *iseq, const VALUE *lfp, const VALUE *dfp)
 {
     while (1) {
 	if (lfp == dfp) {
+	    if (!RUBY_VM_NORMAL_ISEQ_P(iseq)) return NULL;
 	    return iseq->cref_stack;
 	}
 	else if (dfp[-1] != Qnil) {
@@ -1085,7 +1088,6 @@ vm_cref_push(rb_thread_t *th, VALUE klass, int noex, rb_block_t *blockptr)
 {
     rb_control_frame_t *cfp = vm_get_ruby_level_caller_cfp(th, th->cfp);
     NODE *cref = NEW_BLOCK(klass);
-    cref->nd_file = 0;
     cref->nd_visi = noex;
 
     if (blockptr) {
@@ -1134,13 +1136,15 @@ vm_get_const_base(const rb_iseq_t *iseq, const VALUE *lfp, const VALUE *dfp)
 static inline void
 vm_check_if_namespace(VALUE klass)
 {
+    VALUE str;
     switch (TYPE(klass)) {
       case T_CLASS:
       case T_MODULE:
 	break;
       default:
+	str = rb_inspect(klass);
 	rb_raise(rb_eTypeError, "%s is not a class/module",
-		 RSTRING_PTR(rb_inspect(klass)));
+		 StringValuePtr(str));
     }
 }
 
@@ -1152,26 +1156,34 @@ vm_get_ev_const(rb_thread_t *th, const rb_iseq_t *iseq,
 
     if (orig_klass == Qnil) {
 	/* in current lexical scope */
-	const NODE *cref = vm_get_cref(iseq, th->cfp->lfp, th->cfp->dfp);
-	const NODE *root_cref = NULL;
+	const NODE *root_cref = vm_get_cref(iseq, th->cfp->lfp, th->cfp->dfp);
+	const NODE *cref;
 	VALUE klass = orig_klass;
 
+	while (root_cref && root_cref->flags & NODE_FL_CREF_PUSHED_BY_EVAL) {
+	    root_cref = root_cref->nd_next;
+	}
+	cref = root_cref;
 	while (cref && cref->nd_next) {
-	    if (!(cref->flags & NODE_FL_CREF_PUSHED_BY_EVAL)) {
+	    if (cref->flags & NODE_FL_CREF_PUSHED_BY_EVAL) {
+		klass = Qnil;
+	    }
+	    else {
 		klass = cref->nd_clss;
-		if (root_cref == NULL)
-		    root_cref = cref;
 	    }
 	    cref = cref->nd_next;
 
 	    if (!NIL_P(klass)) {
 		VALUE am = 0;
+		st_data_t data;
 	      search_continue:
-		if (RCLASS_IV_TBL(klass) &&
-		    st_lookup(RCLASS_IV_TBL(klass), id, &val)) {
+		if (RCLASS_CONST_TBL(klass) &&
+		    st_lookup(RCLASS_CONST_TBL(klass), id, &data)) {
+		    val = ((rb_const_entry_t*)data)->value;
 		    if (val == Qundef) {
 			if (am == klass) break;
 			am = klass;
+			if (is_defined) return 1;
 			rb_autoload_load(klass, id);
 			goto search_continue;
 		    }
@@ -1205,10 +1217,10 @@ vm_get_ev_const(rb_thread_t *th, const rb_iseq_t *iseq,
     else {
 	vm_check_if_namespace(orig_klass);
 	if (is_defined) {
-	    return rb_const_defined_from(orig_klass, id);
+	    return rb_public_const_defined_from(orig_klass, id);
 	}
 	else {
-	    return rb_const_get_from(orig_klass, id);
+	    return rb_public_const_get_from(orig_klass, id);
 	}
     }
 }
@@ -1295,9 +1307,8 @@ vm_setivar(VALUE obj, ID id, VALUE val, IC ic)
     if (!OBJ_UNTRUSTED(obj) && rb_safe_level() >= 4) {
 	rb_raise(rb_eSecurityError, "Insecure: can't modify instance variable");
     }
-    if (OBJ_FROZEN(obj)) {
-	rb_error_frozen("object");
-    }
+
+    rb_check_frozen(obj);
 
     if (TYPE(obj) == T_OBJECT) {
 	VALUE klass = RBASIC(obj)->klass;
@@ -1372,24 +1383,24 @@ vm_search_normal_superclass(VALUE klass, VALUE recv)
 }
 
 static void
-vm_search_superclass(rb_control_frame_t *reg_cfp, rb_iseq_t *ip,
+vm_search_superclass(rb_control_frame_t *reg_cfp, rb_iseq_t *iseq,
 		     VALUE recv, VALUE sigval,
 		     ID *idp, VALUE *klassp)
 {
     ID id;
     VALUE klass;
 
-    while (ip && !ip->klass) {
-	ip = ip->parent_iseq;
+    while (iseq && !iseq->klass) {
+	iseq = iseq->parent_iseq;
     }
 
-    if (ip == 0) {
+    if (iseq == 0) {
 	rb_raise(rb_eNoMethodError, "super called outside of method");
     }
 
-    id = ip->defined_method_id;
+    id = iseq->defined_method_id;
 
-    if (ip != ip->local_iseq) {
+    if (iseq != iseq->local_iseq) {
 	/* defined by Module#define_method() */
 	rb_control_frame_t *lcfp = GET_CFP();
 
@@ -1398,7 +1409,7 @@ vm_search_superclass(rb_control_frame_t *reg_cfp, rb_iseq_t *ip,
 	    rb_raise(rb_eRuntimeError, "implicit argument passing of super from method defined by define_method() is not supported. Specify all arguments explicitly.");
 	}
 
-	while (lcfp->iseq != ip) {
+	while (lcfp->iseq != iseq) {
 	    VALUE *tdfp = GET_PREV_DFP(lcfp->dfp);
 	    while (1) {
 		lcfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(lcfp);
@@ -1417,7 +1428,7 @@ vm_search_superclass(rb_control_frame_t *reg_cfp, rb_iseq_t *ip,
 	klass = vm_search_normal_superclass(lcfp->me->klass, recv);
     }
     else {
-	klass = vm_search_normal_superclass(ip->klass, recv);
+	klass = vm_search_normal_superclass(iseq->klass, recv);
     }
 
     *idp = id;
@@ -1696,24 +1707,5 @@ opt_eq_func(VALUE recv, VALUE obj, IC ic)
     }
 
     return Qundef;
-}
-
-struct opt_case_dispatch_i_arg {
-    VALUE obj;
-    int label;
-};
-
-static int
-opt_case_dispatch_i(st_data_t key, st_data_t data, st_data_t p)
-{
-    struct opt_case_dispatch_i_arg *arg = (void *)p;
-
-    if (RTEST(rb_funcall((VALUE)key, idEqq, 1, arg->obj))) {
-	arg->label = FIX2INT((VALUE)data);
-	return ST_STOP;
-    }
-    else {
-	return ST_CONTINUE;
-    }
 }
 

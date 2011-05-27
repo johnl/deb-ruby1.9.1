@@ -2,13 +2,13 @@
 
   readline.c - GNU Readline module
 
-  $Author: yugui $
+  $Author: kosaki $
   created at: Wed Jan 20 13:59:32 JST 1999
 
   Copyright (C) 1997-2008  Shugo Maeda
   Copyright (C) 2008-2009  TAKAO Kouji
 
-  $Id: readline.c 30569 2011-01-16 12:35:04Z yugui $
+  $Id: readline.c 31423 2011-05-04 01:13:02Z kosaki $
 
   Contact:
    - TAKAO Kouji <kouji at takao7 dot net> (current maintainer)
@@ -75,7 +75,7 @@ static char **readline_attempted_completion_function(const char *text,
 
 #define OutputStringValue(str) do {\
     SafeStringValue(str);\
-    str = rb_str_conv_enc(str, rb_enc_get(str), rb_locale_encoding());\
+    (str) = rb_str_conv_enc((str), rb_enc_get(str), rb_locale_encoding());\
 } while (0)\
 
 
@@ -118,6 +118,10 @@ static char **readline_attempted_completion_function(const char *text,
 static VALUE readline_instream;
 static ID id_getbyte;
 
+#ifndef HAVE_RL_GETC
+#define rl_getc(f) EOF
+#endif
+
 static int readline_getc(FILE *);
 static int
 readline_getc(FILE *input)
@@ -141,11 +145,7 @@ readline_event(void)
 #if BUSY_WAIT
     rb_thread_schedule();
 #else
-    fd_set rset;
-
-    FD_ZERO(&rset);
-    FD_SET(fileno(rl_instream), &rset);
-    rb_thread_select(fileno(rl_instream) + 1, &rset, NULL, NULL, NULL);
+    rb_wait_for_single_fd(fileno(rl_instream), RB_WAITFD_IN, NULL);
     return 0;
 #endif
 }
@@ -350,7 +350,9 @@ readline_readline(int argc, VALUE *argv, VALUE self)
     if (status) {
 #if defined HAVE_RL_CLEANUP_AFTER_SIGNAL
         /* restore terminal mode and signal handler*/
+#if defined HAVE_RL_FREE_LINE_STATE
         rl_free_line_state();
+#endif
         rl_cleanup_after_signal();
 #elif defined HAVE_RL_DEPREP_TERM_FUNCTION
         /* restore terminal mode */

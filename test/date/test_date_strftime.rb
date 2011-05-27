@@ -124,9 +124,7 @@ class TestDateStrftime < Test::Unit::TestCase
 
   def test_strftime__3_2
     s = Time.now.strftime('%G')
-    if s.empty? || s == '%G'
-      return
-    end
+    skip if s.empty? || s == '%G'
     (Date.new(1970,1,1)..Date.new(2037,12,31)).each do |d|
       t = Time.utc(d.year,d.mon,d.mday)
       assert_equal(t.strftime('%G'), d.strftime('%G'))
@@ -332,8 +330,8 @@ class TestDateStrftime < Test::Unit::TestCase
     assert_equal(d.ctime, d.asctime)
 
     assert_equal('2001-02-03', d.iso8601)
-    assert_equal(d.rfc3339, d.iso8601)
     assert_equal(d.xmlschema, d.iso8601)
+    assert_equal('2001-02-03T00:00:00+00:00', d.rfc3339)
     assert_equal('Sat, 3 Feb 2001 00:00:00 +0000', d.rfc2822)
     assert_equal(d.rfc822, d.rfc2822)
     assert_equal('Sat, 03 Feb 2001 00:00:00 GMT', d.httpdate)
@@ -359,6 +357,8 @@ class TestDateStrftime < Test::Unit::TestCase
     assert_equal('2001-02-03T04:05:06.123456000+00:00', d2.iso8601(9))
     assert_equal('2001-02-03T04:05:06.123456000+00:00', d2.rfc3339(9))
     assert_equal('H13.02.03T04:05:06.123456000+00:00', d2.jisx0301(9))
+
+    assert_equal('1800-01-01T00:00:00+00:00', DateTime.new(1800).jisx0301)
 
     assert_equal('1868-01-25', Date.parse('1868-01-25').jisx0301)
     assert_equal('1872-12-31', Date.parse('1872-12-31').jisx0301)

@@ -1,6 +1,6 @@
-/* $Id: sha1ossl.c 28341 2010-06-16 09:38:14Z knu $ */
+/* $Id: sha1ossl.c 25189 2009-10-02 12:04:37Z akr $ */
 
-#include "../defs.h"
+#include "defs.h"
 #include "sha1ossl.h"
 
 void

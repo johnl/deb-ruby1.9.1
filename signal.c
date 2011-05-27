@@ -2,7 +2,7 @@
 
   signal.c -
 
-  $Author: marcandre $
+  $Author: nagachika $
   created at: Tue Dec 20 10:13:44 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -24,6 +24,17 @@ typedef LONG rb_atomic_t;
 # define ATOMIC_SET(var, val) InterlockedExchange(&(var), (val))
 # define ATOMIC_INC(var) InterlockedIncrement(&(var))
 # define ATOMIC_DEC(var) InterlockedDecrement(&(var))
+
+#elif defined HAVE_GCC_ATOMIC_BUILTINS
+/* @shyouhei hack to support atomic operations in case of gcc. Gcc
+ * has its own pseudo-insns to support them.  See info, or
+ * http://gcc.gnu.org/onlinedocs/gcc/Atomic-Builtins.html */
+
+typedef unsigned int rb_atomic_t; /* Anything OK */
+# define ATOMIC_TEST(var) __sync_lock_test_and_set(&(var), 0)
+# define ATOMIC_SET(var, val)  __sync_lock_test_and_set(&(var), (val))
+# define ATOMIC_INC(var) __sync_fetch_and_add(&(var), 1)
+# define ATOMIC_DEC(var) __sync_fetch_and_sub(&(var), 1)
 
 #else
 typedef int rb_atomic_t;
@@ -343,11 +354,12 @@ VALUE
 rb_f_kill(int argc, VALUE *argv)
 {
 #ifndef HAS_KILLPG
-#define killpg(pg, sig) kill(-(pg), sig)
+#define killpg(pg, sig) kill(-(pg), (sig))
 #endif
     int negative = 0;
     int sig;
     int i;
+    volatile VALUE str;
     const char *s;
 
     rb_secure(2);
@@ -365,11 +377,11 @@ rb_f_kill(int argc, VALUE *argv)
 
       case T_STRING:
 	s = RSTRING_PTR(argv[0]);
+      str_signal:
 	if (s[0] == '-') {
 	    negative++;
 	    s++;
 	}
-      str_signal:
 	if (strncmp("SIG", s, 3) == 0)
 	    s += 3;
 	if((sig = signm2signo(s)) == 0)
@@ -380,17 +392,13 @@ rb_f_kill(int argc, VALUE *argv)
 	break;
 
       default:
-        {
-	    VALUE str;
-
-	    str = rb_check_string_type(argv[0]);
-	    if (!NIL_P(str)) {
-		s = RSTRING_PTR(str);
-		goto str_signal;
-	    }
-	    rb_raise(rb_eArgError, "bad signal type %s",
-		     rb_obj_classname(argv[0]));
+	str = rb_check_string_type(argv[0]);
+	if (!NIL_P(str)) {
+	    s = RSTRING_PTR(str);
+	    goto str_signal;
 	}
+	rb_raise(rb_eArgError, "bad signal type %s",
+		 rb_obj_classname(argv[0]));
 	break;
     }
 
@@ -466,7 +474,7 @@ ruby_signal(int signum, sighandler_t handler)
 #endif
 
     sigemptyset(&sigact.sa_mask);
-#ifdef SA_SIGINFO
+#ifdef USE_SIGALTSTACK
     sigact.sa_sigaction = (ruby_sigaction_t*)handler;
     sigact.sa_flags = SA_SIGINFO;
 #else
@@ -497,7 +505,7 @@ posix_signal(int signum, sighandler_t handler)
 }
 
 #else /* !POSIX_SIGNAL */
-#define ruby_signal(sig,handler) (/* rb_trap_accept_nativethreads[sig] = 0,*/ signal((sig),(handler)))
+#define ruby_signal(sig,handler) (/* rb_trap_accept_nativethreads[(sig)] = 0,*/ signal((sig),(handler)))
 #if 0 /* def HAVE_NATIVETHREAD */
 static sighandler_t
 ruby_nativethread_signal(int signum, sighandler_t handler)
@@ -953,11 +961,15 @@ sig_trap(int argc, VALUE *argv)
 	rb_raise(rb_eSecurityError, "Insecure: tainted signal trap");
     }
 #if USE_TRAP_MASK
-    /* disable interrupt */
-    sigfillset(&arg.mask);
-    pthread_sigmask(SIG_BLOCK, &arg.mask, &arg.mask);
+    {
+      sigset_t fullmask;
 
-    return rb_ensure(trap, (VALUE)&arg, trap_ensure, (VALUE)&arg);
+      /* disable interrupt */
+      sigfillset(&fullmask);
+      pthread_sigmask(SIG_BLOCK, &fullmask, &arg.mask);
+
+      return rb_ensure(trap, (VALUE)&arg, trap_ensure, (VALUE)&arg);
+    }
 #else
     return trap(&arg);
 #endif
@@ -1003,15 +1015,17 @@ init_sigchld(int sig)
 #if USE_TRAP_MASK
 # ifdef HAVE_SIGPROCMASK
     sigset_t mask;
+    sigset_t fullmask;
 # else
     int mask;
+    int fullmask;
 # endif
 #endif
 
 #if USE_TRAP_MASK
     /* disable interrupt */
-    sigfillset(&mask);
-    pthread_sigmask(SIG_BLOCK, &mask, &mask);
+    sigfillset(&fullmask);
+    pthread_sigmask(SIG_BLOCK, &fullmask, &mask);
 #endif
 
     oldfunc = ruby_signal(sig, SIG_DFL);
@@ -1041,8 +1055,9 @@ ruby_sig_finalize(void)
 }
 
 
-#ifdef RUBY_DEBUG_ENV
 int ruby_enable_coredump = 0;
+#ifndef RUBY_DEBUG_ENV
+#define ruby_enable_coredump 0
 #endif
 
 /*
@@ -1116,18 +1131,15 @@ Init_signal(void)
     install_sighandler(SIGUSR2, sighandler);
 #endif
 
-#ifdef RUBY_DEBUG_ENV
-    if (!ruby_enable_coredump)
-#endif
-    {
+    if (!ruby_enable_coredump) {
 #ifdef SIGBUS
-    install_sighandler(SIGBUS, sigbus);
+	install_sighandler(SIGBUS, sigbus);
 #endif
 #ifdef SIGSEGV
 # ifdef USE_SIGALTSTACK
-    rb_register_sigaltstack(GET_THREAD());
+	rb_register_sigaltstack(GET_THREAD());
 # endif
-    install_sighandler(SIGSEGV, (sighandler_t)sigsegv);
+	install_sighandler(SIGSEGV, (sighandler_t)sigsegv);
 #endif
     }
 #ifdef SIGPIPE

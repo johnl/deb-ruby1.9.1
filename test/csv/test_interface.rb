@@ -7,12 +7,13 @@
 #  Copyright 2005 James Edward Gray II. You can redistribute or modify this code
 #  under the terms of Ruby's license.
 
-require "test/unit"
+require_relative "base"
 
-require "csv"
+class TestCSV::Interface < TestCSV
+  extend DifferentOFS
 
-class TestCSVInterface < Test::Unit::TestCase
   def setup
+    super
     @path = File.join(File.dirname(__FILE__), "temp_test_data.csv")
 
     File.open(@path, "wb") do |file|
@@ -25,6 +26,7 @@ class TestCSVInterface < Test::Unit::TestCase
 
   def teardown
     File.unlink(@path)
+    super
   end
 
   ### Test Read Interface ###
@@ -79,7 +81,7 @@ class TestCSVInterface < Test::Unit::TestCase
     assert_equal(nil,       CSV.parse_line(""))  # to signal eof
     assert_equal(Array.new, CSV.parse_line("\n1,2,3"))
   end
-  
+
   def test_read_and_readlines
     assert_equal( @expected,
                   CSV.read(@path, col_sep: "\t", row_sep: "\r\n") )
@@ -108,6 +110,14 @@ class TestCSVInterface < Test::Unit::TestCase
       assert_equal(@expected.shift, csv.shift)
       assert_equal(@expected.shift, csv.shift)
       assert_equal(nil, csv.shift)
+    end
+  end
+  
+  def test_enumerators_are_supported
+    CSV.open(@path, col_sep: "\t", row_sep: "\r\n") do |csv|
+      enum = csv.each
+      assert_instance_of(Enumerator, enum)
+      assert_equal(@expected.shift, enum.next)
     end
   end
 

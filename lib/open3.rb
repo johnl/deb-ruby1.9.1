@@ -205,9 +205,9 @@ module Open3
     result = [*parent_io, wait_thr]
     if defined? yield
       begin
-	return yield(*result)
+        return yield(*result)
       ensure
-	parent_io.each{|io| io.close unless io.closed?}
+        parent_io.each{|io| io.close unless io.closed?}
         wait_thr.join
       end
     end
@@ -223,7 +223,7 @@ module Open3
   #   stdout_str, stderr_str, status = Open3.capture3([env,] cmd... [, opts])
   #
   # The arguments env, cmd and opts are passed to Open3.popen3 except
-  # opts[:stdin_data] and opts[:stdin_data].  See Process.spawn.
+  # opts[:stdin_data] and opts[:binmode].  See Process.spawn.
   #
   # If opts[:stdin_data] is specified, it is sent to the command's standard input.
   #
@@ -287,7 +287,7 @@ module Open3
   #   stdout_str, status = Open3.capture2([env,] cmd... [, opts])
   #
   # The arguments env, cmd and opts are passed to Open3.popen3 except
-  # opts[:stdin_data] and opts[:stdin_data].  See Process.spawn.
+  # opts[:stdin_data] and opts[:binmode].  See Process.spawn.
   #
   # If opts[:stdin_data] is specified, it is sent to the command's standard input.
   #
@@ -339,7 +339,7 @@ module Open3
   #   stdout_and_stderr_str, status = Open3.capture2e([env,] cmd... [, opts])
   #
   # The arguments env, cmd and opts are passed to Open3.popen3 except
-  # opts[:stdin_data] and opts[:stdin_data].  See Process.spawn.
+  # opts[:stdin_data] and opts[:binmode].  See Process.spawn.
   #
   # If opts[:stdin_data] is specified, it is sent to the command's standard input.
   #
@@ -700,9 +700,9 @@ module Open3
     child_io.each {|io| io.close }
     if defined? yield
       begin
-	return yield(*result)
+        return yield(*result)
       ensure
-	parent_io.each{|io| io.close unless io.closed?}
+        parent_io.each{|io| io.close unless io.closed?}
         wait_thrs.each {|t| t.join }
       end
     end

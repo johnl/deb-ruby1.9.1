@@ -1,3 +1,9 @@
+######################################################################
+# This file is imported from the rubygems project.
+# DO NOT make modifications in this repo. They _will_ be reverted!
+# File a patch instead and assign it to Ryan Davis or Eric Hodel.
+######################################################################
+
 # -*- coding: utf-8 -*-
 #--
 # Copyright (C) 2004 Mauricio Julio Fernández Pradier
@@ -230,7 +236,7 @@ class Gem::Package::TarWriter
       name = newname
 
       if name.size > 100 or prefix.size > 155 then
-        raise Gem::Package::TooLongFileName 
+        raise Gem::Package::TooLongFileName
       end
     end
 

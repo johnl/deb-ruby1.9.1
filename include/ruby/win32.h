@@ -8,6 +8,10 @@ extern "C" {
 #endif
 #endif
 
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility push(default)
+#endif
+
 /*
  *  Copyright (c) 1993, Intergraph Corporation
  *
@@ -29,6 +33,9 @@ extern "C" {
 #if !defined(WSAAPI)
 #if defined(__cplusplus) && defined(_MSC_VER)
 extern "C++" {			/* template without extern "C++" */
+#endif
+#if !defined(_WIN64) && !defined(WIN32)
+#define WIN32
 #endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -93,6 +100,9 @@ typedef unsigned int uintptr_t;
 #endif
 #ifndef __MINGW32__
 # define mode_t int
+#endif
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
 #endif
 
 #ifdef WIN95
@@ -179,7 +189,9 @@ extern DWORD rb_w32_osid(void);
 #define stati64(path, st) rb_w32_stati64(path, st)
 #elif !defined(_MSC_VER) || RT_VER < 80
 #define stati64 _stati64
+#ifndef _stati64
 #define _stati64(path, st) rb_w32_stati64(path, st)
+#endif
 #else
 #define stati64 _stat64
 #define _stat64(path, st) rb_w32_stati64(path, st)
@@ -261,6 +273,8 @@ extern int    rb_w32_urename(const char *, const char *);
 extern char **rb_w32_get_environ(void);
 extern void   rb_w32_free_environ(char **);
 extern int    rb_w32_map_errno(DWORD);
+extern char * WSAAPI rb_w32_inet_ntop(int,void *,char *,size_t);
+extern DWORD  rb_w32_osver(void);
 
 extern int chown(const char *, int, int);
 extern int rb_w32_uchown(const char *, int, int);
@@ -370,11 +384,43 @@ scalb(double a, long b)
 //
 
 #define SUFFIX
+
+extern int 	 rb_w32_ftruncate(int fd, off_t length);
+extern int 	 rb_w32_truncate(const char *path, off_t length);
+extern off_t	 rb_w32_ftello(FILE *stream);
+extern int 	 rb_w32_fseeko(FILE *stream, off_t offset, int whence);
+
+#undef HAVE_FTRUNCATE
+#define HAVE_FTRUNCATE 1
+#if defined HAVE_FTRUNCATE64
+#define ftruncate ftruncate64
+#else
 #define ftruncate rb_w32_ftruncate
-extern int       truncate(const char *path, off_t length);
-extern int       ftruncate(int fd, off_t length);
-extern int       fseeko(FILE *stream, off_t offset, int whence);
-extern off_t     ftello(FILE *stream);
+#endif
+
+#undef HAVE_TRUNCATE
+#define HAVE_TRUNCATE 1
+#if defined HAVE_TRUNCATE64
+#define truncate truncate64
+#else
+#define truncate rb_w32_truncate
+#endif
+
+#undef HAVE_FSEEKO
+#define HAVE_FSEEKO 1
+#if defined HAVE_FSEEKO64
+#define fseeko fseeko64
+#else
+#define fseeko rb_w32_fseeko
+#endif
+
+#undef HAVE_FTELLO
+#define HAVE_FTELLO 1
+#if defined HAVE_FTELLO64
+#define ftello ftello64
+#else
+#define ftello rb_w32_ftello
+#endif
 
 //
 // stubs
@@ -536,6 +582,9 @@ extern char *rb_w32_strerror(int);
 #define FD_ISSET(f, s)		rb_w32_fdisset(f, s)
 
 #ifdef RUBY_EXPORT
+#undef inet_ntop
+#define inet_ntop(f,a,n,l)      rb_w32_inet_ntop(f,a,n,l)
+
 #undef accept
 #define accept(s, a, l)		rb_w32_accept(s, a, l)
 
@@ -648,9 +697,10 @@ size_t rb_w32_read(int, void *, size_t);
 size_t rb_w32_write(int, const void *, size_t);
 int  rb_w32_utime(const char *, const struct utimbuf *);
 int  rb_w32_uutime(const char *, const struct utimbuf *);
-long rb_w32_write_console(unsigned long, int);
+long rb_w32_write_console(uintptr_t, int);	/* use uintptr_t instead of VALUE because it's not defined yet here */
 int  WINAPI rb_w32_Sleep(unsigned long msec);
 int  rb_w32_wait_events_blocking(HANDLE *events, int num, DWORD timeout);
+int  rb_w32_time_subtract(struct timeval *rest, const struct timeval *wait);
 
 /*
 == ***CAUTION***
@@ -661,6 +711,26 @@ in asynchronous_func_t.
 */
 typedef uintptr_t (*asynchronous_func_t)(uintptr_t self, int argc, uintptr_t* argv);
 uintptr_t rb_w32_asynchronize(asynchronous_func_t func, uintptr_t self, int argc, uintptr_t* argv, uintptr_t intrval);
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility pop
+#endif
+
+#ifdef __MINGW_ATTRIB_PURE
+/* get rid of bugs in math.h of mingw */
+#define frexp(_X, _Y) __extension__ ({\
+    int intpart_frexp_bug = intpart_frexp_bug;\
+    double result_frexp_bug = frexp((_X), &intpart_frexp_bug);\
+    *(_Y) = intpart_frexp_bug;\
+    result_frexp_bug;\
+})
+#define modf(_X, _Y) __extension__ ({\
+    double intpart_modf_bug = intpart_modf_bug;\
+    double result_modf_bug = modf((_X), &intpart_modf_bug);\
+    *(_Y) = intpart_modf_bug;\
+    result_modf_bug;\
+})
+#endif
 
 #if defined(__cplusplus)
 #if 0

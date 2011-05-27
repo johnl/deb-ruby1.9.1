@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: extconf.rb 27457 2010-04-23 08:37:55Z usa $
+  $Id: extconf.rb 31346 2011-04-25 21:45:33Z iwamatsu $
 =end
 
 require "mkmf"
@@ -43,11 +43,14 @@ if $mingw
   have_library("wsock32")
   have_library("gdi32")
 end
-result = have_header("openssl/ssl.h")
-result &&= %w[crypto libeay32].any? {|lib| have_library(lib, "OpenSSL_add_all_digests")}
-result &&= %w[ssl ssleay32].any? {|lib| have_library(lib, "SSL_library_init")}
-if !result
-  unless pkg_config("openssl") and have_header("openssl/ssl.h")
+
+result = pkg_config("openssl") && have_header("openssl/ssl.h")
+
+unless result
+  result = have_header("openssl/ssl.h")
+  result &&= %w[crypto libeay32].any? {|lib| have_library(lib, "OpenSSL_add_all_digests")}
+  result &&= %w[ssl ssleay32].any? {|lib| have_library(lib, "SSL_library_init")}
+  unless result
     message "=== Checking for required stuff failed. ===\n"
     message "Makefile wasn't created. Fix the errors above.\n"
     exit 1
@@ -97,11 +100,11 @@ have_func("OBJ_NAME_do_all_sorted")
 have_func("SSL_SESSION_get_id")
 have_func("SSL_SESSION_cmp")
 have_func("OPENSSL_cleanse")
+have_func("SSLv2_method")
+have_func("SSLv2_server_method")
+have_func("SSLv2_client_method")
 unless have_func("SSL_set_tlsext_host_name", ['openssl/ssl.h'])
-	have_macro("SSL_set_tlsext_host_name", ['openssl/ssl.h']) && $defs.push("-DHAVE_SSL_SET_TLSEXT_HOST_NAME")
-end
-if try_compile("#define FOO(...) foo(__VA_ARGS__)\n int x(){FOO(1);FOO(1,2);FOO(1,2,3);}\n")
-  $defs.push("-DHAVE_VA_ARGS_MACRO")
+  have_macro("SSL_set_tlsext_host_name", ['openssl/ssl.h']) && $defs.push("-DHAVE_SSL_SET_TLSEXT_HOST_NAME")
 end
 if have_header("openssl/engine.h")
   have_func("ENGINE_add")
@@ -119,12 +122,9 @@ if have_header("openssl/engine.h")
   have_func("ENGINE_load_sureware")
   have_func("ENGINE_load_ubsec")
 end
-if try_compile(<<SRC)
-#include <openssl/opensslv.h>
-#if OPENSSL_VERSION_NUMBER < 0x00907000L
-# error "OpenSSL version is less than 0.9.7."
-#endif
-SRC
+if checking_for('OpenSSL version is 0.9.7 or later') {
+    try_static_assert('OPENSSL_VERSION_NUMBER >= 0x00907000L', 'openssl/opensslv.h')
+  }
   have_header("openssl/ocsp.h")
 end
 have_struct_member("EVP_CIPHER_CTX", "flags", "openssl/evp.h")

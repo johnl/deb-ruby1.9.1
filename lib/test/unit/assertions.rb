@@ -10,13 +10,22 @@ module Test
         obj.pretty_inspect.chomp
       end
 
-      def assert(test, msg = (nomsg = true; nil))
-        unless nomsg or msg.instance_of?(String) or msg.instance_of?(Proc) or
-            (bt = caller).first.rindex(MiniTest::MINI_DIR, 0)
-          bt.delete_if {|s| s.rindex(MiniTest::MINI_DIR, 0)}
+      UNASSIGNED = Object.new # :nodoc:
+
+      def assert(test, msg = UNASSIGNED)
+        case msg
+        when UNASSIGNED
+          msg = nil
+        when String, Proc
+        else
+          bt = caller.reject { |s| s.rindex(MiniTest::MINI_DIR, 0) }
           raise ArgumentError, "assertion message must be String or Proc, but #{msg.class} was given.", bt
         end
         super
+      end
+
+      def assert_block(*msgs)
+        assert yield, *msgs
       end
 
       def assert_raise(*args, &b)
@@ -32,6 +41,8 @@ module Test
         end
         begin
           line = __LINE__; yield
+        rescue MiniTest::Skip
+          raise
         rescue Exception => e
           bt = e.backtrace
           as = e.instance_of?(MiniTest::Assertion)
@@ -144,6 +155,8 @@ EOT
         mname = ('assert_not_' << m.to_s[/.*?_(.*)/, 1])
         alias_method(mname, m) unless ms.include? mname
       end
+      alias assert_include assert_includes
+      alias assert_not_include assert_not_includes
 
       def build_message(head, template=nil, *arguments)
         template &&= template.chomp

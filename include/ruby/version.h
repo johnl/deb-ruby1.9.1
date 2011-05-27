@@ -2,7 +2,7 @@
 
   ruby/version.h -
 
-  $Author: akr $
+  $Author: nobu $
   created at: Wed May 13 12:56:56 JST 2009
 
   Copyright (C) 1993-2009 Yukihiro Matsumoto
@@ -29,6 +29,12 @@
 #define RUBY_BIRTH_MONTH 2
 #define RUBY_BIRTH_DAY 24
 
+/* API version */
+#define RUBY_API_VERSION_MAJOR 1
+#define RUBY_API_VERSION_MINOR 9
+#define RUBY_API_VERSION_TEENY 1
+#define RUBY_API_VERSION_CODE (RUBY_API_VERSION_MAJOR*10000+RUBY_API_VERSION_MINOR*100+RUBY_API_VERSION_TEENY)
+
 #ifdef RUBY_EXTERN
 #if defined(__cplusplus)
 extern "C" {
@@ -36,6 +42,11 @@ extern "C" {
 } /* satisfy cc-mode */
 #endif
 #endif
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility push(default)
+#endif
+
 /*
  * Interfaces from extension libraries.
  *
@@ -43,6 +54,7 @@ extern "C" {
  * necessary or not, and if the answer was yes, think twice a week
  * later again.
  */
+RUBY_EXTERN const int ruby_api_version[3];
 RUBY_EXTERN const char ruby_version[];
 RUBY_EXTERN const char ruby_release_date[];
 RUBY_EXTERN const char ruby_platform[];
@@ -50,6 +62,11 @@ RUBY_EXTERN const int  ruby_patchlevel;
 RUBY_EXTERN const char ruby_description[];
 RUBY_EXTERN const char ruby_copyright[];
 RUBY_EXTERN const char ruby_engine[];
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility pop
+#endif
+
 #if defined(__cplusplus)
 #if 0
 { /* satisfy cc-mode */

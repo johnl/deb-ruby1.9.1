@@ -35,6 +35,8 @@ module RbConfig
 ]
 
 arch = RUBY_PLATFORM
+win32 = /mswin/ =~ arch
+universal = /universal.*darwin/ =~ arch
 v_fast = []
 v_others = []
 vars = {}
@@ -51,19 +53,17 @@ File.foreach "config.status" do |line|
     name = $1
     val = $2
     if $3
-      continued_line = []
-      continued_line << val
+      continued_line = [val]
       continued_name = name
       next
     end
   when /^"(.*)"\s*(\\)?$/
-    if continued_line
-      continued_line <<  $1
-      next if $2
-      val = continued_line.join("")
-      name = continued_name
-      continued_line = nil
-    end
+    next if !continued_line
+    continued_line << $1
+    next if $2
+    val = continued_line.join
+    name = continued_name
+    continued_line = nil
   when /^(?:ac_given_)?INSTALL=(.*)/
     v_fast << "  CONFIG[\"INSTALL\"] = " + $1 + "\n"
   end
@@ -112,14 +112,23 @@ File.foreach "config.status" do |line|
       end
     end
     if name == "configure_args"
-      val.gsub!(/ +(?!-)/, "=") if /mswin32/ =~ RUBY_PLATFORM
+      val.gsub!(/ +(?!-)/, "=") if win32
       val.gsub!(/--with-out-ext/, "--without-ext")
     end
     val = val.gsub(/\$(?:\$|\{?(\w+)\}?)/) {$1 ? "$(#{$1})" : $&}.dump
-    if /^prefix$/ =~ name
+    case name
+    when /^prefix$/
       val = "(TOPDIR || DESTDIR + #{val})"
+    when /^ARCH_FLAG$/
+      val = "arch_flag || #{val}" if universal
+    when /^UNIVERSAL_ARCHNAMES$/
+      universal, val = val, 'universal' if universal
+    when /^arch$/
+      if universal
+        val.sub!(/universal/, %q[#{arch && universal[/(?:\A|\s)#{Regexp.quote(arch)}=(\S+)/, 1] || '\&'}])
+      end
     end
-    v = "  CONFIG[\"#{name}\"] #{vars[name] ? '<< "\n"' : '='} #{val}\n"
+    v = "  CONFIG[\"#{name}\"] #{win32 && vars[name] ? '<< "\n"' : '='} #{val}\n"
     vars[name] = true
     if fast[name]
       v_fast << v
@@ -139,14 +148,26 @@ drive = File::PATH_SEPARATOR == ';'
 prefix = "/lib/ruby/#{version}/#{arch}"
 print "  TOPDIR = File.dirname(__FILE__).chomp!(#{prefix.dump})\n"
 print "  DESTDIR = ", (drive ? "TOPDIR && TOPDIR[/\\A[a-z]:/i] || " : ""), "'' unless defined? DESTDIR\n"
+print <<'ARCH' if universal
+  arch_flag = ENV['ARCHFLAGS'] || ((e = ENV['RC_ARCHS']) && e.split.uniq.map {|a| "-arch #{a}"}.join(' '))
+  arch = arch_flag && arch_flag[/\A\s*-arch\s+(\S+)\s*\z/, 1]
+ARCH
+print "  universal = #{universal}\n" if universal
 print "  CONFIG = {}\n"
 print "  CONFIG[\"DESTDIR\"] = DESTDIR\n"
 
 versions = {}
 IO.foreach(File.join(srcdir, "version.h")) do |l|
-  m = /^\s*#\s*define\s+RUBY_(VERSION_(MAJOR|MINOR|TEENY)|PATCHLEVEL)\s+(-?\d+)/.match(l)
+  m = /^\s*#\s*define\s+RUBY_(PATCHLEVEL)\s+(-?\d+)/.match(l)
   if m
-    versions[m[2]||m[1]] = m[3]
+    versions[m[1]] = m[2]
+    break
+  end
+end
+IO.foreach(File.join(srcdir, "include/ruby/version.h")) do |l|
+  m = /^\s*#\s*define\s+RUBY_API_VERSION_(MAJOR|MINOR|TEENY)\s+(-?\d+)/.match(l)
+  if m
+    versions[m[1]] = m[2]
     break if versions.size == 4
   end
 end
@@ -213,7 +234,7 @@ print <<EOS
     )
   end
 end
-Config = RbConfig # compatibility for ruby-1.8.4 and older.
+autoload :Config, "rbconfig/obsolete.rb" # compatibility for ruby-1.8.4 and older.
 CROSS_COMPILING = nil unless defined? CROSS_COMPILING
 EOS
 

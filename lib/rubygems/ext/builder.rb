@@ -1,3 +1,9 @@
+######################################################################
+# This file is imported from the rubygems project.
+# DO NOT make modifications in this repo. They _will_ be reverted!
+# File a patch instead and assign it to Ryan Davis or Eric Hodel.
+######################################################################
+
 #--
 # Copyright 2006 by Chad Fowler, Rich Kilmer, Jim Weirich and others.
 # All rights reserved.
@@ -13,7 +19,7 @@ class Gem::Ext::Builder
 
   def self.make(dest_path, results)
     unless File.exist? 'Makefile' then
-      raise Gem::InstallError, "Makefile not found:\n\n#{results.join "\n"}" 
+      raise Gem::InstallError, "Makefile not found:\n\n#{results.join "\n"}"
     end
 
     mf = File.read('Makefile')
@@ -22,7 +28,9 @@ class Gem::Ext::Builder
 
     File.open('Makefile', 'wb') {|f| f.print mf}
 
-    make_program = ENV['make']
+    # try to find make program from Ruby configure arguments first
+    RbConfig::CONFIG['configure_args'] =~ /with-make-prog\=(\w+)/
+    make_program = $1 || ENV['make']
     unless make_program then
       make_program = (/mswin/ =~ RUBY_PLATFORM) ? 'nmake' : 'make'
     end
