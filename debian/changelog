@@ -1,8 +1,8 @@
-ruby1.9.1 (1:1.9.2.180-5) lucid; urgency=low
+ruby1.9.1 (1.9.2.180-5bbox1) lucid; urgency=low
 
   * Backported to Ubuntu Lucid
 
- -- John Leach <john@brightbox.co.uk>  Tue, 24 May 2011 23:31:53 +0100
+ -- John Leach <john@brightbox.co.uk>  Sat, 28 May 2011 19:32:38 +0100
 
 ruby1.9.1 (1.9.2.180-5) unstable; urgency=low
 
