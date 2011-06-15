@@ -2,13 +2,13 @@
 
   enumerator.c - provides Enumerator class
 
-  $Author: drbrain $
+  $Author: ryan $
 
   Copyright (C) 2001-2003 Akinori MUSHA
 
   $Idaemons: /home/cvs/rb/enumerator/enumerator.c,v 1.1.1.1 2001/07/15 10:12:48 knu Exp $
   $RoughId: enumerator.c,v 1.6 2003/07/27 11:03:24 nobu Exp $
-  $Id: enumerator.c 31704 2011-05-22 23:33:21Z drbrain $
+  $Id: enumerator.c 31897 2011-06-01 21:16:05Z ryan $
 
 ************************************************/
 
@@ -714,26 +714,30 @@ enumerator_peek(VALUE obj)
  * call-seq:
  *   e.feed obj   -> nil
  *
- * Set the value to be returned by the next call to +yield+ by the enumerator.
- * If the value is not set, the +yield+ returns +nil+ and the value is cleared
- * after it is used the first time.
+ * Sets the value to be returned by the next yield inside +e+.
  *
- * +obj+:: the object to return from the next call to the Enumerator's +yield+
+ * If the value is not set, the yield returns nil.
  *
- * === Example
+ * This value is cleared after being yielded.
  *
- *   three_times = Enumerator.new do |yielder|
- *     3.times do |x|
- *       result = yielder.yield(x)
- *       puts result
- *     end
+ *   o = Object.new
+ *   def o.each
+ *     x = yield         # (2) blocks
+ *     p x               # (5) => "foo"
+ *     x = yield         # (6) blocks
+ *     p x               # (8) => nil
+ *     x = yield         # (9) blocks
+ *     p x               # not reached w/o another e.next
  *   end
  *
- *   three_times.next # => 0
- *   three_times.feed("foo")
- *   three_times.next # => 1, prints "foo"
- *   three_times.next # => 2, prints nothing
+ *   e = o.to_enum
+ *   e.next              # (1)
+ *   e.feed "foo"        # (3)
+ *   e.next              # (4)
+ *   e.next              # (7)
+ *                       # (10)
  */
+
 static VALUE
 enumerator_feed(VALUE obj, VALUE v)
 {

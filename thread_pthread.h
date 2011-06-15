@@ -2,7 +2,7 @@
 
   thread_pthread.h -
 
-  $Author: nobu $
+  $Author: kosaki $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -35,11 +35,19 @@ typedef struct native_thread_data_struct {
 #include <semaphore.h>
 
 typedef struct rb_global_vm_lock_struct {
+    /* fast path */
+    unsigned long acquired;
     pthread_mutex_t lock;
-    struct rb_thread_struct * volatile waiting_threads;
-    struct rb_thread_struct *waiting_last_thread;
-    int waiting;
-    int volatile acquired;
+
+    /* slow path */
+    unsigned long waiting;
+    rb_thread_cond_t cond;
+
+    /* yield */
+    rb_thread_cond_t switch_cond;
+    rb_thread_cond_t switch_wait_cond;
+    int need_yield;
+    int wait_yield;
 } rb_global_vm_lock_t;
 
 #endif /* RUBY_THREAD_PTHREAD_H */

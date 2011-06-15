@@ -1,11 +1,14 @@
+# two threads, one mutex
+
 require 'thread'
 m = Mutex.new
 r = 0
 max = 1000
-(1..max).map{
+lmax = (max * max)/2
+(1..2).map{
   Thread.new{
     i=0
-    while i<max
+    while i<lmax
       i+=1
       m.synchronize{
         r += 1

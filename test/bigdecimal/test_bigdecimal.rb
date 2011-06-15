@@ -29,12 +29,34 @@ class TestBigDecimal < Test::Unit::TestCase
     assert_raise(ArgumentError) { BigDecimal("1", -1) }
   end
 
+  def test_global_new_with_integer
+    assert_equal(BigDecimal("1"), BigDecimal(1))
+    assert_equal(BigDecimal("-1"), BigDecimal(-1))
+    assert_equal(BigDecimal((2**100).to_s), BigDecimal(2**100))
+    assert_equal(BigDecimal((-2**100).to_s), BigDecimal(-2**100))
+  end
+
+  def test_global_new_with_rational
+    assert_equal(BigDecimal("0.333333333333333333333"), BigDecimal(1.quo(3), 21))
+    assert_equal(BigDecimal("-0.333333333333333333333"), BigDecimal(-1.quo(3), 21))
+    assert_raise(ArgumentError) { BigDecimal(1.quo(3)) }
+  end
+
+  def test_global_new_with_float
+    assert_equal(BigDecimal("0.1235"), BigDecimal(0.1234567, 4))
+    assert_equal(BigDecimal("-0.1235"), BigDecimal(-0.1234567, 4))
+    assert_raise(ArgumentError) { BigDecimal(0.1) }
+    assert_raise(ArgumentError) { BigDecimal(0.1, Float::DIG + 2) }
+    assert_nothing_raised { BigDecimal(0.1, Float::DIG + 1) }
+  end
+
   def test_new
     assert_equal(1, BigDecimal.new("1"))
     assert_equal(1, BigDecimal.new("1", 1))
     assert_equal(1, BigDecimal.new(" 1 "))
     assert_equal(111, BigDecimal.new("1_1_1_"))
     assert_equal(0, BigDecimal.new("_1_1_1"))
+    assert_equal(10**(-1), BigDecimal.new("1E-1"), '#4825')
 
     BigDecimal.mode(BigDecimal::EXCEPTION_OVERFLOW, false)
     BigDecimal.mode(BigDecimal::EXCEPTION_NaN, false)
@@ -42,6 +64,27 @@ class TestBigDecimal < Test::Unit::TestCase
     assert_equal(-1, BigDecimal.new("-Infinity").infinite?)
     assert_equal(true, BigDecimal.new("NaN").nan?)
     assert_equal( 1, BigDecimal.new("1E1111111111111111111").infinite?)
+  end
+
+  def test_new_with_integer
+    assert_equal(BigDecimal("1"), BigDecimal.new(1))
+    assert_equal(BigDecimal("-1"), BigDecimal.new(-1))
+    assert_equal(BigDecimal((2**100).to_s), BigDecimal.new(2**100))
+    assert_equal(BigDecimal((-2**100).to_s), BigDecimal.new(-2**100))
+  end
+
+  def test_new_with_rational
+    assert_equal(BigDecimal("0.333333333333333333333"), BigDecimal.new(1.quo(3), 21))
+    assert_equal(BigDecimal("-0.333333333333333333333"), BigDecimal.new(-1.quo(3), 21))
+    assert_raise(ArgumentError) { BigDecimal.new(1.quo(3)) }
+  end
+
+  def test_new_with_float
+    assert_equal(BigDecimal("0.1235"), BigDecimal(0.1234567, 4))
+    assert_equal(BigDecimal("-0.1235"), BigDecimal(-0.1234567, 4))
+    assert_raise(ArgumentError) { BigDecimal.new(0.1) }
+    assert_raise(ArgumentError) { BigDecimal.new(0.1, Float::DIG + 2) }
+    assert_nothing_raised { BigDecimal.new(0.1, Float::DIG + 1) }
   end
 
   def _test_mode(type)
@@ -309,6 +352,9 @@ class TestBigDecimal < Test::Unit::TestCase
     inf = BigDecimal.new("Infinity")
     assert_operator(inf, :>, 1)
     assert_operator(1, :<, inf)
+
+    assert_operator(BigDecimal("1E-1"), :==, 10**(-1), '#4825')
+    assert_equal(0, BigDecimal("1E-1") <=> 10**(-1), '#4825')
   end
 
   def test_cmp_nan
@@ -459,6 +505,12 @@ class TestBigDecimal < Test::Unit::TestCase
     assert_instance_of(Float, a)
     assert_instance_of(Float, b)
     assert_equal(2, 1 + BigDecimal.new("1"), '[ruby-core:25697]')
+
+    a, b = BigDecimal("1").coerce(1.quo(10))
+    assert_equal(BigDecimal("0.1"), a, '[ruby-core:34318]')
+
+    a, b = BigDecimal("0.11111").coerce(1.quo(3))
+    assert_equal(BigDecimal("0." + "3"*a.precs[0]), a)
   end
 
   def test_uplus
@@ -715,7 +767,8 @@ class TestBigDecimal < Test::Unit::TestCase
   def test_power
     x = BigDecimal.new("3")
     assert_equal(81, x ** 4)
-    assert_equal(1.0/81, x ** -4)
+    assert_equal(1.0/81, (x ** -4).to_f)
+    assert_equal(1.quo(81), x ** -4)
     assert_equal(1, x ** 0)
     assert_raise(TypeError) { x ** x }
     assert_equal(0, BigDecimal.new("0") ** 4)

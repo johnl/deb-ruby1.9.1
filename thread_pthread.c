@@ -37,92 +37,88 @@ static void native_cond_destroy(rb_thread_cond_t *cond);
 #define USE_MONOTONIC_COND 0
 #endif
 
-#define GVL_SIMPLE_LOCK 0
 #define GVL_DEBUG 0
 
 static void
-gvl_show_waiting_threads(rb_vm_t *vm)
+__gvl_acquire(rb_vm_t *vm)
 {
-    rb_thread_t *th = vm->gvl.waiting_threads;
-    int i = 0;
-    while (th) {
-	fprintf(stderr, "waiting (%d): %p\n", i++, (void *)th);
-	th = th->native_thread_data.gvl_next;
-    }
-}
 
-#if !GVL_SIMPLE_LOCK
-static void
-gvl_waiting_push(rb_vm_t *vm, rb_thread_t *th)
-{
-    th->native_thread_data.gvl_next = 0;
+    if (vm->gvl.acquired) {
+	vm->gvl.waiting++;
+	while (vm->gvl.acquired) {
+	    native_cond_wait(&vm->gvl.cond, &vm->gvl.lock);
+	}
+	vm->gvl.waiting--;
 
-    if (vm->gvl.waiting_threads) {
-	vm->gvl.waiting_last_thread->native_thread_data.gvl_next = th;
-	vm->gvl.waiting_last_thread = th;
+	if (vm->gvl.need_yield) {
+	    vm->gvl.need_yield = 0;
+	    native_cond_signal(&vm->gvl.switch_cond);
+	}
     }
-    else {
-	vm->gvl.waiting_threads = th;
-	vm->gvl.waiting_last_thread = th;
-    }
-    th = vm->gvl.waiting_threads;
-    vm->gvl.waiting++;
-}
 
-static void
-gvl_waiting_shift(rb_vm_t *vm, rb_thread_t *th)
-{
-    vm->gvl.waiting_threads = vm->gvl.waiting_threads->native_thread_data.gvl_next;
-    vm->gvl.waiting--;
+    vm->gvl.acquired = 1;
 }
-#endif
 
 static void
 gvl_acquire(rb_vm_t *vm, rb_thread_t *th)
 {
-#if GVL_SIMPLE_LOCK
     native_mutex_lock(&vm->gvl.lock);
-#else
-    native_mutex_lock(&vm->gvl.lock);
-    if (vm->gvl.waiting > 0 || vm->gvl.acquired != 0) {
-	if (GVL_DEBUG) fprintf(stderr, "gvl acquire (%p): sleep\n", (void *)th);
-	gvl_waiting_push(vm, th);
-        if (GVL_DEBUG) gvl_show_waiting_threads(vm);
-
-	while (vm->gvl.acquired != 0 || vm->gvl.waiting_threads != th) {
-	    native_cond_wait(&th->native_thread_data.gvl_cond, &vm->gvl.lock);
-	}
-	gvl_waiting_shift(vm, th);
-    }
-    else {
-	/* do nothing */
-    }
-    vm->gvl.acquired = 1;
+    __gvl_acquire(vm);
     native_mutex_unlock(&vm->gvl.lock);
-#endif
-    if (GVL_DEBUG) gvl_show_waiting_threads(vm);
-    if (GVL_DEBUG) fprintf(stderr, "gvl acquire (%p): acquire\n", (void *)th);
+}
+
+static void
+__gvl_release(rb_vm_t *vm)
+{
+    vm->gvl.acquired = 0;
+    if (vm->gvl.waiting > 0)
+	native_cond_signal(&vm->gvl.cond);
 }
 
 static void
 gvl_release(rb_vm_t *vm)
 {
-#if GVL_SIMPLE_LOCK
-    native_mutex_unlock(&vm->gvl.lock);
-#else
     native_mutex_lock(&vm->gvl.lock);
-    if (vm->gvl.waiting > 0) {
-	rb_thread_t *th = vm->gvl.waiting_threads;
-	if (GVL_DEBUG) fprintf(stderr, "gvl release (%p): wakeup: %p\n", (void *)GET_THREAD(), (void *)th);
-	native_cond_signal(&th->native_thread_data.gvl_cond);
+    __gvl_release(vm);
+    native_mutex_unlock(&vm->gvl.lock);
+}
+
+static void
+gvl_yield(rb_vm_t *vm, rb_thread_t *th)
+{
+    native_mutex_lock(&vm->gvl.lock);
+
+    __gvl_release(vm);
+
+    /* An another thread is processing GVL yield. */
+    if (UNLIKELY(vm->gvl.wait_yield)) {
+	while (vm->gvl.wait_yield)
+	    native_cond_wait(&vm->gvl.switch_wait_cond, &vm->gvl.lock);
+	goto acquire;
+    }
+
+    vm->gvl.wait_yield = 1;
+
+    if (vm->gvl.waiting > 0)
+	vm->gvl.need_yield = 1;
+
+    if (vm->gvl.need_yield) {
+	/* Wait until another thread task take GVL. */
+	while (vm->gvl.need_yield) {
+	    native_cond_wait(&vm->gvl.switch_cond, &vm->gvl.lock);
+	}
     }
     else {
-	if (GVL_DEBUG) fprintf(stderr, "gvl release (%p): wakeup: %p\n", (void *)GET_THREAD(), NULL);
-	/* do nothing */
+	native_mutex_unlock(&vm->gvl.lock);
+	sched_yield();
+	native_mutex_lock(&vm->gvl.lock);
     }
-    vm->gvl.acquired = 0;
+
+    vm->gvl.wait_yield = 0;
+    native_cond_broadcast(&vm->gvl.switch_wait_cond);
+  acquire:
+    __gvl_acquire(vm);
     native_mutex_unlock(&vm->gvl.lock);
-#endif
 }
 
 static void
@@ -130,15 +126,13 @@ gvl_init(rb_vm_t *vm)
 {
     if (GVL_DEBUG) fprintf(stderr, "gvl init\n");
 
-#if GVL_SIMPLE_LOCK
     native_mutex_initialize(&vm->gvl.lock);
-#else
-    native_mutex_initialize(&vm->gvl.lock);
-    vm->gvl.waiting_threads = 0;
-    vm->gvl.waiting_last_thread = 0;
-    vm->gvl.waiting = 0;
+    native_cond_initialize(&vm->gvl.cond, RB_CONDATTR_CLOCK_MONOTONIC);
+    native_cond_initialize(&vm->gvl.switch_cond, RB_CONDATTR_CLOCK_MONOTONIC);
+    native_cond_initialize(&vm->gvl.switch_wait_cond, RB_CONDATTR_CLOCK_MONOTONIC);
     vm->gvl.acquired = 0;
-#endif
+    vm->gvl.waiting = 0;
+    vm->gvl.need_yield = 0;
 }
 
 static void
@@ -349,7 +343,9 @@ native_cond_timeout(rb_thread_cond_t *cond, struct timespec timeout_rel)
     now.tv_sec = tv.tv_sec;
     now.tv_nsec = tv.tv_usec * 1000;
 
+#if USE_MONOTONIC_COND
   out:
+#endif
     timeout.tv_sec = now.tv_sec;
     timeout.tv_nsec = now.tv_nsec;
     timeout.tv_sec += timeout_rel.tv_sec;
@@ -824,13 +820,10 @@ ubf_pthread_cond_signal(void *ptr)
     native_cond_signal(&th->native_thread_data.sleep_cond);
 }
 
-#define PER_NANO 1000000000
-
 static void
 native_sleep(rb_thread_t *th, struct timeval *timeout_tv)
 {
     struct timespec timeout;
-    struct timeval tvn;
     pthread_mutex_t *lock = &th->interrupt_lock;
     rb_thread_cond_t *cond = &th->native_thread_data.sleep_cond;
 
@@ -838,7 +831,7 @@ native_sleep(rb_thread_t *th, struct timeval *timeout_tv)
 	struct timespec timeout_rel;
 
 	timeout_rel.tv_sec = timeout_tv->tv_sec;
-	timeout_rel.tv_nsec = timeout_tv->tv_usec;
+	timeout_rel.tv_nsec = timeout_tv->tv_usec * 1000;
 
 	timeout = native_cond_timeout(cond, timeout_rel);
     }
@@ -991,31 +984,42 @@ static pthread_t timer_thread_id;
 static rb_thread_cond_t timer_thread_cond;
 static pthread_mutex_t timer_thread_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* 100ms.  10ms is too small for user level thread scheduling
+ * on recent Linux (tested on 2.6.35)
+ */
+#define TIME_QUANTUM_USEC (100 * 1000)
+
 static void *
 thread_timer(void *dummy)
 {
     struct timespec timeout_10ms;
+    struct timespec timeout;
 
     timeout_10ms.tv_sec = 0;
-    timeout_10ms.tv_nsec = 10 * 1000 * 1000;
+    timeout_10ms.tv_nsec = TIME_QUANTUM_USEC * 1000;
 
     native_mutex_lock(&timer_thread_lock);
     native_cond_broadcast(&timer_thread_cond);
+    timeout = native_cond_timeout(&timer_thread_cond, timeout_10ms);
+
     while (system_working > 0) {
 	int err;
-	struct timespec timeout;
 
-	timeout = native_cond_timeout(&timer_thread_cond, timeout_10ms);
 	err = native_cond_timedwait(&timer_thread_cond, &timer_thread_lock,
 				    &timeout);
-	if (err == ETIMEDOUT);
-	else if (err == 0) {
-	    if (rb_signal_buff_size() == 0) break;
+	if (err == 0) {
+	    /*
+	     * Spurious wakeup or native_stop_timer_thread() was called.
+	     * We need to recheck a system_working state.
+	     */
 	}
-	else rb_bug_errno("thread_timer/timedwait", err);
-
-	ping_signal_thread_list();
-	timer_thread_function(dummy);
+	else if (err == ETIMEDOUT) {
+	    ping_signal_thread_list();
+	    timer_thread_function(dummy);
+	    timeout = native_cond_timeout(&timer_thread_cond, timeout_10ms);
+	}
+	else
+	    rb_bug_errno("thread_timer/timedwait", err);
     }
     native_mutex_unlock(&timer_thread_lock);
     return NULL;

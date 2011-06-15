@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: buffering.rb 31148 2011-03-22 04:39:04Z nahi $
+  $Id: buffering.rb 32012 2011-06-11 14:07:42Z nahi $
 =end
 
 ##
@@ -252,8 +252,7 @@ module OpenSSL::Buffering
   # file.
 
   def getc
-    c = read(1)
-    c ? c[0] : nil
+    read(1)
   end
 
   ##
@@ -261,7 +260,7 @@ module OpenSSL::Buffering
 
   def each_byte # :yields: byte
     while c = getc
-      yield(c)
+      yield(c.ord)
     end
   end
 

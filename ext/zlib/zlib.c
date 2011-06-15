@@ -3,7 +3,7 @@
  *
  *   Copyright (C) UENO Katsuhiro 2000-2003
  *
- * $Id: zlib.c 31726 2011-05-25 00:19:37Z drbrain $
+ * $Id: zlib.c 31876 2011-05-31 22:25:32Z drbrain $
  */
 
 #include <ruby.h>
@@ -2960,7 +2960,7 @@ rb_gzfile_set_orig_name(VALUE obj, VALUE str)
 }
 
 /*
- * Document-method: Zlib::GzipFile#set_comment
+ * Document-method: Zlib::GzipFile#comment=
  *
  * Specify the comment (+str+) in the gzip header.
  */
@@ -3057,7 +3057,7 @@ rb_gzfile_sync(VALUE obj)
 }
 
 /*
- * Document-method: Zlib::GzipFile#set_sync
+ * Document-method: Zlib::GzipFile#sync=
  *
  * call-seq: sync = flag
  *

@@ -2,7 +2,7 @@
 
   signal.c -
 
-  $Author: nagachika $
+  $Author: kosaki $
   created at: Tue Dec 20 10:13:44 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -16,33 +16,15 @@
 #include <signal.h>
 #include <stdio.h>
 #include <errno.h>
+#include "atomic.h"
 
-#ifdef _WIN32
-typedef LONG rb_atomic_t;
-
-# define ATOMIC_TEST(var) InterlockedExchange(&(var), 0)
-# define ATOMIC_SET(var, val) InterlockedExchange(&(var), (val))
-# define ATOMIC_INC(var) InterlockedIncrement(&(var))
-# define ATOMIC_DEC(var) InterlockedDecrement(&(var))
-
-#elif defined HAVE_GCC_ATOMIC_BUILTINS
-/* @shyouhei hack to support atomic operations in case of gcc. Gcc
- * has its own pseudo-insns to support them.  See info, or
- * http://gcc.gnu.org/onlinedocs/gcc/Atomic-Builtins.html */
-
-typedef unsigned int rb_atomic_t; /* Anything OK */
-# define ATOMIC_TEST(var) __sync_lock_test_and_set(&(var), 0)
-# define ATOMIC_SET(var, val)  __sync_lock_test_and_set(&(var), (val))
-# define ATOMIC_INC(var) __sync_fetch_and_add(&(var), 1)
-# define ATOMIC_DEC(var) __sync_fetch_and_sub(&(var), 1)
-
-#else
-typedef int rb_atomic_t;
-
-# define ATOMIC_TEST(var) ((var) ? ((var) = 0, 1) : 0)
-# define ATOMIC_SET(var, val) ((var) = (val))
-# define ATOMIC_INC(var) (++(var))
-# define ATOMIC_DEC(var) (--(var))
+#if !defined(_WIN32) && !defined(HAVE_GCC_ATOMIC_BUILTINS)
+rb_atomic_t ruby_atomic_exchange(rb_atomic_t *ptr, rb_atomic_t val)
+{
+    rb_atomic_t old = *ptr;
+    *ptr = val;
+    return old;
+}
 #endif
 
 #if defined(__BEOS__) || defined(__HAIKU__)
@@ -623,14 +605,6 @@ sigsegv(int sig SIGINFO_ARG)
 }
 #endif
 
-#ifdef SIGPIPE
-static RETSIGTYPE
-sigpipe(int sig)
-{
-    /* do nothing */
-}
-#endif
-
 static void
 signal_exec(VALUE cmd, int safe, int sig)
 {
@@ -746,7 +720,7 @@ default_handler(int sig)
 #endif
 #ifdef SIGPIPE
       case SIGPIPE:
-        func = sigpipe;
+        func = SIG_IGN;
         break;
 #endif
       default:
@@ -1143,7 +1117,7 @@ Init_signal(void)
 #endif
     }
 #ifdef SIGPIPE
-    install_sighandler(SIGPIPE, sigpipe);
+    install_sighandler(SIGPIPE, SIG_IGN);
 #endif
 
 #if defined(SIGCLD)

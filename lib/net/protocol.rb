@@ -11,7 +11,7 @@
 # modify this program under the same terms as Ruby itself,
 # Ruby Distribute License or GNU General Public License.
 #
-# $Id: protocol.rb 30473 2011-01-06 00:24:45Z tenderlove $
+# $Id: protocol.rb 31860 2011-05-31 08:10:42Z nahi $
 #++
 #
 # WARNING: This file is going to remove.
@@ -50,12 +50,14 @@ module Net # :nodoc:
     def initialize(io)
       @io = io
       @read_timeout = 60
+      @continue_timeout = nil
       @debug_output = nil
       @rbuf = ''
     end
 
     attr_reader :io
     attr_accessor :read_timeout
+    attr_accessor :continue_timeout
     attr_accessor :debug_output
 
     def inspect

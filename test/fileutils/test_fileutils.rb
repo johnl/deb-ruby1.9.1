@@ -1,4 +1,4 @@
-# $Id: test_fileutils.rb 31415 2011-05-03 11:31:20Z kosaki $
+# $Id: test_fileutils.rb 31787 2011-05-29 17:01:27Z naruse $
 
 require 'fileutils'
 require_relative 'fileasserts'
@@ -913,7 +913,8 @@ class TestFileUtils
     # FreeBSD ufs and tmpfs don't allow to change sticky bit against
     # regular file. It's slightly strange. Anyway it's no effect bit.
     # see /usr/src/sys/ufs/ufs/ufs_chmod()
-    if /freebsd/ !~ RUBY_PLATFORM
+    # NetBSD also denies it.
+    if /freebsd|netbsd/ !~ RUBY_PLATFORM
       chmod "u+t,o+t", 'tmp/a'
       assert_equal 07500, File.stat('tmp/a').mode & 07777
       chmod "a-t,a-s", 'tmp/a'

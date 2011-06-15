@@ -12,6 +12,7 @@
 #include "ruby/ruby.h"
 #include "ruby/encoding.h"
 #include "ruby/util.h"
+#include "internal.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -77,8 +78,6 @@ const unsigned char rb_nan[] = "\x00\x00\xc0\x7f";
 const unsigned char rb_nan[] = "\x7f\xc0\x00\x00";
 #endif
 
-extern double round(double);
-
 #ifndef HAVE_ROUND
 double
 round(double x)
@@ -97,6 +96,7 @@ round(double x)
 }
 #endif
 
+static VALUE fix_uminus(VALUE num);
 static VALUE fix_mul(VALUE x, VALUE y);
 static VALUE int_pow(long x, unsigned long y);
 
@@ -1504,10 +1504,15 @@ flo_round(int argc, VALUE *argv, VALUE num)
     }
     else {
 	if (ndigits < 0) {
-	    if (fabs(number) < f) return INT2FIX(0);
+	    double absnum = fabs(number);
+	    if (absnum < f) return INT2FIX(0);
 	    if (!FIXABLE(number)) {
 		VALUE f10 = int_pow(10, -ndigits);
-		num = rb_big_idiv(rb_dbl2big(number), f10);
+		VALUE n10 = f10;
+		if (number < 0) {
+		    f10 = FIXNUM_P(f10) ? fix_uminus(f10) : rb_big_uminus(f10);
+		}
+		num = rb_big_idiv(rb_dbl2big(absnum), n10);
 		return FIXNUM_P(num) ? fix_mul(num, f10) : rb_big_mul(num, f10);
 	    }
 	    number /= f;
@@ -2113,7 +2118,7 @@ rb_enc_uint_chr(unsigned int code, rb_encoding *enc)
     int n;
     VALUE str;
     if ((n = rb_enc_codelen(code, enc)) <= 0) {
-	rb_raise(rb_eRangeError, "%d out of char range", code);
+	rb_raise(rb_eRangeError, "%u out of char range", code);
     }
     str = rb_enc_str_new(0, n, enc);
     rb_enc_mbcput(code, RSTRING_PTR(str), enc);
@@ -2379,7 +2384,7 @@ fix_mul(VALUE x, VALUE y)
 #if SIZEOF_LONG * 2 <= SIZEOF_LONG_LONG
 	LONG_LONG d;
 #else
-	long c;
+	volatile long c;
 	VALUE r;
 #endif
 
@@ -2630,7 +2635,7 @@ int_pow(long x, unsigned long y)
 	    y >>= 1;
 	}
 	{
-	    long xz = x * z;
+	    volatile long xz = x * z;
 	    if (!POSFIXABLE(xz) || xz / x != z) {
 		goto bignum;
 	    }

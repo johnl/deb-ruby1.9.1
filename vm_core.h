@@ -22,6 +22,7 @@
 #include "vm_opts.h"
 #include "id.h"
 #include "method.h"
+#include "atomic.h"
 
 #if   defined(_WIN32)
 #include "thread_win32.h"
@@ -418,7 +419,6 @@ typedef struct rb_thread_struct {
     rb_thread_id_t thread_id;
     enum rb_thread_status status;
     int priority;
-    int slice;
 
     native_thread_data_t native_thread_data;
     void *blocking_region_buffer;
@@ -430,12 +430,11 @@ typedef struct rb_thread_struct {
     VALUE thrown_errinfo;
     int exec_signal;
 
-    int interrupt_flag;
+    rb_atomic_t interrupt_flag;
     rb_thread_lock_t interrupt_lock;
     struct rb_unblock_callback unblock;
     VALUE locking_mutex;
     struct rb_mutex_struct *keeping_mutexes;
-    volatile int transition_for_lock;
 
     struct rb_vm_tag *tag;
     struct rb_vm_protect_tag *protect_tag;
@@ -484,6 +483,7 @@ typedef struct rb_thread_struct {
 #ifdef USE_SIGALTSTACK
     void *altstack;
 #endif
+    unsigned long running_time_us;
 } rb_thread_t;
 
 /* iseq.c */
@@ -586,11 +586,6 @@ enum vm_special_object_type {
 /* inline cache */
 typedef struct iseq_inline_cache_entry *IC;
 
-extern VALUE ruby_vm_global_state_version;
-
-#define GET_VM_STATE_VERSION() (ruby_vm_global_state_version)
-#define INC_VM_STATE_VERSION() \
-  (ruby_vm_global_state_version = (ruby_vm_global_state_version+1) & 0x8fffffff)
 void rb_vm_change_state(void);
 
 typedef VALUE CDHASH;
@@ -656,7 +651,6 @@ void rb_vm_gvl_destroy(rb_vm_t *vm);
 void rb_thread_start_timer_thread(void);
 void rb_thread_stop_timer_thread(void);
 void rb_thread_reset_timer_thread(void);
-void *rb_thread_call_with_gvl(void *(*func)(void *), void *data1);
 int ruby_thread_has_gvl_p(void);
 VALUE rb_make_backtrace(void);
 typedef int rb_backtrace_iter_func(void *, VALUE, int, VALUE);
@@ -679,6 +673,9 @@ extern rb_vm_t *ruby_current_vm;
 #define GET_THREAD() ruby_current_thread
 #define rb_thread_set_current_raw(th) (void)(ruby_current_thread = (th))
 #define rb_thread_set_current(th) do { \
+    if ((th)->vm->running_thread != (th)) { \
+	(th)->vm->running_thread->running_time_us = 0; \
+    } \
     rb_thread_set_current_raw(th); \
     (th)->vm->running_thread = (th); \
 } while (0)
@@ -687,9 +684,9 @@ extern rb_vm_t *ruby_current_vm;
 #error "unsupported thread model"
 #endif
 
-#define RUBY_VM_SET_INTERRUPT(th) ((th)->interrupt_flag |= 0x02)
-#define RUBY_VM_SET_TIMER_INTERRUPT(th) ((th)->interrupt_flag |= 0x01)
-#define RUBY_VM_SET_FINALIZER_INTERRUPT(th) ((th)->interrupt_flag |= 0x04)
+#define RUBY_VM_SET_TIMER_INTERRUPT(th)		ATOMIC_OR((th)->interrupt_flag, 0x01)
+#define RUBY_VM_SET_INTERRUPT(th)		ATOMIC_OR((th)->interrupt_flag, 0x02)
+#define RUBY_VM_SET_FINALIZER_INTERRUPT(th)	ATOMIC_OR((th)->interrupt_flag, 0x04)
 #define RUBY_VM_INTERRUPTED(th) ((th)->interrupt_flag & 0x02)
 
 int rb_signal_buff_size(void);

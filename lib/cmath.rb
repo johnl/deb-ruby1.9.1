@@ -122,13 +122,9 @@ module CMath
   end
 
   ##
-  # returns the cube root of +z+
+  # returns the principal value of the cube root of +z+
   def cbrt(z)
-    if z.real?
-      cbrt!(z)
-    else
-      Complex(z) ** (1.0/3)
-    end
+    Complex(z) ** (1.0/3)
   end
 
   ##
@@ -317,4 +313,10 @@ module CMath
   module_function :gamma
   module_function :lgamma
 
+end
+
+class Object
+  def real?
+    raise TypeError, "Numeric Number required"
+  end
 end

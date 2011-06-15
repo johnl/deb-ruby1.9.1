@@ -119,21 +119,21 @@ class TestSignal < Test::Unit::TestCase
       Timeout.timeout(10) do
         x = false
         Process.kill(SignalException.new(:INT).signo, $$)
-        nil until x
+        sleep(0.01) until x
 
         x = false
         Process.kill("INT", $$)
-        nil until x
+        sleep(0.01) until x
 
         x = false
         Process.kill("SIGINT", $$)
-        nil until x
+        sleep(0.01) until x
 
         x = false
         o = Object.new
         def o.to_str; "SIGINT"; end
         Process.kill(o, $$)
-        nil until x
+        sleep(0.01) until x
       end
 
       assert_raise(ArgumentError) { Process.kill(Object.new, $$) }
@@ -198,11 +198,12 @@ class TestSignal < Test::Unit::TestCase
   end
 
   def test_signal_requiring
-    skip "limitation of GenerateConsoleCtrlEvent()" if /mswin|mignw/ =~ RUBY_PLATFORM
+    skip "limitation of GenerateConsoleCtrlEvent()" if /mswin|mingw/ =~ RUBY_PLATFORM
     t = Tempfile.new(%w"require_ensure_test .rb")
     t.puts "sleep"
     t.close
-    error = IO.popen([EnvUtil.rubybin, "-e", <<EOS, t.path, err: :close]) do |child|
+    error = IO.popen([EnvUtil.rubybin, "-e", <<EOS, t.path, :err => File::NULL]) do |child|
+trap(:INT, "DEFAULT")
 th = Thread.new do
   begin
     require ARGV[0]

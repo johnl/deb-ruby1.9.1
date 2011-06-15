@@ -73,9 +73,10 @@ class TestModule < Test::Unit::TestCase
   end
 
   def remove_rake_mixins(list)
-    list.
-      reject {|c| c.to_s == "RakeFileUtils" }.
-      reject {|c| c.to_s.start_with?("FileUtils") }
+    list.reject {|c|
+      name = c.name
+      name.start_with?("Rake") or name.start_with?("FileUtils")
+    }
   end
 
   module Mixin
@@ -1067,5 +1068,64 @@ class TestModule < Test::Unit::TestCase
       end
     INPUT
     assert_in_out_err([], src, ["NameError"], [])
+  end
+
+  def test_mix_method
+    american = Module.new do
+      attr_accessor :address
+    end
+    japanese = Module.new do
+      attr_accessor :address
+    end
+
+    japanese_american = Class.new
+    assert_nothing_raised(ArgumentError) {
+      japanese_american.class_eval {mix american}
+    }
+    assert_raise(ArgumentError) {
+      japanese_american.class_eval {mix japanese}
+    }
+
+    japanese_american = Class.new
+    assert_nothing_raised(ArgumentError) {
+      japanese_american.class_eval {
+        mix american, :address => :us_address, :address= => :us_address=
+      }
+    }
+    assert_nothing_raised(ArgumentError) {
+      japanese_american.class_eval {
+        mix japanese, :address => :jp_address, :address= => :jp_address=
+      }
+    }
+
+    japanese_american = Class.new
+    assert_nothing_raised(ArgumentError) {
+      japanese_american.class_eval {
+        mix japanese, :address => nil, :address= => nil
+      }
+    }
+    assert_raise(NoMethodError) {
+      japanese_american.new.address
+    }
+    assert_nothing_raised(ArgumentError) {
+      japanese_american.class_eval {
+        mix american
+      }
+    }
+  end
+
+  def test_mix_const
+    foo = Module.new do
+      const_set(:D, 55)
+    end
+    bar = Class.new do
+      const_set(:D, 42)
+    end
+    assert_nothing_raised(ArgumentError) {
+      bar.class_eval {
+        mix foo
+      }
+    }
+    assert_equal(42, bar::D)
   end
 end

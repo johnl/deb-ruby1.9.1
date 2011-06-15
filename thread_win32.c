@@ -13,7 +13,7 @@
 
 #include <process.h>
 
-#define WIN32_WAIT_TIMEOUT 10	/* 10 ms */
+#define TIME_QUANTUM_USEC (100 * 1000)
 #define RB_CONDATTR_CLOCK_MONOTONIC 1 /* no effect */
 
 #undef Sleep
@@ -104,6 +104,15 @@ gvl_release(rb_vm_t *vm)
 {
     ReleaseMutex(vm->gvl.lock);
 }
+
+static void
+gvl_yield(rb_vm_t *vm, rb_thread_t *th)
+{
+  gvl_release(th->vm);
+  native_thread_yield();
+  gvl_acquire(vm, th);
+}
+
 
 static void
 gvl_atfork(rb_vm_t *vm)
@@ -414,9 +423,6 @@ native_cond_signal(rb_thread_cond_t *cond)
 
 	SetEvent(e->event);
     }
-    else {
-	rb_bug("native_cond_signal: no pending threads");
-    }
 }
 
 static void
@@ -532,7 +538,6 @@ native_cond_timeout(rb_thread_cond_t *cond, struct timespec timeout_rel)
     now.tv_sec = tv.tv_sec;
     now.tv_nsec = tv.tv_usec * 1000;
 
-  out:
     timeout.tv_sec = now.tv_sec;
     timeout.tv_nsec = now.tv_nsec;
     timeout.tv_sec += timeout_rel.tv_sec;
@@ -684,7 +689,7 @@ static unsigned long _stdcall
 timer_thread_func(void *dummy)
 {
     thread_debug("timer_thread\n");
-    while (WaitForSingleObject(timer_thread_lock, WIN32_WAIT_TIMEOUT) ==
+    while (WaitForSingleObject(timer_thread_lock, TIME_QUANTUM_USEC/1000) ==
 	   WAIT_TIMEOUT) {
 	timer_thread_function(dummy);
     }

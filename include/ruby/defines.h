@@ -2,7 +2,7 @@
 
   defines.h -
 
-  $Author: nahi $
+  $Author: usa $
   created at: Wed May 18 00:21:44 JST 1994
 
 ************************************************/
@@ -132,22 +132,6 @@ void xfree(void*);
 #define PRIuBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"u"
 #define PRIxBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"x"
 #define PRIXBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"X"
-
-#ifdef INFINITY
-# define HAVE_INFINITY
-#else
-/** @internal */
-extern const unsigned char rb_infinity[];
-# define INFINITY (*(float *)rb_infinity)
-#endif
-
-#ifdef NAN
-# define HAVE_NAN
-#else
-/** @internal */
-extern const unsigned char rb_nan[];
-# define NAN (*(float *)rb_nan)
-#endif
 
 #ifdef __CYGWIN__
 #undef _WIN32
