@@ -2,7 +2,7 @@
 
   vm.c -
 
-  $Author: kazu $
+  $Author: ko1 $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -36,7 +36,6 @@ VALUE rb_cThread;
 VALUE rb_cEnv;
 VALUE rb_mRubyVMFrozenCore;
 
-VALUE ruby_vm_global_state_version = 1;
 VALUE ruby_vm_const_missing_count = 0;
 
 char ruby_vm_redefined_flag[BOP_LAST_];
@@ -56,6 +55,25 @@ void
 rb_vm_change_state(void)
 {
     INC_VM_STATE_VERSION();
+}
+
+static void vm_clear_global_method_cache(void);
+
+static void
+vm_clear_all_inline_method_cache(void)
+{
+    /* TODO: Clear all inline cache entries in all iseqs.
+             How to iterate all iseqs in sweep phase?
+             rb_objspace_each_objects() doesn't work at sweep phase.
+     */
+}
+
+static void
+vm_clear_all_cache()
+{
+    vm_clear_global_method_cache();
+    vm_clear_all_inline_method_cache();
+    ruby_vm_global_state_version = 1;
 }
 
 void
@@ -1761,7 +1779,7 @@ thread_memsize(const void *ptr)
 	    size += th->stack_size * sizeof(VALUE);
 	}
 	if (th->local_storage) {
-	    st_memsize(th->local_storage);
+	    size += st_memsize(th->local_storage);
 	}
 	return size;
     }
@@ -1779,6 +1797,17 @@ const rb_data_type_t ruby_thread_data_type = {
 	thread_memsize,
     },
 };
+
+VALUE
+rb_obj_is_thread(VALUE obj)
+{
+    if (rb_typeddata_is_kind_of(obj, &thread_data_type)) {
+	return Qtrue;
+    }
+    else {
+	return Qfalse;
+    }
+}
 
 static VALUE
 thread_alloc(VALUE klass)

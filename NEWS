@@ -57,8 +57,13 @@ with all sufficient information, see the ChangeLog file.
   * IO
     * extended method:
       * IO#putc supports multibyte characters
-    * new method:
+    * new methods:
       * IO#advise
+      * IO.write(name, string, [offset] )
+        Write `string` to file `name`.
+        Opposite with File.read.
+      * IO.binwrite(name, string, [offset] )
+        binary virsion of IO.write.
 
   * Kernel
     * Kernel#respond_to? now returns false for protected methods.
@@ -83,7 +88,57 @@ with all sufficient information, see the ChangeLog file.
   * Process
     * Process#maxgroups and Process#maxgroups= now raise NotImplementedError if
       the platform don't support supplementary groups concept.
-  
+
+  * bigdecimal
+    * Kernel.BigDecimal and BigDecimal.new now accept instances of Integer,
+      Rational, and Float.  If you pass a Rational or a Float to them, you must
+      specify the precision to produce the digits of a BigDecimal.
+
+    * The behavior of BigDecimal#coerce with a Rational is changed.  It uses
+      the precision of the receiver BigDecimal to produce the digits of a
+      BigDecimal from the given Rational.
+
+* date
+
+  * Accepts flonum explicitly with limitations.
+    * If the given offset is flonum, DateTime assumes its precision is
+      at most second.
+
+      DateTime.new(2001,2,3,0,0,0,3.0/24) ==
+      DateTime.new(2001,2,3,0,0,0,'+03:00')
+        #=> true
+
+    * If the given operand for -/+ is flonum, DateTime assumes its
+      precision is at most nanosecond.
+
+      DateTime.new(2001,2,3) + 0.5 == DateTime.new(2001,2,3,12)
+        #=> true
+
+    * Precision of offset is always at most second.
+
+      Rational('0.5') == Rational('0.500001')  #=> false
+      DateTime.new(2001,2,3,0,0,0,Rational('0.5')) ==
+      DateTime.new(2001,2,3,0,0,0,Rational('0.500001'))
+        #=> true
+
+  * Ignores long offset and far reform day (with warning).
+
+    * Now accepts only:
+
+      -1<=offset<=1 (-24:00..+24:00)
+      2298874<=start<=2426355 or -/+oo
+        (proleptic Gregorian/Julian mean -/+oo)
+
+  * A method strftime cannot produce huge output (same as Time's one).
+
+    * Even though Date/DateTime can handle far dates, the following gives
+      an empty string:
+
+      DateTime.new(1<<10000).strftime('%Y')  #=> ""
+
+  * Changed the format of inspect.
+  * Changed the format of marshal (but, can load old dumps).
+
 * io/console
   * new methods:
     * IO#noecho {|io| }
@@ -98,6 +153,17 @@ with all sufficient information, see the ChangeLog file.
 * net/http
   * SNI (Server Name Indication) supported for HTTPS. 
 
+  * Allow to configure to wait server returning '100 continue' response
+    before sending HTTP request body. Set Net::HTTP#continue_timeout AND pass
+    'expect' => '100-continue' to a extra HTTP header. 
+
+    For example, the following code sends HTTP header and waits for getting
+    '100 continue' response before sending HTTP request body. When 0.5 [sec]
+    timeout occurs or the server send '100 continue', the client sends HTTP
+    request body.
+      http.continue_timeout = 0.5
+      http.request_post('/continue', 'body=BODY', 'expect' => '100-continue')
+
 * openssl
   * PKey::RSA and PKey::DSA now use the generic X.509 encoding scheme 
     (e.g. used in a X.509 certificate's Subject Public Key Info) when
@@ -108,6 +174,9 @@ with all sufficient information, see the ChangeLog file.
     tagging to be set to :EXPLICIT when tag and/or tag_class are passed
     as parameters. tagging must be set explicitly.
   * Support for infinite length encodings via infinite_length attribute.
+  * OpenSSL::PKey.read( file | string [, pwd] ) allows to read arbitrary
+    public/private keys in DER-/PEM-encoded form with an optional password
+    for encrypted PEM encodings.
 
 * optparse
   * support for bash/zsh completion.

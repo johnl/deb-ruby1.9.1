@@ -1,7 +1,7 @@
 begin
   require 'io/console'
-  require 'pty'
   require 'test/unit'
+  require 'pty'
 rescue LoadError
 end
 
@@ -148,6 +148,11 @@ class TestIO_Console < Test::Unit::TestCase
     }
   end
 
+  def test_sync
+    skip "Can't get console (because of there is no tty?)" unless IO.console
+    assert(helper {IO.console.sync}, "console should be unbuffered")
+  end
+
   private
   def helper
     m, s = PTY.open
@@ -160,3 +165,29 @@ class TestIO_Console < Test::Unit::TestCase
     s.close if s
   end
 end if defined?(PTY) and defined?(IO::console)
+
+class TestIO_Console < Test::Unit::TestCase
+  require_relative '../../ruby/envutil'
+
+  case
+  when Process.respond_to?(:daemon)
+    def test_noctty
+      assert_in_out_err(["-rio/console"],
+                        "Process.daemon(true, true); p IO.console",
+                        ["nil"])
+    end
+  when !(rubyw = RbConfig::CONFIG["RUBYW_INSTALL_NAME"]).empty?
+    require 'tempfile'
+    dir, base = File.split(EnvUtil.rubybin)
+    RUBYW = File.join(dir, base.sub(/ruby/, rubyw))
+
+    def test_noctty
+      t = Tempfile.new("console")
+      t.close
+      cmd = [RUBYW, '-rio/console', '-e', 'STDOUT.reopen(ARGV[0]); p IO.console', '--', t.path]
+      system(*cmd)
+      t.open
+      assert_equal("nil", t.gets.chomp)
+    end
+  end
+end if defined?(IO.console)

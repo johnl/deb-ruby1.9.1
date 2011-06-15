@@ -20,9 +20,7 @@
 #
 
 require 'net/protocol'
-autoload :OpenSSL, 'openssl'
 require 'uri'
-autoload :SecureRandom, 'securerandom'
 
 module Net   #:nodoc:
 
@@ -362,7 +360,7 @@ module Net   #:nodoc:
   class HTTP < Protocol
 
     # :stopdoc:
-    Revision = %q$Revision: 31603 $.split[1]
+    Revision = %q$Revision: 32054 $.split[1]
     HTTPVersion = '1.1'
     begin
       require 'zlib'
@@ -545,7 +543,9 @@ module Net   #:nodoc:
       http = new(address, port, p_addr, p_port, p_user, p_pass)
 
       if opt
-        opt = {verify_mode: OpenSSL::SSL::VERIFY_PEER}.update(opt) if opt[:use_ssl]
+        if opt[:use_ssl]
+          opt = {verify_mode: OpenSSL::SSL::VERIFY_PEER}.update(opt)
+        end
         http.methods.grep(/\A(\w+)=\z/) do |meth|
           key = $1.to_sym
           opt.key?(key) or next
@@ -581,6 +581,7 @@ module Net   #:nodoc:
       @started = false
       @open_timeout = nil
       @read_timeout = 60
+      @continue_timeout = nil
       @debug_output = nil
       @use_ssl = false
       @ssl_context = nil
@@ -634,6 +635,16 @@ module Net   #:nodoc:
       @read_timeout = sec
     end
 
+    # Seconds to wait for 100 Continue response.  If the HTTP object does not
+    # receive a response in this many seconds it sends the request body.
+    attr_reader :continue_timeout
+
+    # Setter for the continue_timeout attribute.
+    def continue_timeout=(sec)
+      @socket.continue_timeout = sec if @socket
+      @continue_timeout = sec
+    end
+
     # Returns true if the HTTP session has been started.
     def started?
       @started
@@ -653,7 +664,12 @@ module Net   #:nodoc:
     # If you change use_ssl value after session started,
     # a Net::HTTP object raises IOError.
     def use_ssl=(flag)
-      flag = (flag ? true : false)
+      flag = if flag
+        require 'openssl' unless defined?(OpenSSL)
+        true
+      else
+        false
+      end
       if started? and @use_ssl != flag
         raise IOError, "use_ssl value changed, but session already started"
       end
@@ -764,6 +780,7 @@ module Net   #:nodoc:
       end
       @socket = BufferedIO.new(s)
       @socket.read_timeout = @read_timeout
+      @socket.continue_timeout = @continue_timeout
       @socket.debug_output = @debug_output
       if use_ssl?
         begin
@@ -1298,12 +1315,15 @@ module Net   #:nodoc:
 
     def transport_request(req)
       begin_transport req
-      req.exec @socket, @curr_http_version, edit_path(req.path)
-      begin
-        res = HTTPResponse.read_new(@socket)
-      end while res.kind_of?(HTTPContinue)
-      res.reading_body(@socket, req.response_body_permitted?) {
-        yield res if block_given?
+      res = catch(:response) {
+        req.exec @socket, @curr_http_version, edit_path(req.path)
+        begin
+          res = HTTPResponse.read_new(@socket)
+        end while res.kind_of?(HTTPContinue)
+        res.reading_body(@socket, req.response_body_permitted?) {
+          yield res if block_given?
+        }
+        res
       }
       end_transport req, res
       res
@@ -1915,6 +1935,7 @@ module Net   #:nodoc:
       delete 'Transfer-Encoding'
       supply_default_content_type
       write_header sock, ver, path
+      wait_for_continue sock, ver if sock.continue_timeout
       sock.write body
     end
 
@@ -1925,6 +1946,7 @@ module Net   #:nodoc:
       end
       supply_default_content_type
       write_header sock, ver, path
+      wait_for_continue sock, ver if sock.continue_timeout
       if chunked?
         while s = f.read(1024)
           sock.write(sprintf("%x\r\n", s.length) << s << "\r\n")
@@ -1944,6 +1966,7 @@ module Net   #:nodoc:
       end
 
       opt = @form_option.dup
+      require 'securerandom' unless defined?(SecureRandom)
       opt[:boundary] ||= SecureRandom.urlsafe_base64(40)
       self.set_content_type(self.content_type, boundary: opt[:boundary])
       if chunked?
@@ -1964,6 +1987,7 @@ module Net   #:nodoc:
     def encode_multipart_form_data(out, params, opt)
       charset = opt[:charset]
       boundary = opt[:boundary]
+      require 'securerandom' unless defined?(SecureRandom)
       boundary ||= SecureRandom.urlsafe_base64(40)
       chunked_p = chunked?
 
@@ -2028,6 +2052,22 @@ module Net   #:nodoc:
       return if content_type()
       warn 'net/http: warning: Content-Type did not set; using application/x-www-form-urlencoded' if $VERBOSE
       set_content_type 'application/x-www-form-urlencoded'
+    end
+
+    ##
+    # Waits up to the continue timeout for a response from the server provided
+    # we're speaking HTTP 1.1 and are expecting a 100-continue response.
+
+    def wait_for_continue(sock, ver)
+      if ver >= '1.1' and @header['expect'] and
+          @header['expect'].include?('100-continue')
+        if IO.select([sock.io], nil, nil, sock.continue_timeout)
+          res = HTTPResponse.read_new(sock)
+          unless res.kind_of?(Net::HTTPContinue)
+            throw :response, res
+          end
+        end
+      end
     end
 
     def write_header(sock, ver, path)

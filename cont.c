@@ -33,10 +33,11 @@
  * are represented by stack pointer (higher bits of stack pointer).
  * TODO: check such constraint on configure.
  */
-
+#elif !defined(FIBER_USE_NATIVE)
+#define FIBER_USE_NATIVE 0
 #endif
 
-#ifdef FIBER_USE_NATIVE
+#if FIBER_USE_NATIVE
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/mman.h>
@@ -84,7 +85,7 @@ enum fiber_status {
     TERMINATED
 };
 
-#if defined(FIBER_USE_NATIVE) && !defined(_WIN32)
+#if FIBER_USE_NATIVE && !defined(_WIN32)
 #define MAX_MAHINE_STACK_CACHE  10
 static int machine_stack_cache_index = 0;
 typedef struct machine_stack_cache_struct {
@@ -101,7 +102,7 @@ typedef struct rb_fiber_struct {
     enum fiber_status status;
     struct rb_fiber_struct *prev_fiber;
     struct rb_fiber_struct *next_fiber;
-#ifdef FIBER_USE_NATIVE
+#if FIBER_USE_NATIVE
 #ifdef _WIN32
     void *fib_handle;
 #else
@@ -183,7 +184,7 @@ cont_free(void *ptr)
     if (ptr) {
 	rb_context_t *cont = ptr;
 	RUBY_FREE_UNLESS_NULL(cont->saved_thread.stack); fflush(stdout);
-#ifdef FIBER_USE_NATIVE
+#if FIBER_USE_NATIVE
 	if (cont->type == CONTINUATION_CONTEXT) {
 	    /* cont */
 	    RUBY_FREE_UNLESS_NULL(cont->machine_stack);
@@ -365,11 +366,6 @@ cont_save_machine_stack(rb_thread_t *th, rb_context_t *cont)
 
     MEMCPY(cont->machine_register_stack, cont->machine_register_stack_src, VALUE, size);
 #endif
-
-    sth->machine_stack_start = sth->machine_stack_end = 0;
-#ifdef __ia64
-    sth->machine_register_stack_start = sth->machine_register_stack_end = 0;
-#endif
 }
 
 static const rb_data_type_t cont_data_type = {
@@ -378,12 +374,26 @@ static const rb_data_type_t cont_data_type = {
 };
 
 static void
-cont_init(rb_context_t *cont, rb_thread_t *th)
+cont_save_thread(rb_context_t *cont, rb_thread_t *th)
 {
     /* save thread context */
     cont->saved_thread = *th;
+    /* saved_thread->machine_stack_(start|end) should be NULL */
+    /* because it may happen GC afterward */
+    cont->saved_thread.machine_stack_start = 0;
+    cont->saved_thread.machine_stack_end = 0;
+#ifdef __ia64
+    cont->saved_thread.machine_register_stack_start = 0
+    cont->saved_thread.machine_register_stack_end = 0
+#endif
+}
+
+static void
+cont_init(rb_context_t *cont, rb_thread_t *th)
+{
+    /* save thread context */
+    cont_save_thread(cont, th);
     cont->saved_thread.local_storage = 0;
-    cont->saved_thread.machine_stack_start = cont->saved_thread.machine_stack_end = 0;
 }
 
 static rb_context_t *
@@ -490,7 +500,7 @@ cont_restore_thread(rb_context_t *cont)
     th->first_proc = sth->first_proc;
 }
 
-#ifdef FIBER_USE_NATIVE
+#if FIBER_USE_NATIVE
 #ifdef _WIN32
 static void
 fiber_set_stack_location(void)
@@ -1005,9 +1015,6 @@ fiber_init(VALUE fibval, VALUE proc)
 
     fiber_link_join(fib);
 
-    /*cont->machine_stack, th->machine_stack_start and th->machine_stack_end should be NULL*/
-    /*because it may happen GC at th->stack allocation*/
-    th->machine_stack_start = th->machine_stack_end = 0;
     th->stack_size = FIBER_VM_STACK_SIZE;
     th->stack = ALLOC_N(VALUE, th->stack_size);
 
@@ -1030,7 +1037,7 @@ fiber_init(VALUE fibval, VALUE proc)
 
     th->first_proc = proc;
 
-#ifndef FIBER_USE_NATIVE
+#if !FIBER_USE_NATIVE
     MEMCPY(&cont->jmpbuf, &th->root_jmpbuf, rb_jmpbuf_t, 1);
 #endif
 
@@ -1081,7 +1088,7 @@ rb_fiber_terminate(rb_fiber_t *fib)
 {
     VALUE value = fib->cont.value;
     fib->status = TERMINATED;
-#if defined(FIBER_USE_NATIVE) && !defined(_WIN32)
+#if FIBER_USE_NATIVE && !defined(_WIN32)
     /* Ruby must not switch to other thread until storing terminated_machine_stack */
     terminated_machine_stack.ptr = fib->context.uc_stack.ss_sp;
     terminated_machine_stack.size = fib->context.uc_stack.ss_size / sizeof(VALUE);
@@ -1143,12 +1150,12 @@ root_fiber_alloc(rb_thread_t *th)
     /* no need to allocate vm stack */
     fib = fiber_t_alloc(fiber_alloc(rb_cFiber));
     fib->cont.type = ROOT_FIBER_CONTEXT;
-#ifdef FIBER_USE_NATIVE
+#if FIBER_USE_NATIVE
 #ifdef _WIN32
     fib->fib_handle = ConvertThreadToFiber(0);
 #endif
-    fib->status = RUNNING;
 #endif
+    fib->status = RUNNING;
     fib->prev_fiber = fib->next_fiber = fib;
 
     return fib;
@@ -1174,7 +1181,7 @@ fiber_store(rb_fiber_t *next_fib)
 
     if (th->fiber) {
 	GetFiberPtr(th->fiber, fib);
-	fib->cont.saved_thread = *th;
+	cont_save_thread(&fib->cont, th);
     }
     else {
 	/* create current fiber */
@@ -1182,7 +1189,7 @@ fiber_store(rb_fiber_t *next_fib)
 	th->root_fiber = th->fiber = fib->cont.self;
     }
 
-#ifndef FIBER_USE_NATIVE
+#if !FIBER_USE_NATIVE
     cont_save_machine_stack(th, &fib->cont);
 
     if (ruby_setjmp(fib->cont.jmpbuf)) {
@@ -1214,7 +1221,7 @@ fiber_store(rb_fiber_t *next_fib)
 	if (fib->cont.argc == -1) rb_exc_raise(fib->cont.value);
 	return fib->cont.value;
     }
-#ifndef FIBER_USE_NATIVE
+#if !FIBER_USE_NATIVE
     else {
 	return Qundef;
     }
@@ -1253,7 +1260,7 @@ fiber_switch(VALUE fibval, int argc, VALUE *argv, int is_resume)
 	cont = &fib->cont;
 	cont->argc = -1;
 	cont->value = value;
-#ifdef FIBER_USE_NATIVE
+#if FIBER_USE_NATIVE
 	{
 	    VALUE oldfibval;
 	    rb_fiber_t *oldfib;
@@ -1274,7 +1281,7 @@ fiber_switch(VALUE fibval, int argc, VALUE *argv, int is_resume)
     cont->value = make_passing_arg(argc, argv);
 
     value = fiber_store(fib);
-#ifndef FIBER_USE_NATIVE
+#if !FIBER_USE_NATIVE
     if (value == Qundef) {
 	cont_restore_0(cont, &value);
 	rb_bug("rb_fiber_resume: unreachable");
@@ -1420,7 +1427,7 @@ rb_fiber_s_current(VALUE klass)
 void
 Init_Cont(void)
 {
-#ifdef FIBER_USE_NATIVE
+#if FIBER_USE_NATIVE
     rb_thread_t *th = GET_THREAD();
 
 #ifdef _WIN32

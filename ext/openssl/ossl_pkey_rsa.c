@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey_rsa.c 31520 2011-05-11 21:51:52Z emboss $
+ * $Id: ossl_pkey_rsa.c 31826 2011-05-30 21:47:37Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -570,8 +570,24 @@ Init_ossl_rsa()
     mPKey = rb_define_module_under(mOSSL, "PKey");
 #endif
 
+    /* Document-class: OpenSSL::PKey::RSAError
+     *
+     * Generic exception that is raised if an operation on an RSA PKey
+     * fails unexpectedly or in case an instantiation of an instance of RSA
+     * fails due to non-conformant input data.
+     */
     eRSAError = rb_define_class_under(mPKey, "RSAError", ePKeyError);
 
+    /* Document-class: OpenSSL::PKey::RSA
+     *
+     * RSA is an asymmetric public key algorithm that has been formalized in
+     * RFC 3447. It is in widespread use in public key infrastuctures (PKI)
+     * where certificates (cf. OpenSSL::X509::Certificate) often are issued
+     * on the basis of a public/private RSA key pair. RSA is used in a wide
+     * field of applications such as secure (symmetric) key exchange, e.g.
+     * when establishing a secure TLS/SSL connection. It is also used in
+     * various digital signature schemes.
+     */
     cRSA = rb_define_class_under(mPKey, "RSA", cPKey);
 
     rb_define_singleton_method(cRSA, "generate", ossl_rsa_s_generate, -1);

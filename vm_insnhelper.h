@@ -2,7 +2,7 @@
 
   insnhelper.h - helper macros to implement each instructions
 
-  $Author: shugo $
+  $Author: ko1 $
   created at: 04/01/01 15:50:34 JST
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -207,5 +207,14 @@ extern VALUE ruby_vm_const_missing_count;
 } while (0)
 
 #endif
+
+static VALUE ruby_vm_global_state_version = 1;
+
+#define GET_VM_STATE_VERSION() (ruby_vm_global_state_version)
+#define INC_VM_STATE_VERSION() do { \
+    ruby_vm_global_state_version = (ruby_vm_global_state_version + 1); \
+    if (ruby_vm_global_state_version == 0) vm_clear_all_cache(); \
+} while (0)
+static void vm_clear_all_cache(void);
 
 #endif /* RUBY_INSNHELPER_H */

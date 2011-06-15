@@ -2,7 +2,7 @@
 
   string.c -
 
-  $Author: naruse $
+  $Author: mrkn $
   created at: Mon Aug  9 17:12:58 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -1150,7 +1150,7 @@ rb_str_length(VALUE str)
 static VALUE
 rb_str_bytesize(VALUE str)
 {
-    return INT2NUM(RSTRING_LEN(str));
+    return LONG2NUM(RSTRING_LEN(str));
 }
 
 /*
@@ -3168,7 +3168,8 @@ rb_str_aref(VALUE str, VALUE indx)
  *  characters at offsets given by the range is returned. In all three cases, if
  *  an offset is negative, it is counted from the end of <i>str</i>. Returns
  *  <code>nil</code> if the initial offset falls outside the string, the length
- *  is negative, or the beginning of the range is greater than the end.
+ *  is negative, or the beginning of the range is greater than the end of the
+ *  string.
  *
  *  If a <code>Regexp</code> is supplied, the matching portion of <i>str</i> is
  *  returned. If a numeric or name parameter follows the regular expression, that
@@ -5228,19 +5229,22 @@ rb_str_tr_bang(VALUE str, VALUE src, VALUE repl)
 
 /*
  *  call-seq:
- *     str.tr(from_str, to_str)   -> new_str
+ *     str.tr(from_str, to_str)   => new_str
  *
- *  Returns a copy of <i>str</i> with the characters in <i>from_str</i> replaced
- *  by the corresponding characters in <i>to_str</i>. If <i>to_str</i> is
- *  shorter than <i>from_str</i>, it is padded with its last character. Both
- *  strings may use the c1--c2 notation to denote ranges of characters, and
- *  <i>from_str</i> may start with a <code>^</code>, which denotes all
+ *  Returns a copy of <i>str</i> with the characters in <i>from_str</i> 
+ *  replaced by the corresponding characters in <i>to_str</i>. If 
+ *  <i>to_str</i> is shorter than <i>from_str</i>, it is padded with its last
+ *  character in order to maintain the correspondence.
+ *
+ *     "hello".tr('el', 'ip')      #=> "hippo"
+ *     "hello".tr('aeiou', '*')    #=> "h*ll*"
+ * 
+ *  Both strings may use the c1-c2 notation to denote ranges of characters,
+ *  and <i>from_str</i> may start with a <code>^</code>, which denotes all
  *  characters except those listed.
  *
- *     "hello".tr('aeiou', '*')    #=> "h*ll*"
- *     "hello".tr('^aeiou', '*')   #=> "*e**o"
- *     "hello".tr('el', 'ip')      #=> "hippo"
  *     "hello".tr('a-y', 'b-z')    #=> "ifmmp"
+ *     "hello".tr('^aeiou', '*')   #=> "*e**o"
  */
 
 static VALUE

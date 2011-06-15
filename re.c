@@ -2,7 +2,7 @@
 
   re.c -
 
-  $Author: drbrain $
+  $Author: naruse $
   created at: Mon Aug  9 18:24:49 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -2713,7 +2713,7 @@ reg_match_pos(VALUE re, VALUE *strp, long pos)
  *  The parser detects 'regexp-literal =~ expression' for the assignment.
  *  The regexp must be a literal without interpolation and placed at left hand side.
  *
- *  The assignment is not occur if the regexp is not a literal.
+ *  The assignment does not occur if the regexp is not a literal.
  *
  *     re = /(?<lhs>\w+)\s*=\s*(?<rhs>\w+)/
  *     re =~ "  x = y  "
@@ -2727,7 +2727,7 @@ reg_match_pos(VALUE re, VALUE *strp, long pos)
  *     /(?<lhs>\w+)\s*=\s*#{rhs_pat}/ =~ "x = y"
  *     p lhs    # undefined local variable
  *
- *  The assignment is not occur if the regexp is placed at right hand side.
+ *  The assignment does not occur if the regexp is placed at the right hand side.
  *
  *    "  x = y  " =~ /(?<lhs>\w+)\s*=\s*(?<rhs>\w+)/
  *    p lhs, rhs # undefined local variable

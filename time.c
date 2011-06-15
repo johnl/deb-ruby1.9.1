@@ -2,7 +2,7 @@
 
   time.c -
 
-  $Author: nobu $
+  $Author: tadf $
   created at: Tue Dec 28 14:31:59 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -905,20 +905,20 @@ rb_localtime_r2(const time_t *t, struct tm *result)
 #define LOCALTIME(tm, result) (tzset(),rb_localtime_r2((tm), &(result)))
 
 #if !defined(HAVE_STRUCT_TM_TM_GMTOFF)
-    static struct tm *
-    rb_gmtime_r2(const time_t *t, struct tm *result)
-    {
-        result = rb_gmtime_r(t, result);
+static struct tm *
+rb_gmtime_r2(const time_t *t, struct tm *result)
+{
+    result = rb_gmtime_r(t, result);
 #if defined(HAVE_TIMEGM) && defined(LOCALTIME_OVERFLOW_PROBLEM)
-        if (result) {
-            struct tm tmp = *result;
-            time_t t2 = timegm(&tmp);
-            if (*t != t2)
-                result = NULL;
-        }
-#endif
-        return result;
+    if (result) {
+	struct tm tmp = *result;
+	time_t t2 = timegm(&tmp);
+	if (*t != t2)
+	    result = NULL;
     }
+#endif
+    return result;
+}
 #   define GMTIME(tm, result) rb_gmtime_r2((tm), &(result))
 #endif
 
@@ -4438,7 +4438,7 @@ strftimev(const char *fmt, VALUE time)
  *      %c - date and time (%a %b %e %T %Y)
  *      %D - Date (%m/%d/%y)
  *      %F - The ISO 8601 date format (%Y-%m-%d)
- *      %v - VMS date (%e-%b-%Y)
+ *      %v - VMS date (%e-%^b-%4Y)
  *      %x - Same as %D
  *      %X - Same as %T
  *      %r - 12-hour time (%I:%M:%S %p)

@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_x509req.c 31124 2011-03-18 11:45:43Z akr $
+ * $Id: ossl_x509req.c 32005 2011-06-11 10:39:47Z nahi $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -171,7 +171,7 @@ ossl_x509req_to_der(VALUE self)
 
     GetX509Req(self, req);
     if ((len = i2d_X509_REQ(req, NULL)) <= 0)
-	ossl_raise(eX509CertError, NULL);
+	ossl_raise(eX509ReqError, NULL);
     str = rb_str_new(0, len);
     p = (unsigned char *)RSTRING_PTR(str);
     if (i2d_X509_REQ(req, &p) <= 0)

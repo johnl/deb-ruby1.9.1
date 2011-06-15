@@ -9,6 +9,7 @@ class OpenSSL::TestEC < Test::Unit::TestCase
 
     @group1 = OpenSSL::PKey::EC::Group.new('secp112r1')
     @group2 = OpenSSL::PKey::EC::Group.new('sect163k1')
+    @group3 = OpenSSL::PKey::EC::Group.new('prime256v1')
 
     @key1 = OpenSSL::PKey::EC.new
     @key1.group = @group1
@@ -17,8 +18,11 @@ class OpenSSL::TestEC < Test::Unit::TestCase
     @key2 = OpenSSL::PKey::EC.new(@group2.curve_name)
     @key2.generate_key
 
-    @groups = [@group1, @group2]
-    @keys = [@key1, @key2]
+    @key3 = OpenSSL::PKey::EC.new(@group3)
+    @key3.generate_key
+
+    @groups = [@group1, @group2, @group3]
+    @keys = [@key1, @key2, @key3]
   end
 
   def compare_keys(k1, k2)
@@ -114,6 +118,56 @@ class OpenSSL::TestEC < Test::Unit::TestCase
       b = k.dh_compute_key(puba)
       assert_equal(a, b)
     end
+  end
+  
+  def test_read_private_key_der
+    ec = OpenSSL::TestUtils::TEST_KEY_EC_P256V1
+    der = ec.to_der
+    ec2 = OpenSSL::PKey.read(der)
+    assert(ec2.private_key?)
+    assert_equal(der, ec2.to_der)
+  end
+
+  def test_read_private_key_pem
+    ec = OpenSSL::TestUtils::TEST_KEY_EC_P256V1
+    pem = ec.to_pem
+    ec2 = OpenSSL::PKey.read(pem)
+    assert(ec2.private_key?)
+    assert_equal(pem, ec2.to_pem)
+  end
+
+  def test_read_public_key_der
+    ec = OpenSSL::TestUtils::TEST_KEY_EC_P256V1
+    ec2 = OpenSSL::PKey::EC.new(ec.group)
+    ec2.public_key = ec.public_key
+    der = ec2.to_der
+    ec3 = OpenSSL::PKey.read(der)
+    assert(!ec3.private_key?)
+    assert_equal(der, ec3.to_der)
+  end
+
+  def test_read_public_key_pem
+    ec = OpenSSL::TestUtils::TEST_KEY_EC_P256V1
+    ec2 = OpenSSL::PKey::EC.new(ec.group)
+    ec2.public_key = ec.public_key
+    pem = ec2.to_pem
+    ec3 = OpenSSL::PKey.read(pem)
+    assert(!ec3.private_key?)
+    assert_equal(pem, ec3.to_pem)
+  end
+
+  def test_read_private_key_pem_pw
+    ec = OpenSSL::TestUtils::TEST_KEY_EC_P256V1
+    pem = ec.to_pem(OpenSSL::Cipher.new('AES-128-CBC'), 'secret')
+    #callback form for password
+    ec2 = OpenSSL::PKey.read(pem) do
+      'secret'
+    end
+    assert(ec2.private_key?)
+    # pass password directly
+    ec2 = OpenSSL::PKey.read(pem, 'secret')
+    assert(ec2.private_key?)
+    #omit pem equality check, will be different due to cipher iv
   end
 
 # test Group: asn1_flag, point_conversion

@@ -120,27 +120,28 @@ rb_class_new(VALUE super)
     return rb_class_boot(super);
 }
 
-struct clone_method_data {
-    st_table *tbl;
-    VALUE klass;
-};
-
 VALUE rb_iseq_clone(VALUE iseqval, VALUE newcbase);
 
-static int
-clone_method(ID mid, const rb_method_entry_t *me, struct clone_method_data *data)
+static void
+rb_mod_clone_method(VALUE klass, ID mid, const rb_method_entry_t *me)
 {
     VALUE newiseqval;
     if (me->def && me->def->type == VM_METHOD_TYPE_ISEQ) {
 	rb_iseq_t *iseq;
-	newiseqval = rb_iseq_clone(me->def->body.iseq->self, data->klass);
+	newiseqval = rb_iseq_clone(me->def->body.iseq->self, klass);
 	GetISeqPtr(newiseqval, iseq);
-	rb_add_method(data->klass, mid, VM_METHOD_TYPE_ISEQ, iseq, me->flag);
+	rb_add_method(klass, mid, VM_METHOD_TYPE_ISEQ, iseq, me->flag);
 	RB_GC_GUARD(newiseqval);
     }
     else {
-	rb_method_entry_set(data->klass, mid, me, me->flag);
+	rb_method_entry_set(klass, mid, me, me->flag);
     }
+}
+
+static int
+clone_method_i(st_data_t key, st_data_t value, st_data_t data)
+{
+    rb_mod_clone_method((VALUE)data, (ID)key, (const rb_method_entry_t *)value);
     return ST_CONTINUE;
 }
 
@@ -151,6 +152,12 @@ clone_const(ID key, const rb_const_entry_t *ce, st_table *tbl)
     *nce = *ce;
     st_insert(tbl, key, (st_data_t)nce);
     return ST_CONTINUE;
+}
+
+static int
+clone_const_i(st_data_t key, st_data_t value, st_data_t data)
+{
+    return clone_const((ID)key, (const rb_const_entry_t *)value, (st_table *)data);
 }
 
 /* :nodoc: */
@@ -180,18 +187,14 @@ rb_mod_init_copy(VALUE clone, VALUE orig)
 	    rb_free_const_table(RCLASS_CONST_TBL(clone));
 	}
 	RCLASS_CONST_TBL(clone) = st_init_numtable();
-	st_foreach(RCLASS_CONST_TBL(orig), clone_const, (st_data_t)RCLASS_CONST_TBL(clone));
+	st_foreach(RCLASS_CONST_TBL(orig), clone_const_i, (st_data_t)RCLASS_CONST_TBL(clone));
     }
     if (RCLASS_M_TBL(orig)) {
-	struct clone_method_data data;
-
 	if (RCLASS_M_TBL(clone)) {
 	    rb_free_m_table(RCLASS_M_TBL(clone));
 	}
-	data.tbl = RCLASS_M_TBL(clone) = st_init_numtable();
-	data.klass = clone;
-	st_foreach(RCLASS_M_TBL(orig), clone_method,
-		   (st_data_t)&data);
+	RCLASS_M_TBL(clone) = st_init_numtable();
+	st_foreach(RCLASS_M_TBL(orig), clone_method_i, (st_data_t)clone);
     }
 
     return clone;
@@ -221,12 +224,11 @@ rb_singleton_class_clone(VALUE obj)
     if (!FL_TEST(klass, FL_SINGLETON))
 	return klass;
     else {
-	struct clone_method_data data;
 	/* copy singleton(unnamed) class */
 	VALUE clone = class_alloc((RBASIC(klass)->flags & ~(FL_MARK)), 0);
 
 	if (BUILTIN_TYPE(obj) == T_CLASS) {
-	    RBASIC(clone)->klass = (VALUE)clone;
+	    RBASIC(clone)->klass = clone;
 	}
 	else {
 	    RBASIC(clone)->klass = rb_singleton_class_clone(klass);
@@ -238,16 +240,13 @@ rb_singleton_class_clone(VALUE obj)
 	}
 	if (RCLASS_CONST_TBL(klass)) {
 	    RCLASS_CONST_TBL(clone) = st_init_numtable();
-	    st_foreach(RCLASS_CONST_TBL(klass), clone_const, (st_data_t)RCLASS_CONST_TBL(clone));
+	    st_foreach(RCLASS_CONST_TBL(klass), clone_const_i, (st_data_t)RCLASS_CONST_TBL(clone));
 	}
 	RCLASS_M_TBL(clone) = st_init_numtable();
-	data.tbl = RCLASS_M_TBL(clone);
-	data.klass = (VALUE)clone;
-	st_foreach(RCLASS_M_TBL(klass), clone_method,
-		   (st_data_t)&data);
-	rb_singleton_class_attached(RBASIC(clone)->klass, (VALUE)clone);
+	st_foreach(RCLASS_M_TBL(klass), clone_method_i, (st_data_t)clone);
+	rb_singleton_class_attached(RBASIC(clone)->klass, clone);
 	FL_SET(clone, FL_SINGLETON);
-	return (VALUE)clone;
+	return clone;
     }
 }
 
@@ -697,6 +696,136 @@ rb_include_module(VALUE klass, VALUE module)
     if (changed) rb_clear_cache();
 }
 
+struct mixing_arg {
+    st_table *mtbl;
+    ID id;
+    st_table *aliasing;
+    VALUE klass;
+};
+
+static int
+check_mix_const_i(st_data_t key, st_data_t value, st_data_t arg)
+{
+    struct mixing_arg *argp = (struct mixing_arg *)arg;
+    ID id = (ID)key;
+    st_table *aliasing = argp->aliasing;
+    st_data_t alias;
+
+    if (!rb_is_const_id(id)) return ST_CONTINUE;
+    if (aliasing && st_lookup(aliasing, ID2SYM(id), &alias)) {
+	id = rb_to_id(alias);
+    }
+    if (st_lookup(argp->mtbl, id, NULL)) {
+	argp->id = id;
+	return ST_STOP;
+    }
+    return ST_CONTINUE;
+}
+
+static int
+do_mix_const_i(st_data_t key, st_data_t value, st_data_t arg)
+{
+    struct mixing_arg *argp = (struct mixing_arg *)arg;
+    ID id = (ID)key;
+    st_table *aliasing = argp->aliasing;
+    st_data_t old, alias;
+
+    if (!rb_is_const_id(id)) return ST_CONTINUE;
+    if (aliasing && st_lookup(aliasing, ID2SYM(id), &alias)) {
+	id = rb_to_id(alias);
+    }
+    if (st_lookup(argp->mtbl, id, &old)) {
+	argp->id = id;
+	return ST_STOP;
+    }
+    st_insert(argp->mtbl, id, value);
+    return ST_CONTINUE;
+}
+
+static int
+check_mix_method_i(st_data_t key, st_data_t value, st_data_t arg)
+{
+    struct mixing_arg *argp = (struct mixing_arg *)arg;
+    ID id = (ID)key;
+    st_table *aliasing = argp->aliasing;
+    st_data_t alias;
+
+    if (aliasing && st_lookup(aliasing, ID2SYM(id), &alias)) {
+	if (NIL_P(alias)) return ST_CONTINUE;
+	id = rb_to_id(alias);
+    }
+    if (st_lookup(argp->mtbl, id, NULL)) {
+	argp->id = id;
+	return ST_STOP;
+    }
+    return ST_CONTINUE;
+}
+
+static int
+do_mix_method_i(st_data_t key, st_data_t value, st_data_t arg)
+{
+    struct mixing_arg *argp = (struct mixing_arg *)arg;
+    ID id = (ID)key;
+    st_table *aliasing = argp->aliasing;
+    st_data_t old, alias;
+
+    if (aliasing && st_lookup(aliasing, ID2SYM(id), &alias)) {
+	if (NIL_P(alias)) return ST_CONTINUE;
+	id = rb_to_id(alias);
+    }
+    if (st_lookup(argp->mtbl, id, &old)) {
+	argp->id = id;
+	return ST_STOP;
+    }
+    rb_mod_clone_method(argp->klass, id, (rb_method_entry_t *)value);
+    return ST_CONTINUE;
+}
+
+void
+rb_mix_module(VALUE klass, VALUE module, st_table *constants, st_table *methods)
+{
+    st_table *mtbl_from;
+    struct mixing_arg methodarg, constarg;
+
+    rb_frozen_class_p(klass);
+    if (!OBJ_UNTRUSTED(klass)) {
+	rb_secure(4);
+    }
+
+    if (TYPE(module) != T_MODULE) {
+	Check_Type(module, T_MODULE);
+    }
+
+    OBJ_INFECT(klass, module);
+
+    mtbl_from = RMODULE_M_TBL(module);
+    methodarg.mtbl = RMODULE_M_TBL(klass);
+    methodarg.id = 0;
+    methodarg.aliasing = methods;
+    methodarg.klass = klass;
+    constarg.mtbl = RMODULE_IV_TBL(klass);
+    constarg.id = 0;
+    constarg.aliasing = constants;
+
+    st_foreach(mtbl_from, check_mix_method_i, (st_data_t)&methodarg);
+    if (methodarg.id) {
+	rb_raise(rb_eArgError, "method would conflict - %s", rb_id2name(methodarg.id));
+    }
+    st_foreach(mtbl_from, check_mix_const_i, (st_data_t)&constarg);
+    if (constarg.id) {
+	rb_raise(rb_eArgError, "constant would conflict - %s", rb_id2name(constarg.id));
+    }
+    st_foreach(mtbl_from, do_mix_method_i, (st_data_t)&methodarg);
+    if (methodarg.id) {
+	rb_raise(rb_eArgError, "method would conflict - %s", rb_id2name(methodarg.id));
+    }
+    st_foreach(mtbl_from, do_mix_const_i, (st_data_t)&constarg);
+    if (constarg.id) {
+	rb_raise(rb_eArgError, "constant would conflict - %s", rb_id2name(constarg.id));
+    }
+    rb_vm_inc_const_missing_count();
+}
+
 /*
  *  call-seq:
  *     mod.included_modules -> array
@@ -820,35 +949,37 @@ ins_methods_push(ID name, long type, VALUE ary, long visi)
 }
 
 static int
-ins_methods_i(ID name, long type, VALUE ary)
+ins_methods_i(st_data_t name, st_data_t type, st_data_t ary)
 {
-    return ins_methods_push(name, type, ary, -1); /* everything but private */
+    return ins_methods_push((ID)name, (long)type, (VALUE)ary, -1); /* everything but private */
 }
 
 static int
-ins_methods_prot_i(ID name, long type, VALUE ary)
+ins_methods_prot_i(st_data_t name, st_data_t type, st_data_t ary)
 {
-    return ins_methods_push(name, type, ary, NOEX_PROTECTED);
+    return ins_methods_push((ID)name, (long)type, (VALUE)ary, NOEX_PROTECTED);
 }
 
 static int
-ins_methods_priv_i(ID name, long type, VALUE ary)
+ins_methods_priv_i(st_data_t name, st_data_t type, st_data_t ary)
 {
-    return ins_methods_push(name, type, ary, NOEX_PRIVATE);
+    return ins_methods_push((ID)name, (long)type, (VALUE)ary, NOEX_PRIVATE);
 }
 
 static int
-ins_methods_pub_i(ID name, long type, VALUE ary)
+ins_methods_pub_i(st_data_t name, st_data_t type, st_data_t ary)
 {
-    return ins_methods_push(name, type, ary, NOEX_PUBLIC);
+    return ins_methods_push((ID)name, (long)type, (VALUE)ary, NOEX_PUBLIC);
 }
 
 static int
-method_entry(ID key, const rb_method_entry_t *me, st_table *list)
+method_entry_i(st_data_t key, st_data_t value, st_data_t data)
 {
+    const rb_method_entry_t *me = (const rb_method_entry_t *)value;
+    st_table *list = (st_table *)data;
     long type;
 
-    if (key == ID_ALLOCATOR) {
+    if ((ID)key == ID_ALLOCATOR) {
 	return ST_CONTINUE;
     }
 
@@ -865,7 +996,7 @@ method_entry(ID key, const rb_method_entry_t *me, st_table *list)
 }
 
 static VALUE
-class_instance_method_list(int argc, VALUE *argv, VALUE mod, int obj, int (*func) (ID, long, VALUE))
+class_instance_method_list(int argc, VALUE *argv, VALUE mod, int obj, int (*func) (st_data_t, st_data_t, st_data_t))
 {
     VALUE ary;
     int recur;
@@ -882,7 +1013,7 @@ class_instance_method_list(int argc, VALUE *argv, VALUE mod, int obj, int (*func
 
     list = st_init_numtable();
     for (; mod; mod = RCLASS_SUPER(mod)) {
-	st_foreach(RCLASS_M_TBL(mod), method_entry, (st_data_t)list);
+	st_foreach(RCLASS_M_TBL(mod), method_entry_i, (st_data_t)list);
 	if (BUILTIN_TYPE(mod) == T_ICLASS) continue;
 	if (obj && FL_TEST(mod, FL_SINGLETON)) continue;
 	if (!recur) break;
@@ -1114,12 +1245,12 @@ rb_obj_singleton_methods(int argc, VALUE *argv, VALUE obj)
     klass = CLASS_OF(obj);
     list = st_init_numtable();
     if (klass && FL_TEST(klass, FL_SINGLETON)) {
-	st_foreach(RCLASS_M_TBL(klass), method_entry, (st_data_t)list);
+	st_foreach(RCLASS_M_TBL(klass), method_entry_i, (st_data_t)list);
 	klass = RCLASS_SUPER(klass);
     }
     if (RTEST(recur)) {
 	while (klass && (FL_TEST(klass, FL_SINGLETON) || TYPE(klass) == T_ICLASS)) {
-	    st_foreach(RCLASS_M_TBL(klass), method_entry, (st_data_t)list);
+	    st_foreach(RCLASS_M_TBL(klass), method_entry_i, (st_data_t)list);
 	    klass = RCLASS_SUPER(klass);
 	}
     }

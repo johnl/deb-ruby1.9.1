@@ -246,8 +246,14 @@ module Psych
         end
       end
 
+      def visit_Module o
+        raise TypeError, "can't dump anonymous module: #{o}" unless o.name
+        @emitter.scalar o.name, nil, '!ruby/module', false, false, Nodes::Scalar::SINGLE_QUOTED
+      end
+
       def visit_Class o
-        raise TypeError, "can't dump anonymous class #{o.class}"
+        raise TypeError, "can't dump anonymous class: #{o}" unless o.name
+        @emitter.scalar o.name, nil, '!ruby/class', false, false, Nodes::Scalar::SINGLE_QUOTED
       end
 
       def visit_Range o
@@ -259,7 +265,10 @@ module Psych
       end
 
       def visit_Hash o
-        register(o, @emitter.start_mapping(nil, nil, true, Psych::Nodes::Mapping::BLOCK))
+        tag      = o.class == ::Hash ? nil : "!ruby/hash:#{o.class}"
+        implicit = !tag
+
+        register(o, @emitter.start_mapping(nil, tag, implicit, Psych::Nodes::Mapping::BLOCK))
 
         o.each do |k,v|
           accept k

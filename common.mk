@@ -131,7 +131,7 @@ PRE_LIBRUBY_UPDATE = $(MINIRUBY) -e 'ARGV[1] or File.unlink(ARGV[0]) rescue nil'
 TESTSDIR      = $(srcdir)/test
 TESTWORKDIR   = testwork
 
-TESTRUN_SCRIPT = ./test.rb
+TESTRUN_SCRIPT = $(srcdir)/test.rb
 
 BOOTSTRAPRUBY = $(BASERUBY)
 
@@ -616,7 +616,7 @@ file.$(OBJEXT): {$(VPATH)}file.c $(RUBY_H_INCLUDES) {$(VPATH)}io.h \
 gc.$(OBJEXT): {$(VPATH)}gc.c $(RUBY_H_INCLUDES) {$(VPATH)}re.h \
   {$(VPATH)}regex.h $(ENCODING_H_INCLUDES) $(VM_CORE_H_INCLUDES) \
   {$(VPATH)}gc.h {$(VPATH)}io.h {$(VPATH)}eval_intern.h {$(VPATH)}util.h \
-  {$(VPATH)}debug.h {$(VPATH)}internal.h
+  {$(VPATH)}debug.h {$(VPATH)}internal.h {$(VPATH)}atomic.h
 hash.$(OBJEXT): {$(VPATH)}hash.c $(RUBY_H_INCLUDES) {$(VPATH)}util.h
 inits.$(OBJEXT): {$(VPATH)}inits.c $(RUBY_H_INCLUDES)
 io.$(OBJEXT): {$(VPATH)}io.c $(RUBY_H_INCLUDES) {$(VPATH)}io.h \
@@ -672,7 +672,7 @@ ruby.$(OBJEXT): {$(VPATH)}ruby.c $(RUBY_H_INCLUDES) {$(VPATH)}util.h \
 safe.$(OBJEXT): {$(VPATH)}safe.c $(RUBY_H_INCLUDES) \
   $(VM_CORE_H_INCLUDES) {$(VPATH)}debug.h
 signal.$(OBJEXT): {$(VPATH)}signal.c $(RUBY_H_INCLUDES) \
-  $(VM_CORE_H_INCLUDES) {$(VPATH)}debug.h
+  $(VM_CORE_H_INCLUDES) {$(VPATH)}debug.h {$(VPATH)}atomic.h
 sprintf.$(OBJEXT): {$(VPATH)}sprintf.c $(RUBY_H_INCLUDES) {$(VPATH)}re.h \
   {$(VPATH)}regex.h {$(VPATH)}vsnprintf.c $(ENCODING_H_INCLUDES)
 st.$(OBJEXT): {$(VPATH)}st.c {$(VPATH)}config.h {$(VPATH)}defines.h \
@@ -685,12 +685,12 @@ string.$(OBJEXT): {$(VPATH)}string.c $(RUBY_H_INCLUDES) {$(VPATH)}re.h \
 struct.$(OBJEXT): {$(VPATH)}struct.c $(RUBY_H_INCLUDES) {$(VPATH)}internal.h
 thread.$(OBJEXT): {$(VPATH)}thread.c {$(VPATH)}eval_intern.h \
   $(RUBY_H_INCLUDES) {$(VPATH)}gc.h $(VM_CORE_H_INCLUDES) \
-  {$(VPATH)}debug.h {$(VPATH)}thread_$(THREAD_MODEL).c
+  {$(VPATH)}debug.h {$(VPATH)}thread_$(THREAD_MODEL).c {$(VPATH)}atomic.h
 transcode.$(OBJEXT): {$(VPATH)}transcode.c $(RUBY_H_INCLUDES) \
   $(ENCODING_H_INCLUDES) {$(VPATH)}transcode_data.h
 cont.$(OBJEXT): {$(VPATH)}cont.c $(RUBY_H_INCLUDES) \
   $(VM_CORE_H_INCLUDES) {$(VPATH)}gc.h {$(VPATH)}eval_intern.h \
-  {$(VPATH)}debug.h
+  {$(VPATH)}debug.h {$(VPATH)}atomic.h
 time.$(OBJEXT): {$(VPATH)}time.c $(RUBY_H_INCLUDES) \
   $(ENCODING_H_INCLUDES) {$(VPATH)}timev.h
 util.$(OBJEXT): {$(VPATH)}util.c $(RUBY_H_INCLUDES) {$(VPATH)}util.h
@@ -908,8 +908,11 @@ info-arch:
 change: PHONY
 	$(BASERUBY) -C "$(srcdir)" ./tool/change_maker.rb $(CHANGES) > change.log
 
-love: up all test install test-all
-	@echo love is the all you need
+love: sudo-precheck up all test install test-all
+	@echo love is all you need
+
+sudo-precheck:
+	@$(SUDO) true
 
 help: PHONY
 	$(MESSAGE_BEGIN) \

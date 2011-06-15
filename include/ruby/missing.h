@@ -3,7 +3,7 @@
   missing.h - prototype for *.c in ./missing, and
   	      for missing timeval struct
 
-  $Author: kosaki $
+  $Author: usa $
   created at: Sat May 11 23:46:03 JST 2002
 
 ************************************************/
@@ -80,6 +80,10 @@ RUBY_EXTERN int dup2(int, int);
 RUBY_EXTERN int eaccess(const char*, int);
 #endif
 
+#ifndef HAVE_ROUND
+RUBY_EXTERN double round(double);	/* numeric.c */
+#endif
+
 #ifndef HAVE_FINITE
 RUBY_EXTERN int finite(double);
 #endif
@@ -113,6 +117,22 @@ RUBY_EXTERN double lgamma_r(double, int *);
 
 #ifndef HAVE_CBRT
 RUBY_EXTERN double cbrt(double);
+#endif
+
+#ifdef INFINITY
+# define HAVE_INFINITY
+#else
+/** @internal */
+RUBY_EXTERN const unsigned char rb_infinity[];
+# define INFINITY (*(float *)rb_infinity)
+#endif
+
+#ifdef NAN
+# define HAVE_NAN
+#else
+/** @internal */
+RUBY_EXTERN const unsigned char rb_nan[];
+# define NAN (*(float *)rb_nan)
 #endif
 
 #ifndef isinf
