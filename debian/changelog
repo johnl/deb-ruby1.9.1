@@ -1,4 +1,4 @@
-ruby1.9.1 (1.9.2.180+svn32099-1) UNRELEASED; urgency=low
+ruby1.9.1 (1.9.2.180+svn32099-1) experimental; urgency=low
 
   * New SVN snapshot based on revision 32099 from trunk.
   * 20100829-rubygems_default_dir.diff: refresh
