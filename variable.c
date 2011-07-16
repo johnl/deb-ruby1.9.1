@@ -2,7 +2,7 @@
 
   variable.c -
 
-  $Author: marcandre $
+  $Author: yugui $
   created at: Tue Apr 19 23:55:15 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -310,7 +310,8 @@ rb_class_name(VALUE klass)
 const char *
 rb_class2name(VALUE klass)
 {
-    return RSTRING_PTR(rb_class_name(klass));
+    VALUE name = rb_class_name(klass);
+    return RSTRING_PTR(name);
 }
 
 const char *

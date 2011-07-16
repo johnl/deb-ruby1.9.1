@@ -94,6 +94,9 @@ typedef unsigned int uintptr_t;
 #ifndef __MINGW32__
 # define mode_t int
 #endif
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 #ifdef WIN95
 extern DWORD rb_w32_osid(void);
@@ -370,11 +373,43 @@ scalb(double a, long b)
 //
 
 #define SUFFIX
+
+extern int 	 rb_w32_ftruncate(int fd, off_t length);
+extern int 	 rb_w32_truncate(const char *path, off_t length);
+extern off_t	 rb_w32_ftello(FILE *stream);
+extern int 	 rb_w32_fseeko(FILE *stream, off_t offset, int whence);
+
+#undef HAVE_FTRUNCATE
+#define HAVE_FTRUNCATE 1
+#if defined HAVE_FTRUNCATE64
+#define ftruncate ftruncate64
+#else
 #define ftruncate rb_w32_ftruncate
-extern int       truncate(const char *path, off_t length);
-extern int       ftruncate(int fd, off_t length);
-extern int       fseeko(FILE *stream, off_t offset, int whence);
-extern off_t     ftello(FILE *stream);
+#endif
+
+#undef HAVE_TRUNCATE
+#define HAVE_TRUNCATE 1
+#if defined HAVE_TRUNCATE64
+#define truncate truncate64
+#else
+#define truncate rb_w32_truncate
+#endif
+
+#undef HAVE_FSEEKO
+#define HAVE_FSEEKO 1
+#if defined HAVE_FSEEKO64
+#define fseeko fseeko64
+#else
+#define fseeko rb_w32_fseeko
+#endif
+
+#undef HAVE_FTELLO
+#define HAVE_FTELLO 1
+#if defined HAVE_FTELLO64
+#define ftello ftello64
+#else
+#define ftello rb_w32_ftello
+#endif
 
 //
 // stubs
@@ -661,6 +696,20 @@ in asynchronous_func_t.
 */
 typedef uintptr_t (*asynchronous_func_t)(uintptr_t self, int argc, uintptr_t* argv);
 uintptr_t rb_w32_asynchronize(asynchronous_func_t func, uintptr_t self, int argc, uintptr_t* argv, uintptr_t intrval);
+
+#ifdef __MINGW_ATTRIB_PURE
+/* get rid of bugs in math.h of mingw */
+#define frexp(_X, _Y) __extension__ ({\
+    int *intptr_frexp_bug = (_Y);\
+    *intptr_frexp_bug = *intptr_frexp_bug;\
+    frexp((_X), intptr_frexp_bug);\
+})
+#define modf(_X, _Y) __extension__ ({\
+    double *intptr_modf_bug = (_Y);\
+    *intptr_modf_bug = *intptr_modf_bug;\
+    modf((_X), intptr_modf_bug);\
+})
+#endif
 
 #if defined(__cplusplus)
 #if 0

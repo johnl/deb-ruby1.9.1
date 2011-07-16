@@ -221,7 +221,7 @@ env_free(void * const ptr)
 {
     RUBY_FREE_ENTER("env");
     if (ptr) {
-	const rb_env_t * const env = ptr;
+	rb_env_t *const env = ptr;
 	RUBY_FREE_UNLESS_NULL(env->env);
 	ruby_xfree(ptr);
     }
@@ -1443,7 +1443,7 @@ rb_thread_current_status(const rb_thread_t *th)
     }
     else if (cfp->me->def->original_id) {
 	str = rb_sprintf("`%s#%s' (cfunc)",
-			 RSTRING_PTR(rb_class_name(cfp->me->klass)),
+			 rb_class2name(cfp->me->klass),
 			 rb_id2name(cfp->me->def->original_id));
     }
 

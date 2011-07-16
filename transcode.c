@@ -2,7 +2,7 @@
 
   transcode.c -
 
-  $Author: usa $
+  $Author: yugui $
   created at: Tue Oct 30 16:10:22 JST 2007
 
   Copyright (C) 2007 Martin Duerst
@@ -3178,8 +3178,8 @@ rb_econv_init_by_convpath(VALUE self, VALUE convpath,
  *     :undef => :replace         # replace undefined conversion
  *     :replace => string         # replacement string ("?" or "\uFFFD" if not specified)
  *     :universal_newline => true # decorator for converting CRLF and CR to LF
- *     :crlf_newline => true      # decorator for converting LF to CRLF
- *     :cr_newline => true        # decorator for converting LF to CR
+ *     :crlf_newline => true      # decorator for converting CRLF to LF
+ *     :cr_newline => true        # decorator for converting CR to LF
  *     :xml => :text              # escape as XML CharData.
  *     :xml => :attr              # escape as XML AttValue
  *   integer form:

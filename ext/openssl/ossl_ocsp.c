@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_ocsp.c 27437 2010-04-22 08:04:13Z nobu $
+ * $Id: ossl_ocsp.c 31791 2011-05-29 22:48:25Z yugui $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2003  Michal Rokos <m.rokos@sh.cvut.cz>
  * Copyright (C) 2003  GOTOU Yuuzou <gotoyuzo@notwork.org>
@@ -245,7 +245,7 @@ ossl_ocspreq_verify(int argc, VALUE *argv, VALUE self)
 
     rb_scan_args(argc, argv, "21", &certs, &store, &flags);
     x509st = GetX509StorePtr(store);
-    flg = NIL_P(flags) ? 0 : INT2NUM(flags);
+    flg = NIL_P(flags) ? 0 : NUM2INT(flags);
     x509s = ossl_x509_ary2sk(certs);
     GetOCSPReq(self, req);
     result = OCSP_request_verify(req, x509s, x509st, flg);
@@ -601,7 +601,7 @@ ossl_ocspbres_verify(int argc, VALUE *argv, VALUE self)
 
     rb_scan_args(argc, argv, "21", &certs, &store, &flags);
     x509st = GetX509StorePtr(store);
-    flg = NIL_P(flags) ? 0 : INT2NUM(flags);
+    flg = NIL_P(flags) ? 0 : NUM2INT(flags);
     x509s = ossl_x509_ary2sk(certs);
     GetOCSPBasicRes(self, bs);
     result = OCSP_basic_verify(bs, x509s, x509st, flg) > 0 ? Qtrue : Qfalse;

@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey_rsa.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_pkey_rsa.c 31795 2011-05-29 22:49:02Z yugui $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -152,26 +152,34 @@ ossl_rsa_initialize(int argc, VALUE *argv, VALUE self)
 	rsa = PEM_read_bio_RSAPrivateKey(in, NULL, ossl_pem_passwd_cb, passwd);
 	if (!rsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    rsa = PEM_read_bio_RSAPublicKey(in, NULL, NULL, NULL);
 	}
 	if (!rsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    rsa = PEM_read_bio_RSA_PUBKEY(in, NULL, NULL, NULL);
 	}
 	if (!rsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    rsa = d2i_RSAPrivateKey_bio(in, NULL);
 	}
 	if (!rsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    rsa = d2i_RSAPublicKey_bio(in, NULL);
 	}
 	if (!rsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    rsa = d2i_RSA_PUBKEY_bio(in, NULL);
 	}
 	BIO_free(in);
-	if (!rsa) ossl_raise(eRSAError, "Neither PUB key nor PRIV key:");
+	if (!rsa) {
+	    (void)ERR_get_error();
+	    ossl_raise(eRSAError, "Neither PUB key nor PRIV key:");
+	}
     }
     if (!EVP_PKEY_assign_RSA(pkey, rsa)) {
 	RSA_free(rsa);

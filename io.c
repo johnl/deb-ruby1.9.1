@@ -1694,10 +1694,15 @@ fill_cbuf(rb_io_t *fptr, int ec_flags)
                     res = rb_econv_convert(fptr->readconv, NULL, NULL, &dp, de, 0);
                     fptr->cbuf_len += (int)(dp - ds);
                     rb_econv_check_error(fptr->readconv);
+                    break;
                 }
             }
         }
     }
+    if (cbuf_len0 != fptr->cbuf_len)
+	return MORE_CHAR_SUSPENDED;
+
+    return MORE_CHAR_FINISHED;
 }
 
 static VALUE
@@ -2846,7 +2851,7 @@ io_getc(rb_io_t *fptr, rb_encoding *enc)
 	}
 	else {
 	    io_shift_cbuf(fptr, MBCLEN_CHARFOUND_LEN(r), &str);
-	    cr = ENC_CODERANGE_VALID;
+	    cr = ISASCII(r) ? ENC_CODERANGE_7BIT : ENC_CODERANGE_VALID;
 	}
 	str = io_enc_str(str, fptr);
 	ENC_CODERANGE_SET(str, cr);
@@ -3854,7 +3859,7 @@ rb_io_syswrite(VALUE io, VALUE str)
         rb_io_check_closed(fptr);
     }
 
-    n = write(fptr->fd, RSTRING_PTR(str), RSTRING_LEN(str));
+    n = rb_write_internal(fptr->fd, RSTRING_PTR(str), RSTRING_LEN(str));
 
     if (n == -1) rb_sys_fail_path(fptr->pathv);
 
@@ -5013,6 +5018,7 @@ pipe_open(struct rb_exec_arg *eargp, VALUE prog, const char *modestr, int fmode,
 	fflush(stdin);		/* is it really needed? */
 	pid = rb_fork(&status, 0, 0, Qnil);
 	if (pid == 0) {		/* child */
+	    rb_thread_atfork();
 	    popen_redirect(&arg);
 	    rb_io_synchronized(RFILE(orig_stdout)->fptr);
 	    rb_io_synchronized(RFILE(orig_stderr)->fptr);
@@ -7544,7 +7550,7 @@ rb_f_syscall(int argc, VALUE *argv)
 #else
     VALUE arg[8];
 #endif
-#if SIZEOF_VOIDP == 8 && HAVE___SYSCALL && SIZEOF_INT != 8 /* mainly *BSD */
+#if SIZEOF_VOIDP == 8 && defined(HAVE___SYSCALL) && SIZEOF_INT != 8 /* mainly *BSD */
 # define SYSCALL __syscall
 # define NUM2SYSCALLID(x) NUM2LONG(x)
 # define RETVAL2NUM(x) LONG2NUM(x)
@@ -8213,8 +8219,7 @@ nogvl_copy_stream_sendfile(struct copy_stream_struct *stp)
         stp->total += ss;
         copy_length -= ss;
         if (0 < copy_length) {
-            ss = -1;
-            errno = EAGAIN;
+            goto retry_sendfile;
         }
     }
     if (ss == -1) {

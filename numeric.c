@@ -97,6 +97,10 @@ round(double x)
 }
 #endif
 
+static VALUE fix_uminus(VALUE num);
+static VALUE fix_mul(VALUE x, VALUE y);
+static VALUE int_pow(long x, unsigned long y);
+
 static ID id_coerce, id_to_i, id_eq;
 
 VALUE rb_cNumeric;
@@ -1450,7 +1454,21 @@ flo_round(int argc, VALUE *argv, VALUE num)
 	if (ndigits < 0) number = 0;
     }
     else {
-	if (ndigits < 0) number /= f;
+	if (ndigits < 0) {
+	    double absnum = fabs(number);
+	    if (absnum < f) return INT2FIX(0);
+	    if (!FIXABLE(number)) {
+		VALUE f10 = int_pow(10, -ndigits);
+		VALUE n10 = f10;
+		if (number < 0) {
+                    extern VALUE rb_big_uminus(VALUE x);
+		    f10 = FIXNUM_P(f10) ? fix_uminus(f10) : rb_big_uminus(f10);
+		}
+		num = rb_big_idiv(rb_dbl2big(absnum), n10);
+		return FIXNUM_P(num) ? fix_mul(num, f10) : rb_big_mul(num, f10);
+	    }
+	    number /= f;
+	}
 	else number *= f;
 	number = round(number);
 	if (ndigits < 0) number *= f;
@@ -1581,7 +1599,7 @@ ruby_float_step(VALUE from, VALUE to, VALUE step, int excl)
 	else {
 	    if (err>0.5) err=0.5;
 	    n = floor(n + err);
-	    if (!excl) n++;
+	    if (!excl || ((long)n)*unit+beg < end) n++;
 	    for (i=0; i<n; i++) {
 		rb_yield(DBL2NUM(i*unit+beg));
 	    }
@@ -2304,7 +2322,7 @@ fix_mul(VALUE x, VALUE y)
 #if SIZEOF_LONG * 2 <= SIZEOF_LONG_LONG
 	LONG_LONG d;
 #else
-	long c;
+	volatile long c;
 	VALUE r;
 #endif
 
@@ -2555,7 +2573,7 @@ int_pow(long x, unsigned long y)
 	    y >>= 1;
 	}
 	{
-	    long xz = x * z;
+	    volatile long xz = x * z;
 	    if (!POSFIXABLE(xz) || xz / x != z) {
 		goto bignum;
 	    }

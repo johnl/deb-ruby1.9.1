@@ -3,7 +3,7 @@
  *
  *   Copyright (C) UENO Katsuhiro 2000-2003
  *
- * $Id: zlib.c 30575 2011-01-16 12:35:32Z yugui $
+ * $Id: zlib.c 32388 2011-07-03 13:41:50Z yugui $
  */
 
 #include <ruby.h>
@@ -2388,6 +2388,8 @@ gzfile_reader_rewind(struct gzfile *gz)
     gzfile_reset(gz);
 }
 
+extern VALUE rb_str_resurrect(VALUE str);
+
 static VALUE
 gzfile_reader_get_unused(struct gzfile *gz)
 {
@@ -2400,7 +2402,7 @@ gzfile_reader_get_unused(struct gzfile *gz)
     }
     if (NIL_P(gz->z.input)) return Qnil;
 
-    str = rb_str_dup(gz->z.input);
+    str = rb_str_resurrect(gz->z.input);
     OBJ_TAINT(str);  /* for safe */
     return str;
 }

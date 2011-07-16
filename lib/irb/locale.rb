@@ -1,7 +1,7 @@
 #
 #   irb/locale.rb - internationalization module
 #   	$Release Version: 0.9.6$
-#   	$Revision: 30563 $
+#   	$Revision: 31201 $
 #   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
 #
 # --
@@ -10,7 +10,7 @@
 #
 module IRB
   class Locale
-    @RCS_ID='-$Id: locale.rb 30563 2011-01-16 12:34:36Z yugui $-'
+    @RCS_ID='-$Id: locale.rb 31201 2011-03-28 13:40:53Z yugui $-'
 
     LOCALE_NAME_RE = %r[
       (?<language>[[:alpha:]]{2,3})
@@ -147,7 +147,7 @@ module IRB
           full_path = File.join(libpath, lc_path)
           return full_path if File.readable?(full_path)
         end
-        redo if Gem.try_activate(lc_path)
+        redo if defined?(Gem) and Gem.try_activate(lc_path)
       end
       nil
     end

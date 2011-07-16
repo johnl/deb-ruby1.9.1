@@ -2,7 +2,7 @@
 
   process.c -
 
-  $Author: nobu $
+  $Author: yugui $
   created at: Tue Aug 10 14:30:50 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -4464,9 +4464,11 @@ proc_setgroups(VALUE obj, VALUE ary)
 	    }
 	    else {
 		gr = getgrnam(RSTRING_PTR(tmp));
-		if (gr == NULL)
+		if (gr == NULL) {
+		    RB_GC_GUARD(tmp);
 		    rb_raise(rb_eArgError,
 			     "can't find group for %s", RSTRING_PTR(tmp));
+		}
 		groups[i] = gr->gr_gid;
 	    }
 	}

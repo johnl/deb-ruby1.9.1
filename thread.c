@@ -389,12 +389,21 @@ thread_cleanup_func_before_exec(void *th_ptr)
 }
 
 static void
-thread_cleanup_func(void *th_ptr)
+thread_cleanup_func(void *th_ptr, int atfork)
 {
     rb_thread_t *th = th_ptr;
 
     th->locking_mutex = Qfalse;
     thread_cleanup_func_before_exec(th_ptr);
+
+    /*
+     * Unfortunately, we can't release native threading resource at fork
+     * because libc may have unstable locking state therefore touching
+     * a threading resource may cause a deadlock.
+     */
+    if (atfork)
+	return;
+
     native_thread_destroy(th);
 }
 
@@ -512,18 +521,19 @@ thread_start_func_2(rb_thread_t *th, VALUE *stack_start, VALUE *register_stack_s
 	    join_th = join_th->join_list_next;
 	}
 
+	thread_unlock_all_locking_mutexes(th);
+	if (th != main_th) rb_check_deadlock(th->vm);
+
 	if (!th->root_fiber) {
 	    rb_thread_recycle_stack_release(th->stack);
 	    th->stack = 0;
 	}
     }
-    thread_unlock_all_locking_mutexes(th);
-    if (th != main_th) rb_check_deadlock(th->vm);
     if (th->vm->main_thread == th) {
 	ruby_cleanup(state);
     }
     else {
-	thread_cleanup_func(th);
+	thread_cleanup_func(th, FALSE);
 	native_mutex_unlock(&th->vm->global_vm_lock);
     }
 
@@ -1508,6 +1518,11 @@ rb_thread_kill(VALUE thread)
 static VALUE
 rb_thread_s_kill(VALUE obj, VALUE th)
 {
+    if (CLASS_OF(th) != rb_cThread) {
+        rb_raise(rb_eTypeError, 
+                "wrong argument type %s (expected Thread)",
+                rb_obj_classname(th));
+    }
     return rb_thread_kill(th);
 }
 
@@ -2770,7 +2785,7 @@ terminate_atfork_i(st_data_t key, st_data_t val, st_data_t current_th)
 	    rb_mutex_abandon_all(th->keeping_mutexes);
 	}
 	th->keeping_mutexes = NULL;
-	thread_cleanup_func(th);
+	thread_cleanup_func(th, TRUE);
     }
     return ST_CONTINUE;
 }
@@ -3631,10 +3646,14 @@ exec_recursive_i(VALUE tag, struct exec_recursive_params *p)
 static VALUE
 exec_recursive(VALUE (*func) (VALUE, VALUE, int), VALUE obj, VALUE pairid, VALUE arg, int outer)
 {
+    VALUE result = Qundef;
     struct exec_recursive_params p;
     int outermost;
     p.list = recursive_list_access();
     p.objid = rb_obj_id(obj);
+    p.obj = obj;
+    p.pairid = pairid;
+    p.arg = arg;
     outermost = outer && !recursive_check(p.list, ID2SYM(recursive_key), 0);
 
     if (recursive_check(p.list, p.objid, pairid)) {
@@ -3644,11 +3663,7 @@ exec_recursive(VALUE (*func) (VALUE, VALUE, int), VALUE obj, VALUE pairid, VALUE
 	return (*func)(obj, arg, TRUE);
     }
     else {
-	VALUE result = Qundef;
 	p.func = func;
-	p.obj = obj;
-	p.pairid = pairid;
-	p.arg = arg;
 
 	if (outermost) {
 	    recursive_push(p.list, ID2SYM(recursive_key), 0);
@@ -3661,8 +3676,9 @@ exec_recursive(VALUE (*func) (VALUE, VALUE, int), VALUE obj, VALUE pairid, VALUE
 	else {
 	    result = exec_recursive_i(0, &p);
 	}
-	return result;
     }
+    *(volatile struct exec_recursive_params *)&p;
+    return result;
 }
 
 /*

@@ -3,7 +3,7 @@
 #
 # Copyright (C) 2001, 2002, 2003 by Michael Neumann (mneumann@ntecs.de)
 #
-# $Id: create.rb 25189 2009-10-02 12:04:37Z akr $
+# $Id: create.rb 31813 2011-05-30 04:44:04Z yugui $
 #
 
 require "date"
@@ -178,10 +178,8 @@ module XMLRPC
     def conv2value(param)
 
         val = case param
-        when Fixnum
-          @writer.tag("i4", param.to_s)
-
-        when Bignum
+        when Fixnum, Bignum
+          # XML-RPC's int is 32bit int, and Fixnum also may be beyond 32bit
           if Config::ENABLE_BIGINT
             @writer.tag("i4", param.to_s)
           else

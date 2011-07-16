@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey_dh.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_pkey_dh.c 31796 2011-05-29 22:49:10Z yugui $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -170,10 +170,14 @@ ossl_dh_initialize(int argc, VALUE *argv, VALUE self)
 	dh = PEM_read_bio_DHparams(in, NULL, NULL, NULL);
 	if (!dh){
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dh = d2i_DHparams_bio(in, NULL);
 	}
 	BIO_free(in);
-	if (!dh) ossl_raise(eDHError, NULL);
+	if (!dh) {
+	    (void)ERR_get_error();
+	    ossl_raise(eDHError, NULL);
+	}
     }
     if (!EVP_PKEY_assign_DH(pkey, dh)) {
 	DH_free(dh);
