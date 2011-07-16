@@ -1,10 +1,13 @@
 ruby1.9.1 (1.9.2.290-1) unstable; urgency=low
 
   * New upstream release.
-  * Removed deban/patches/110411_disable_osslv2.patch, which has been applied
+  * Removed debian/patches/110411_disable_osslv2.patch, which has been applied
     by the upstream.
+  * Added a patch: debian/patches/debian/patches/110716-bigdecimal,
+    which was backported from the upstream (r30993)
+    (CVE-2011-0188; Closes: 628450)
 
- -- Daigo Moriwaki <daigo@debian.org>  Sat, 16 Jul 2011 16:23:35 +0900
+ -- Daigo Moriwaki <daigo@debian.org>  Sat, 16 Jul 2011 16:29:14 +0900
 
 ruby1.9.1 (1.9.2.180-5) unstable; urgency=low
 

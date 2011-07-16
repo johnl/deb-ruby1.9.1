@@ -1,0 +1,13 @@
+Index: ruby1.9.1/ext/bigdecimal/bigdecimal.c
+===================================================================
+--- ruby1.9.1.orig/ext/bigdecimal/bigdecimal.c	2011-07-16 16:27:11.000000000 +0900
++++ ruby1.9.1/ext/bigdecimal/bigdecimal.c	2011-07-16 16:27:34.000000000 +0900
+@@ -2123,7 +2123,7 @@
+ VP_EXPORT void *
+ VpMemAlloc(U_LONG mb)
+ {
+-    void *p = xmalloc((unsigned int)mb);
++    void *p = xmalloc(mb);
+     if(!p) {
+         VpException(VP_EXCEPTION_MEMORY,"failed to allocate memory",1);
+     }
