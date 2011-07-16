@@ -25,4 +25,3 @@
 903_skip_base_ruby_check.diff
 20100829-rubygems_disable_update_system.diff
 20100829-rubygems_default_dir.diff
-110411_disable_osslv2.patch

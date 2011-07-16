@@ -1,3 +1,11 @@
+ruby1.9.1 (1.9.2.290-1) unstable; urgency=low
+
+  * New upstream release.
+  * Removed deban/patches/110411_disable_osslv2.patch, which has been applied
+    by the upstream.
+
+ -- Daigo Moriwaki <daigo@debian.org>  Sat, 16 Jul 2011 16:23:35 +0900
+
 ruby1.9.1 (1.9.2.180-5) unstable; urgency=low
 
   * Build-depend on libreadline-gplv2-dev instead of libreadline5-dev. Ruby
