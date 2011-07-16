@@ -831,6 +831,7 @@ AS_CASE(["$target_os"],
 		fi
 		ac_cv_type_getgroups=gid_t # getgroups() on Rosetta fills garbage
 		ac_cv_lib_crypt_crypt=no
+		ac_cv_func_fdatasync=no # Mac OS 10.6 wrongly reports it has fdatasync
                 AC_CACHE_CHECK(for broken crypt with 8bit chars, rb_cv_broken_crypt,
                     [AC_TRY_RUN([
 #include <stdio.h>
@@ -937,9 +938,7 @@ main()
 		ac_cv_func_isnan=yes
 		ac_cv_func_finite=yes
 		ac_cv_func_link=yes
-		ac_cv_func_truncate=yes
 		ac_cv_func_fseeko=yes
-		ac_cv_func_ftello=yes
 		ac_cv_lib_crypt_crypt=no
 		ac_cv_func_getpgrp_void=no
 		ac_cv_func_setpgrp_void=yes
@@ -1186,7 +1185,8 @@ else
   AC_LIBOBJ([signbit])
 fi
 AC_CHECK_FUNCS(fmod killpg wait4 waitpid fork spawnv syscall __syscall chroot getcwd eaccess\
-	      truncate ftruncate chsize times utimes utimensat fcntl lockf lstat\
+	      truncate ftruncate ftello chsize times utimes utimensat fcntl lockf lstat\
+	      truncate64 ftruncate64 ftello64 fseeko fseeko64 \
 	      link symlink readlink readdir_r fsync fdatasync fchown\
 	      setitimer setruid seteuid setreuid setresuid setproctitle socketpair\
 	      setrgid setegid setregid setresgid issetugid pause lchown lchmod\
@@ -1456,7 +1456,7 @@ if test x"$target_cpu" = xia64; then
 fi
 
 AC_CACHE_CHECK(whether right shift preserve sign bit, rb_cv_rshift_sign,
-    [AC_COMPILE_IFELSE(AC_LANG_BOOL_COMPILE_TRY([], [(-1==(-1>>1))]),
+    [AC_COMPILE_IFELSE([AC_LANG_BOOL_COMPILE_TRY([], [(-1==(-1>>1))])],
 	rb_cv_rshift_sign=yes,
 	rb_cv_rshift_sign=no)])
 if test "$rb_cv_rshift_sign" = yes; then
@@ -2009,18 +2009,17 @@ test ".$DLEXT"  = "." || AC_DEFINE_UNQUOTED(DLEXT,  ".$DLEXT")
 test ".$DLEXT2" = "." || AC_DEFINE_UNQUOTED(DLEXT2, ".$DLEXT2")
 AC_SUBST(DLEXT)
 
-AC_SUBST(STRIP)dnl
 if test "$with_dln_a_out" = yes; then
   STRIP=true
 else
-  STRIP=strip
+  AC_CHECK_TOOL(STRIP, strip, :)dnl
 fi
 
 AS_CASE(["$target_os"],
   [linux* | gnu* | k*bsd*-gnu | kopensolaris*-gnu], [
-	STRIP='strip -S -x'],
+	STRIP="$STRIP -S -x"],
   [nextstep* | openstep* | rhapsody* | darwin*], [
-	STRIP='strip -A -n'])
+	STRIP="$STRIP -A -n"])
 
 AC_ARG_WITH(ext,
             AC_HELP_STRING([--with-ext=EXTS],

@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: buffering.rb 25189 2009-10-02 12:04:37Z akr $
+  $Id: buffering.rb 31777 2011-05-28 23:32:46Z yugui $
 =end
 
 module OpenSSL
@@ -328,6 +328,8 @@ module Buffering
     osync = @sync
     @sync = true
     do_write ""
+    return self
+  ensure
     @sync = osync
   end
 

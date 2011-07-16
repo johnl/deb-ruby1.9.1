@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey_dsa.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_pkey_dsa.c 31796 2011-05-29 22:49:10Z yugui $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -162,22 +162,29 @@ ossl_dsa_initialize(int argc, VALUE *argv, VALUE self)
 	dsa = PEM_read_bio_DSAPrivateKey(in, NULL, ossl_pem_passwd_cb, passwd);
 	if (!dsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dsa = PEM_read_bio_DSAPublicKey(in, NULL, NULL, NULL);
 	}
 	if (!dsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dsa = PEM_read_bio_DSA_PUBKEY(in, NULL, NULL, NULL);
 	}
 	if (!dsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dsa = d2i_DSAPrivateKey_bio(in, NULL);
 	}
 	if (!dsa) {
 	    (void)BIO_reset(in);
+	    (void)ERR_get_error();
 	    dsa = d2i_DSA_PUBKEY_bio(in, NULL);
 	}
 	BIO_free(in);
-	if (!dsa) ossl_raise(eDSAError, "Neither PUB key nor PRIV key:");
+	if (!dsa) {
+	    (void)ERR_get_error();
+	    ossl_raise(eDSAError, "Neither PUB key nor PRIV key:");
+	}
     }
     if (!EVP_PKEY_assign_DSA(pkey, dsa)) {
 	DSA_free(dsa);

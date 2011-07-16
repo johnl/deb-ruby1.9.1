@@ -1,7 +1,7 @@
 #
 #   forwardable.rb -
 #   	$Release Version: 1.1$
-#   	$Revision: 27967 $
+#   	$Revision: 31833 $
 #   	by Keiju ISHITSUKA(keiju@ishitsuka.com)
 #	original definition by delegator.rb
 #       Revised by Daniel J. Berger with suggestions from Florian Gross.
@@ -149,7 +149,7 @@ module Forwardable
   #
   def instance_delegate(hash)
     hash.each{ |methods, accessor|
-      methods = methods.to_s unless methods.respond_to?(:each)
+      methods = [methods] unless methods.respond_to?(:each)
       methods.each{ |method|
         def_instance_delegator(accessor, method)
       }
@@ -214,7 +214,7 @@ module SingleForwardable
   #
   def single_delegate(hash)
     hash.each{ |methods, accessor|
-      methods = methods.to_s unless methods.respond_to?(:each)
+      methods = [methods] unless methods.respond_to?(:each)
       methods.each{ |method|
         def_single_delegator(accessor, method)
       }

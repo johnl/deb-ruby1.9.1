@@ -1040,6 +1040,12 @@ CreateChild(const char *cmd, const char *prog, SECURITY_ATTRIBUTES *psa,
 
     dwCreationFlags = (NORMAL_PRIORITY_CLASS);
 
+    if (lstrlenW(cmd) > 32767) {
+	child->pid = 0;		/* release the slot */
+	errno = E2BIG;
+	return NULL;
+    }
+
     RUBY_CRITICAL({
 	fRet = CreateProcess(prog, (char *)cmd, psa, psa,
 			     psa->bInheritHandle, dwCreationFlags, NULL, NULL,
@@ -3559,6 +3565,7 @@ poll_child_status(struct ChildRecord *child, int *stat_loc)
 
     if (!GetExitCodeProcess(child->hProcess, &exitcode)) {
 	/* If an error occured, return immediatly. */
+    error_exit:
 	err = GetLastError();
 	if (err == ERROR_INVALID_PARAMETER)
 	    errno = ECHILD;
@@ -3572,8 +3579,12 @@ poll_child_status(struct ChildRecord *child, int *stat_loc)
 	return -1;
     }
     if (exitcode != STILL_ACTIVE) {
-	/* If already died, return immediatly. */
-	rb_pid_t pid = child->pid;
+        rb_pid_t pid;
+	/* If already died, wait process's real termination. */
+        if (rb_w32_wait_events_blocking(&child->hProcess, 1, INFINITE) != WAIT_OBJECT_0) {
+	    goto error_exit;
+        }
+	pid = child->pid;
 	CloseChildHandle(child);
 	if (stat_loc) *stat_loc = exitcode << 8;
 	return pid;
@@ -3732,7 +3743,7 @@ kill(int pid, int sig)
     int ret = 0;
     DWORD err;
 
-    if (pid <= 0) {
+    if (pid < 0 || pid == 0 && sig != SIGINT) {
 	errno = EINVAL;
 	return -1;
     }
@@ -4327,7 +4338,7 @@ rb_chsize(HANDLE h, off_t size)
 }
 
 int
-truncate(const char *path, off_t length)
+rb_w32_truncate(const char *path, off_t length)
 {
     HANDLE h;
     int ret;
@@ -4353,7 +4364,7 @@ truncate(const char *path, off_t length)
 }
 
 int
-ftruncate(int fd, off_t length)
+rb_w32_ftruncate(int fd, off_t length)
 {
     HANDLE h;
 
@@ -4426,7 +4437,7 @@ fseeko(FILE *stream, off_t offset, int whence)
 }
 
 off_t
-ftello(FILE *stream)
+rb_w32_ftello(FILE *stream)
 {
     off_t pos;
     if (fgetpos(stream, (fpos_t *)&pos)) return (off_t)-1;

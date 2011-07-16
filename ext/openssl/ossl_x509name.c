@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_x509name.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_x509name.c 31792 2011-05-29 22:48:34Z yugui $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001 Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -87,7 +87,7 @@ ossl_x509name_alloc(VALUE klass)
     return obj;
 }
 
-static int id_aref;
+static ID id_aref;
 static VALUE ossl_x509name_add_entry(int, VALUE*, VALUE);
 #define rb_aref(obj, key) rb_funcall(obj, id_aref, 1, key)
 

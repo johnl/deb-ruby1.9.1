@@ -1507,7 +1507,8 @@ mlhs_basic	: mlhs_head
 #if 0
 			$$ = NEW_MASGN($1, NEW_POSTARG(-1, $4));
 #endif
-			$$ = mlhs_add_star($1, Qnil);
+			$1 = mlhs_add_star($1, Qnil);
+			$$ = mlhs_add($1, $4);
 
 		    }
 		| tSTAR mlhs_node
@@ -1523,7 +1524,8 @@ mlhs_basic	: mlhs_head
 #if 0
 			$$ = NEW_MASGN(0, NEW_POSTARG($2,$4));
 #endif
-			$$ = mlhs_add_star(mlhs_new(), $2);
+			$2 = mlhs_add_star(mlhs_new(), $2);
+			$$ = mlhs_add($2, $4);
 
 		    }
 		| tSTAR
@@ -1540,6 +1542,7 @@ mlhs_basic	: mlhs_head
 			$$ = NEW_MASGN(0, NEW_POSTARG(-1, $3));
 #endif
 			$$ = mlhs_add_star(mlhs_new(), Qnil);
+			$$ = mlhs_add($$, $3);
 
 		    }
 		;
@@ -3935,11 +3938,16 @@ words		: tWORDS_BEG ' ' tSTRING_END
 			$$ = NEW_ZARRAY();
 #endif
 			$$ = dispatch0(words_new);
+			$$ = dispatch1(array, $$);
 
 		    }
 		| tWORDS_BEG word_list tSTRING_END
 		    {
+#if 0
 			$$ = $2;
+#endif
+			$$ = dispatch1(array, $2);
+
 		    }
 		;
 
@@ -3985,11 +3993,16 @@ qwords		: tQWORDS_BEG ' ' tSTRING_END
 			$$ = NEW_ZARRAY();
 #endif
 			$$ = dispatch0(qwords_new);
+			$$ = dispatch1(array, $$);
 
 		    }
 		| tQWORDS_BEG qword_list tSTRING_END
 		    {
+#if 0
 			$$ = $2;
+#endif
+			$$ = dispatch1(array, $2);
+
 		    }
 		;
 
@@ -5204,6 +5217,7 @@ lex_getline(struct parser_params *parser)
     must_be_ascii_compatible(line);
 #ifndef RIPPER
     if (ruby_debug_lines) {
+	rb_enc_associate(line, parser->enc);
 	rb_ary_push(ruby_debug_lines, line);
     }
     if (ruby_coverage) {
@@ -5959,6 +5973,18 @@ parser_parse_string(struct parser_params *parser, NODE *quote)
 
     tokfix();
     set_yylval_str(STR_NEW3(tok(), toklen(), enc, func));
+
+#ifdef RIPPER
+    if (!NIL_P(parser->delayed)){
+	ptrdiff_t len = lex_p - parser->tokp;
+	if (len > 0) {
+	    rb_enc_str_buf_cat(parser->delayed, parser->tokp, len, enc);
+	}
+	ripper_dispatch_delayed_token(parser, tSTRING_CONTENT);
+	parser->tokp = lex_p;
+    }
+#endif
+
     return tSTRING_CONTENT;
 }
 
@@ -6206,10 +6232,12 @@ parser_encode_length(struct parser_params *parser, const char *name, long len)
 	if (rb_memcicmp(name + nlen + 1, "unix", 4) == 0)
 	    return nlen;
     }
-    if (len > 4 && name[nlen = len - 5] == '-') {
+    if (len > 4 && name[nlen = len - 4] == '-') {
 	if (rb_memcicmp(name + nlen + 1, "dos", 3) == 0)
 	    return nlen;
-	if (rb_memcicmp(name + nlen + 1, "mac", 3) == 0)
+	if (rb_memcicmp(name + nlen + 1, "mac", 3) == 0 &&
+	    !(len == 8 && rb_memcicmp(name, "utf8-mac", len) == 0))
+	    /* exclude UTF8-MAC because the encoding named "UTF8" doesn't exist in Ruby */
 	    return nlen;
     }
     return len;
@@ -6239,6 +6267,15 @@ parser_set_encode(struct parser_params *parser, const char *name)
 	goto error;
     }
     parser->enc = enc;
+#ifndef RIPPER
+    if (ruby_debug_lines) {
+	long i, n = RARRAY_LEN(ruby_debug_lines);
+	const VALUE *p = RARRAY_PTR(ruby_debug_lines);
+	for (i = 0; i < n; ++i) {
+	    rb_enc_associate_index(*p, idx);
+	}
+    }
+#endif
 }
 
 static int
@@ -7796,6 +7833,7 @@ yylex(void *p)
 #ifdef RIPPER
     if (!NIL_P(parser->delayed)) {
 	ripper_dispatch_delayed_token(parser, t);
+	return t;
     }
     if (t != 0)
 	ripper_dispatch_scan_event(parser, t);

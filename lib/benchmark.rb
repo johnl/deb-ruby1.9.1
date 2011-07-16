@@ -2,7 +2,7 @@
 #
 # benchmark.rb - a performance benchmarking library
 #
-# $Id: benchmark.rb 27197 2010-04-02 18:22:29Z kazu $
+# $Id: benchmark.rb 31511 2011-05-11 21:23:27Z yugui $
 #
 # Created by Gotoken (gotoken@notwork.org).
 #
@@ -281,8 +281,9 @@ module Benchmark
       list.push [label, res]
     }
 
-    STDOUT.sync = sync
     ary
+  ensure
+    STDOUT.sync = sync unless sync.nil?
   end
 
   #

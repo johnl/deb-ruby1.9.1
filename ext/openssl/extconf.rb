@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: extconf.rb 27457 2010-04-23 08:37:55Z usa $
+  $Id: extconf.rb 31816 2011-05-30 04:44:32Z yugui $
 =end
 
 require "mkmf"
@@ -97,6 +97,9 @@ have_func("OBJ_NAME_do_all_sorted")
 have_func("SSL_SESSION_get_id")
 have_func("SSL_SESSION_cmp")
 have_func("OPENSSL_cleanse")
+have_func("SSLv2_method")
+have_func("SSLv2_server_method")
+have_func("SSLv2_client_method")
 unless have_func("SSL_set_tlsext_host_name", ['openssl/ssl.h'])
 	have_macro("SSL_set_tlsext_host_name", ['openssl/ssl.h']) && $defs.push("-DHAVE_SSL_SET_TLSEXT_HOST_NAME")
 end

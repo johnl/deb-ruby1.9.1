@@ -114,6 +114,7 @@ VALUE rb_big_plus(VALUE, VALUE);
 VALUE rb_big_minus(VALUE, VALUE);
 VALUE rb_big_mul(VALUE, VALUE);
 VALUE rb_big_div(VALUE, VALUE);
+VALUE rb_big_idiv(VALUE, VALUE);
 VALUE rb_big_modulo(VALUE, VALUE);
 VALUE rb_big_divmod(VALUE, VALUE);
 VALUE rb_big_pow(VALUE, VALUE);
@@ -761,7 +762,7 @@ VALUE rb_thread_blocking_region(rb_blocking_function_t *func, void *data1,
 #define RUBY_UBF_PROCESS ((rb_unblock_function_t *)-1)
 VALUE rb_mutex_new(void);
 VALUE rb_mutex_locked_p(VALUE mutex);
-VALUE rb_mutex_try_lock(VALUE mutex);
+VALUE rb_mutex_trylock(VALUE mutex);
 VALUE rb_mutex_lock(VALUE mutex);
 VALUE rb_mutex_unlock(VALUE mutex);
 VALUE rb_mutex_sleep(VALUE self, VALUE timeout);
