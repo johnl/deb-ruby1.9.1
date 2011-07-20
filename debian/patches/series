@@ -27,3 +27,4 @@
 20100829-rubygems_default_dir.diff
 110716-bigdecimal
 110825-ossl-config.diff
+110720_tcltk_disable_rpath.diff
