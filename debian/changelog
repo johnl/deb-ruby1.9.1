@@ -1,6 +1,7 @@
 ruby1.9.1 (1.9.2.180+svn32566-1) experimental; urgency=low
 
   * New SVN snapshot based on revision 32566 from the ruby_1_9_3 branch.
+  * Add patch 110720_tcltk_disable_rpath.diff: disable rpath in tcltk.
 
  -- Lucas Nussbaum <lucas@debian.org>  Wed, 20 Jul 2011 11:25:23 +0200
 
