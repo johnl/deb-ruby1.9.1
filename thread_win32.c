@@ -3,7 +3,7 @@
 
   thread_win32.c -
 
-  $Author: kosaki $
+  $Author: ko1 $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -673,6 +673,34 @@ native_thread_apply_priority(rb_thread_t *th)
 
 #endif /* USE_NATIVE_THREAD_PRIORITY */
 
+int rb_w32_select_with_thread(int, fd_set *, fd_set *, fd_set *, struct timeval *, void *);	/* @internal */
+
+static int
+native_fd_select(int n, rb_fdset_t *readfds, rb_fdset_t *writefds, rb_fdset_t *exceptfds, struct timeval *timeout, rb_thread_t *th)
+{
+    fd_set *r = NULL, *w = NULL, *e = NULL;
+    if (readfds) {
+        rb_fd_resize(n - 1, readfds);
+        r = rb_fd_ptr(readfds);
+    }
+    if (writefds) {
+        rb_fd_resize(n - 1, writefds);
+        w = rb_fd_ptr(writefds);
+    }
+    if (exceptfds) {
+        rb_fd_resize(n - 1, exceptfds);
+        e = rb_fd_ptr(exceptfds);
+    }
+    return rb_w32_select_with_thread(n, r, w, e, timeout, th);
+}
+
+/* @internal */
+int
+rb_w32_check_interrupt(rb_thread_t *th)
+{
+    return w32_wait_events(0, 0, 0, th);
+}
+
 static void
 ubf_handle(void *ptr)
 {
@@ -697,6 +725,12 @@ timer_thread_func(void *dummy)
     return 0;
 }
 
+void
+rb_thread_wakeup_timer_thread(void)
+{
+    /* do nothing */
+}
+
 static void
 rb_thread_create_timer_thread(void)
 {
@@ -711,7 +745,7 @@ rb_thread_create_timer_thread(void)
 }
 
 static int
-native_stop_timer_thread(void)
+native_stop_timer_thread(int close_anyway)
 {
     int stopped = --system_working <= 0;
     if (stopped) {
@@ -745,4 +779,9 @@ ruby_alloca_chkstk(size_t len, void *sp)
     }
 }
 #endif
+int
+rb_reserved_fd_p(int fd)
+{
+    return 0;
+}
 #endif /* THREAD_SYSTEM_DEPENDENT_IMPLEMENTATION */

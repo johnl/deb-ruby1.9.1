@@ -609,7 +609,7 @@ class TestIO < Test::Unit::TestCase
             skip "nonblocking IO for pipe is not implemented"
           end
           trapping_usr1 do
-            nr = 10
+            nr = 30
             begin
               pid = fork do
                 s1.close
@@ -622,8 +622,8 @@ class TestIO < Test::Unit::TestCase
                 assert_equal megacontent.bytesize, IO.copy_stream("megasrc", s1)
               end
               assert_equal(1, @usr1_rcvd)
-              s1.close
             ensure
+              s1.close
               _, status = Process.waitpid2(pid) if pid
             end
             assert status.success?, status.inspect
@@ -1954,5 +1954,25 @@ End
       assert_raise(Errno::EINVAL) { File.binwrite('nonexisting', 'string', -2) }
       assert_nothing_raised(TypeError) { File.binwrite(path, "string", mode: "w", encoding: "EUC-JP") }
     end
+  end
+
+  def test_race_between_read
+    file = Tempfile.new("test")
+    path = file.path
+    file.close
+    write_file = File.open(path, "wt")
+    read_file = File.open(path, "rt")
+
+    threads = []
+    10.times do |i|
+      threads << Thread.new {write_file.print(i)}
+      threads << Thread.new {read_file.read}
+    end
+    threads.each {|t| t.join}
+    assert(true, "[ruby-core:37197]")
+  ensure
+    read_file.close
+    write_file.close
+    file.close!
   end
 end

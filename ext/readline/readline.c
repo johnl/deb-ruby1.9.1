@@ -2,13 +2,13 @@
 
   readline.c - GNU Readline module
 
-  $Author: kosaki $
+  $Author: kouji $
   created at: Wed Jan 20 13:59:32 JST 1999
 
   Copyright (C) 1997-2008  Shugo Maeda
   Copyright (C) 2008-2009  TAKAO Kouji
 
-  $Id: readline.c 31423 2011-05-04 01:13:02Z kosaki $
+  $Id: readline.c 32181 2011-06-21 04:30:14Z kouji $
 
   Contact:
    - TAKAO Kouji <kouji at takao7 dot net> (current maintainer)
@@ -131,6 +131,34 @@ readline_getc(FILE *input)
     if (!readline_instream) return rl_getc(input);
     GetOpenFile(readline_instream, ifp);
     if (rl_instream != ifp->stdio_file) return rl_getc(input);
+#if defined(_WIN32)
+    {
+        INPUT_RECORD ir;
+        int n;
+        static int prior_key = '0';
+        for (;;) {
+            if (prior_key > 0xff) {
+                prior_key = rl_getc(ifp->stdio_file);
+                return prior_key;
+            }
+            if (PeekConsoleInput((HANDLE)_get_osfhandle(ifp->fd), &ir, 1, &n)) {
+                if (n == 1) {
+                    if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
+                        prior_key = rl_getc(ifp->stdio_file);
+                        return prior_key;
+                    } else {
+                        ReadConsoleInput((HANDLE)_get_osfhandle(ifp->fd), &ir, 1, &n);
+                    }
+                } else {
+                    HANDLE h = (HANDLE)_get_osfhandle(ifp->fd);
+                    rb_w32_wait_events(&h, 1, INFINITE);
+                }
+            } else {
+                break;
+            }
+        }
+    }
+#endif    
     c = rb_funcall(readline_instream, id_getbyte, 0, 0);
     if (NIL_P(c)) return EOF;
     return NUM2CHR(c);

@@ -2,7 +2,7 @@
 
   process.c -
 
-  $Author: kosaki $
+  $Author: nobu $
   created at: Tue Aug 10 14:30:50 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -14,6 +14,7 @@
 #include "ruby/ruby.h"
 #include "ruby/io.h"
 #include "ruby/util.h"
+#include "internal.h"
 #include "vm_core.h"
 
 #include <stdio.h>
@@ -38,8 +39,6 @@
 #ifndef EXIT_FAILURE
 #define EXIT_FAILURE 1
 #endif
-
-struct timeval rb_time_interval(VALUE);
 
 #ifdef HAVE_SYS_WAIT_H
 # include <sys/wait.h>
@@ -125,9 +124,6 @@ static VALUE rb_cProcessTms;
 #define preserving_errno(stmts) \
 	do {int saved_errno = errno; stmts; errno = saved_errno;} while (0)
 
-
-ssize_t rb_io_bufwrite(VALUE io, const void *buf, size_t size);
-ssize_t rb_io_bufread(VALUE io, void *buf, size_t size);
 
 /*
  *  call-seq:
@@ -988,6 +984,12 @@ static RETSIGTYPE (*saved_sigpipe_handler)(int) = 0;
 # define signal(a,b) posix_signal((a),(b))
 #endif
 
+#ifdef SIGPIPE
+static RETSIGTYPE sig_do_nothing(int sig)
+{
+}
+#endif
+
 static void before_exec(void)
 {
     /*
@@ -1003,16 +1005,16 @@ static void before_exec(void)
      * child process interaction might fail. (e.g. ruby -e "system 'yes | ls'")
      * [ruby-dev:12261]
      */
-    saved_sigpipe_handler = signal(SIGPIPE, SIG_DFL);
+    saved_sigpipe_handler = signal(SIGPIPE, sig_do_nothing);
 #endif
 
     if (!forked_child) {
 	/*
-	 * On old MacOS X, exec() may return ENOTSUPP if the process have
-	 * multiple threads. Therefore we have to kill internal threads at once.
-	 * [ruby-core: 10583]
+	 * On Mac OS X 10.5.x (Leopard) or earlier, exec() may return ENOTSUPP
+	 * if the process have multiple threads. Therefore we have to kill
+	 * internal threads temporary. [ruby-core: 10583]
 	 */
-	rb_thread_stop_timer_thread();
+	rb_thread_stop_timer_thread(0);
     }
 }
 
@@ -1473,7 +1475,7 @@ rb_exec_arg_addopt(struct rb_exec_arg *e, VALUE key, VALUE val)
 {
     VALUE options = e->options;
     ID id;
-#ifdef RLIM2NUM
+#if defined(HAVE_SETRLIMIT) && defined(NUM2RLIM)
     int rtype;
 #endif
 
@@ -2923,8 +2925,6 @@ rb_f_exit(int argc, VALUE *argv)
 VALUE
 rb_f_abort(int argc, VALUE *argv)
 {
-    extern void ruby_error_print(void);
-
     rb_secure(4);
     if (argc == 0) {
 	if (!NIL_P(GET_THREAD()->errinfo)) {
@@ -4806,10 +4806,7 @@ proc_setmaxgroups(VALUE obj, VALUE val)
 #endif
 
 #if defined(HAVE_DAEMON) || (defined(HAVE_FORK) && defined(HAVE_SETSID))
-#ifndef HAVE_DAEMON
 static int rb_daemon(int nochdir, int noclose);
-#define daemon(nochdir, noclose) rb_daemon((nochdir), (noclose))
-#endif
 
 /*
  *  call-seq:
@@ -4835,18 +4832,21 @@ proc_daemon(int argc, VALUE *argv)
     rb_scan_args(argc, argv, "02", &nochdir, &noclose);
 
     prefork();
-    before_fork();
-    n = daemon(RTEST(nochdir), RTEST(noclose));
-    after_fork();
+    n = rb_daemon(RTEST(nochdir), RTEST(noclose));
     if (n < 0) rb_sys_fail("daemon");
     return INT2FIX(n);
 }
 
-#ifndef HAVE_DAEMON
 static int
 rb_daemon(int nochdir, int noclose)
 {
-    int n, err = 0;
+    int err = 0;
+#ifdef HAVE_DAEMON
+    before_fork();
+    err = daemon(nochdir, noclose);
+    after_fork();
+#else
+    int n;
 
     switch (rb_fork(0, 0, 0, Qnil)) {
       case -1:
@@ -4879,9 +4879,9 @@ rb_daemon(int nochdir, int noclose)
 	if (n > 2)
 	    (void)close (n);
     }
+#endif
     return err;
 }
-#endif
 #else
 #define proc_daemon rb_f_notimplement
 #endif

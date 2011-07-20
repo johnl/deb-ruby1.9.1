@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_x509req.c 32005 2011-06-11 10:39:47Z nahi $
+ * $Id: ossl_x509req.c 32199 2011-06-22 08:41:08Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -110,7 +110,7 @@ ossl_x509req_initialize(int argc, VALUE *argv, VALUE self)
     req = PEM_read_bio_X509_REQ(in, &x, NULL, NULL);
     DATA_PTR(self) = x;
     if (!req) {
-	(void)BIO_reset(in);
+	OSSL_BIO_reset(in);
 	req = d2i_X509_REQ_bio(in, &x);
 	DATA_PTR(self) = x;
     }

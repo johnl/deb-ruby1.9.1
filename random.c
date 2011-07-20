@@ -2,7 +2,7 @@
 
   random.c -
 
-  $Author: nobu $
+  $Author: marcandre $
   created at: Fri Dec 24 16:39:21 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -921,7 +921,7 @@ rb_random_real(VALUE obj)
 }
 
 /*
- * call-seq: prng.bytes(size) -> prng
+ * call-seq: prng.bytes(size) -> a_string
  *
  * Returns a random binary string.  The argument size specified the length of
  * the result string.

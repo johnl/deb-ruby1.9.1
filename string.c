@@ -2,7 +2,7 @@
 
   string.c -
 
-  $Author: mrkn $
+  $Author: naruse $
   created at: Mon Aug  9 17:12:58 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -14,6 +14,7 @@
 #include "ruby/ruby.h"
 #include "ruby/re.h"
 #include "ruby/encoding.h"
+#include "internal.h"
 #include <assert.h>
 
 #define BEG(no) (regs->beg[(no)])
@@ -2052,8 +2053,6 @@ rb_str_append(VALUE str, VALUE str2)
     }
     return rb_str_buf_append(str, str2);
 }
-
-int rb_num_to_uint(VALUE val, unsigned int *ret);
 
 /*
  *  call-seq:
@@ -5118,6 +5117,9 @@ tr_trans(VALUE str, VALUE src, VALUE repl, int sflag)
 	    CHECK_IF_ASCII(c);
 	    t += tlen;
 	}
+	if (!STR_EMBED_P(str)) {
+	    xfree(RSTRING(str)->as.heap.ptr);
+	}
 	*t = '\0';
 	RSTRING(str)->as.heap.ptr = buf;
 	RSTRING(str)->as.heap.len = t - buf;
@@ -7458,8 +7460,6 @@ sym_to_sym(VALUE sym)
 {
     return sym;
 }
-
-VALUE rb_funcall_passing_block(VALUE recv, ID mid, int argc, const VALUE *argv);
 
 static VALUE
 sym_call(VALUE args, VALUE sym, int argc, VALUE *argv)

@@ -46,7 +46,7 @@
 
 ;;; Code:
 
-(defconst ruby-mode-revision "$Revision: 31308 $"
+(defconst ruby-mode-revision "$Revision: 32338 $"
   "Ruby mode revision string.")
 
 (defconst ruby-mode-version
@@ -72,7 +72,7 @@
   "Regexp to match")
 
 (defconst ruby-indent-beg-re
-  (concat "\\(\\s *" (regexp-opt '("class" "module" "def") t) "\\)"
+  (concat "\\(\\s *" (regexp-opt '("class" "module" "def") t) "\\)\\|"
           (regexp-opt '("if" "unless" "case" "while" "until" "for" "begin")))
   "Regexp to match where the indentation gets deeper.")
 

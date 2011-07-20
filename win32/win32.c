@@ -2591,9 +2591,13 @@ compare(const struct timeval *t1, const struct timeval *t2)
 }
 
 #undef Sleep
-int WSAAPI
-rb_w32_select(int nfds, fd_set *rd, fd_set *wr, fd_set *ex,
-	      struct timeval *timeout)
+
+int rb_w32_check_interrupt(void *);	/* @internal */
+
+/* @internal */
+int
+rb_w32_select_with_thread(int nfds, fd_set *rd, fd_set *wr, fd_set *ex,
+			  struct timeval *timeout, void *th)
 {
     int r;
     rb_fdset_t pipe_rd;
@@ -2672,6 +2676,10 @@ rb_w32_select(int nfds, fd_set *rd, fd_set *wr, fd_set *ex,
 	wait.tv_sec = 0; wait.tv_usec = 10 * 1000; // 10ms
 	zero.tv_sec = 0; zero.tv_usec = 0;         //  0ms
 	for (;;) {
+	    if (th && rb_w32_check_interrupt(th) != WAIT_TIMEOUT) {
+		r = -1;
+		break;
+	    }
 	    if (nonsock) {
 		// modifying {else,pipe,cons}_rd is safe because
 		// if they are modified, function returns immediately.
@@ -2722,6 +2730,13 @@ rb_w32_select(int nfds, fd_set *rd, fd_set *wr, fd_set *ex,
     rb_fd_term(&else_rd);
 
     return r;
+}
+
+int WSAAPI
+rb_w32_select(int nfds, fd_set *rd, fd_set *wr, fd_set *ex,
+	      struct timeval *timeout)
+{
+    return rb_w32_select_with_thread(nfds, rd, wr, ex, timeout, 0);
 }
 
 static FARPROC
@@ -3832,7 +3847,14 @@ kill(int pid, int sig)
 
       case SIGKILL:
 	RUBY_CRITICAL({
-	    HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, (DWORD)pid);
+	    HANDLE hProc;
+	    struct ChildRecord* child = FindChildSlot(pid);
+	    if (child) {
+		hProc = child->hProcess;
+	    }
+	    else {
+		hProc = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION, FALSE, (DWORD)pid);
+	    }
 	    if (hProc == NULL || hProc == INVALID_HANDLE_VALUE) {
 		if (GetLastError() == ERROR_INVALID_PARAMETER) {
 		    errno = ESRCH;
@@ -3843,11 +3865,24 @@ kill(int pid, int sig)
 		ret = -1;
 	    }
 	    else {
-		if (!TerminateProcess(hProc, 0)) {
-		    errno = EPERM;
+		DWORD status;
+		if (!GetExitCodeProcess(hProc, &status)) {
+		    errno = map_errno(GetLastError());
 		    ret = -1;
 		}
-		CloseHandle(hProc);
+		else if (status == STILL_ACTIVE) {
+		    if (!TerminateProcess(hProc, 0)) {
+			errno = EPERM;
+			ret = -1;
+		    }
+		}
+		else {
+		    errno = ESRCH;
+		    ret = -1;
+		}
+		if (!child) {
+		    CloseHandle(hProc);
+		}
 	    }
 	});
 	break;
@@ -5089,7 +5124,7 @@ rb_w32_close(int fd)
 }
 
 #undef read
-size_t
+ssize_t
 rb_w32_read(int fd, void *buf, size_t size)
 {
     SOCKET sock = TO_SOCKET(fd);
@@ -5245,7 +5280,7 @@ rb_w32_read(int fd, void *buf, size_t size)
 }
 
 #undef write
-size_t
+ssize_t
 rb_w32_write(int fd, const void *buf, size_t size)
 {
     SOCKET sock = TO_SOCKET(fd);
@@ -5607,7 +5642,7 @@ wunlink(const WCHAR *path)
 	if (attr != (DWORD)-1 && (attr & FILE_ATTRIBUTE_READONLY)) {
 	    SetFileAttributesW(path, attr & ~FILE_ATTRIBUTE_READONLY);
 	}
-	if (DeleteFileW(path) == FALSE) {
+	if (!DeleteFileW(path)) {
 	    errno = map_errno(GetLastError());
 	    ret = -1;
 	    if (attr != (DWORD)-1 && (attr & FILE_ATTRIBUTE_READONLY)) {

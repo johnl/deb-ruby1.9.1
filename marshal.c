@@ -2,7 +2,7 @@
 
   marshal.c -
 
-  $Author: nobu $
+  $Author: akr $
   created at: Thu Apr 27 16:30:01 JST 1995
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -82,8 +82,6 @@ shortlen(long len, BDIGIT *ds)
 static ID s_dump, s_load, s_mdump, s_mload;
 static ID s_dump_data, s_load_data, s_alloc, s_call;
 static ID s_getbyte, s_read, s_write, s_binmode;
-
-ID rb_id_encoding(void);
 
 typedef struct {
     VALUE newclass;

@@ -1,4 +1,4 @@
-# $Id: test_http.rb 31860 2011-05-31 08:10:42Z nahi $
+# $Id: test_http.rb 32192 2011-06-21 17:44:44Z nahi $
 
 require 'test/unit'
 require 'net/http'
@@ -147,22 +147,30 @@ module TestNetHTTP_version_1_1_methods
   end
 
   def test_s_post_form
+    url = "http://#{config('host')}:#{config('port')}/"
     res = Net::HTTP.post_form(
-              URI.parse("http://#{config('host')}:#{config('port')}/"),
+              URI.parse(url),
               "a" => "x")
     assert_equal ["a=x"], res.body.split(/[;&]/).sort
 
     res = Net::HTTP.post_form(
-              URI.parse("http://#{config('host')}:#{config('port')}/"),
+              URI.parse(url),
               "a" => "x",
               "b" => "y")
     assert_equal ["a=x", "b=y"], res.body.split(/[;&]/).sort
 
     res = Net::HTTP.post_form(
-              URI.parse("http://#{config('host')}:#{config('port')}/"),
+              URI.parse(url),
               "a" => ["x1", "x2"],
               "b" => "y")
+    assert_equal url, res['X-request-uri']
     assert_equal ["a=x1", "a=x2", "b=y"], res.body.split(/[;&]/).sort
+
+    res = Net::HTTP.post_form(
+              URI.parse(url + '?a=x'),
+              "b" => "y")
+    assert_equal url + '?a=x', res['X-request-uri']
+    assert_equal ["b=y"], res.body.split(/[;&]/).sort
   end
 
   def test_patch

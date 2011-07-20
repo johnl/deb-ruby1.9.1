@@ -19,7 +19,8 @@
 #include "atomic.h"
 
 #if !defined(_WIN32) && !defined(HAVE_GCC_ATOMIC_BUILTINS)
-rb_atomic_t ruby_atomic_exchange(rb_atomic_t *ptr, rb_atomic_t val)
+rb_atomic_t
+ruby_atomic_exchange(rb_atomic_t *ptr, rb_atomic_t val)
 {
     rb_atomic_t old = *ptr;
     *ptr = val;
@@ -31,7 +32,7 @@ rb_atomic_t ruby_atomic_exchange(rb_atomic_t *ptr, rb_atomic_t val)
 #undef SIGBUS
 #endif
 
-#if defined HAVE_SIGPROCMASK || defined HAVE_SIGSETMASK
+#ifdef HAVE_PTHREAD_SIGMASK
 #define USE_TRAP_MASK 1
 #else
 #define USE_TRAP_MASK 0
@@ -469,7 +470,7 @@ ruby_signal(int signum, sighandler_t handler)
 	sigact.sa_flags |= SA_NOCLDWAIT;
 #endif
 #if defined(SA_ONSTACK) && defined(USE_SIGALTSTACK)
-    if (signum == SIGSEGV)
+    if (signum == SIGSEGV || signum == SIGBUS)
 	sigact.sa_flags |= SA_ONSTACK;
 #endif
     if (sigaction(signum, &sigact, &old) < 0) {
@@ -506,6 +507,7 @@ sighandler(int sig)
 {
     ATOMIC_INC(signal_buff.cnt[sig]);
     ATOMIC_INC(signal_buff.size);
+    rb_thread_wakeup_timer_thread();
 #if !defined(BSD_SIGNAL) && !defined(POSIX_SIGNAL)
     ruby_signal(sig, sighandler);
 #endif
@@ -518,11 +520,7 @@ rb_signal_buff_size(void)
 }
 
 #if USE_TRAP_MASK
-# ifdef HAVE_SIGPROCMASK
 static sigset_t trap_last_mask;
-# else
-static int trap_last_mask;
-# endif
 #endif
 
 #if HAVE_PTHREAD_H
@@ -556,16 +554,18 @@ rb_get_next_signal(void)
 {
     int i, sig = 0;
 
-    for (i=1; i<RUBY_NSIG; i++) {
-	if (signal_buff.cnt[i] > 0) {
-	    rb_disable_interrupt();
-	    {
-		ATOMIC_DEC(signal_buff.cnt[i]);
-		ATOMIC_DEC(signal_buff.size);
+    if (signal_buff.size != 0) {
+	for (i=1; i<RUBY_NSIG; i++) {
+	    if (signal_buff.cnt[i] > 0) {
+		rb_disable_interrupt();
+		{
+		    ATOMIC_DEC(signal_buff.cnt[i]);
+		    ATOMIC_DEC(signal_buff.size);
+		}
+		rb_enable_interrupt();
+		sig = i;
+		break;
 	    }
-	    rb_enable_interrupt();
-	    sig = i;
-	    break;
 	}
     }
     return sig;
@@ -573,8 +573,21 @@ rb_get_next_signal(void)
 
 #ifdef SIGBUS
 static RETSIGTYPE
-sigbus(int sig)
+sigbus(int sig SIGINFO_ARG)
 {
+/*
+ * Mac OS X makes KERN_PROTECTION_FAILURE when thread touch guard page.
+ * and it's delivered as SIGBUS instaed of SIGSEGV to userland. It's crazy
+ * wrong IMHO. but anyway we have to care it. Sigh.
+ */
+#if defined __MACH__ && defined __APPLE__ && defined USE_SIGALTSTACK
+    int ruby_stack_overflowed_p(const rb_thread_t *, const void *);
+    NORETURN(void ruby_thread_stack_overflow(rb_thread_t *th));
+    rb_thread_t *th = GET_THREAD();
+    if (ruby_stack_overflowed_p(th, info->si_addr)) {
+	ruby_thread_stack_overflow(th);
+    }
+#endif
     rb_bug("Bus Error");
 }
 #endif
@@ -594,7 +607,7 @@ sigsegv(int sig SIGINFO_ARG)
 #endif
     if (segv_received) {
 	fprintf(stderr, "SEGV received in SEGV handler\n");
-	exit(EXIT_FAILURE);
+	abort();
     }
     else {
 	extern int ruby_disable_gc_stress;
@@ -668,11 +681,7 @@ rb_signal_exec(rb_thread_t *th, int sig)
 
 struct trap_arg {
 #if USE_TRAP_MASK
-# ifdef HAVE_SIGPROCMASK
     sigset_t mask;
-# else
-    int mask;
-# endif
 #endif
     int sig;
     sighandler_t func;
@@ -707,7 +716,7 @@ default_handler(int sig)
         break;
 #ifdef SIGBUS
       case SIGBUS:
-        func = sigbus;
+        func = (sighandler_t)sigbus;
         break;
 #endif
 #ifdef SIGSEGV
@@ -852,11 +861,7 @@ trap(struct trap_arg *arg)
     vm->trap_list[sig].safe = rb_safe_level();
     /* enable at least specified signal. */
 #if USE_TRAP_MASK
-#ifdef HAVE_SIGPROCMASK
     sigdelset(&arg->mask, sig);
-#else
-    arg->mask &= ~sigmask(sig);
-#endif
 #endif
     return oldcmd;
 }
@@ -987,16 +992,9 @@ init_sigchld(int sig)
 {
     sighandler_t oldfunc;
 #if USE_TRAP_MASK
-# ifdef HAVE_SIGPROCMASK
     sigset_t mask;
     sigset_t fullmask;
-# else
-    int mask;
-    int fullmask;
-# endif
-#endif
 
-#if USE_TRAP_MASK
     /* disable interrupt */
     sigfillset(&fullmask);
     pthread_sigmask(SIG_BLOCK, &fullmask, &mask);
@@ -1107,7 +1105,7 @@ Init_signal(void)
 
     if (!ruby_enable_coredump) {
 #ifdef SIGBUS
-	install_sighandler(SIGBUS, sigbus);
+	install_sighandler(SIGBUS, (sighandler_t)sigbus);
 #endif
 #ifdef SIGSEGV
 # ifdef USE_SIGALTSTACK

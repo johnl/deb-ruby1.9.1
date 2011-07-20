@@ -2,7 +2,7 @@
 #
 # Author:: Akira Yamada <akira@ruby-lang.org>
 # License:: You can redistribute it and/or modify it under the same term as Ruby.
-# Revision:: $Id: generic.rb 31641 2011-05-19 00:07:25Z nobu $
+# Revision:: $Id: generic.rb 32560 2011-07-15 21:32:02Z marcandre $
 #
 # See URI for general documentation
 #
@@ -1239,7 +1239,7 @@ module URI
     # return base and rel.
     # you can modify `base', but can not `rel'.
     def merge0(oth)
-      oth = URI(oth, parser)
+      oth = parser.send(:convert_to_uri, oth)
 
       if self.relative? && oth.relative?
         raise BadURIError,
@@ -1302,7 +1302,7 @@ module URI
 
     # :stopdoc:
     def route_from0(oth)
-      oth = URI(oth, parser)
+      oth = parser.send(:convert_to_uri, oth)
       if self.relative?
         raise BadURIError,
           "relative URI: #{self}"
@@ -1410,7 +1410,7 @@ module URI
     #   #=> #<URI::Generic:0x2020c2f6 URL:/main.rbx?page=1>
     #
     def route_to(oth)
-      URI(oth, parser).route_from(self)
+      parser.send(:convert_to_uri, oth).route_from(self)
     end
 
     #

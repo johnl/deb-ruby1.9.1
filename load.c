@@ -4,6 +4,7 @@
 
 #include "ruby/ruby.h"
 #include "ruby/util.h"
+#include "internal.h"
 #include "dln.h"
 #include "eval_intern.h"
 
@@ -267,7 +268,6 @@ rb_provide(const char *feature)
 }
 
 NORETURN(static void load_failed(VALUE));
-VALUE rb_realpath_internal(VALUE basedir, VALUE path, int strict);
 
 static void
 rb_load_internal(VALUE fname, int wrap)
@@ -467,7 +467,6 @@ rb_f_require(VALUE obj, VALUE fname)
 VALUE
 rb_f_require_relative(VALUE obj, VALUE fname)
 {
-    VALUE rb_current_realfilepath(void);
     VALUE base = rb_current_realfilepath();
     if (NIL_P(base)) {
 	rb_raise(rb_eLoadError, "cannot infer basepath");
@@ -723,7 +722,7 @@ rb_mod_autoload_p(VALUE mod, VALUE sym)
 static VALUE
 rb_f_autoload(VALUE obj, VALUE sym, VALUE file)
 {
-    VALUE klass = rb_vm_cbase();
+    VALUE klass = rb_class_real(rb_vm_cbase());
     if (NIL_P(klass)) {
 	rb_raise(rb_eTypeError, "Can not set autoload on singleton class");
     }

@@ -2,7 +2,7 @@
 
   time.c -
 
-  $Author: tadf $
+  $Author: kosaki $
   created at: Tue Dec 28 14:31:59 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -14,6 +14,7 @@
 #include <time.h>
 #include <errno.h>
 #include "ruby/encoding.h"
+#include "internal.h"
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -21,6 +22,10 @@
 
 #include <float.h>
 #include <math.h>
+
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
+#endif
 
 #include "timev.h"
 
@@ -2299,7 +2304,27 @@ time_new_timew(VALUE klass, wideval_t timew)
 VALUE
 rb_time_new(time_t sec, long usec)
 {
-    return time_new_timew(rb_cTime, nsec2timew(sec, usec * 1000));
+    wideval_t timew;
+
+    if (usec >= 1000000) {
+	long sec2 = usec / 1000000;
+	if (sec > TIMET_MAX - sec2) {
+	    rb_raise(rb_eRangeError, "out of Time range");
+	}
+	usec -= sec2 * 1000000;
+	sec += sec2;
+    }
+    else if (usec <= 1000000) {
+	long sec2 = usec / 1000000;
+	if (sec < -TIMET_MAX - sec2) {
+	    rb_raise(rb_eRangeError, "out of Time range");
+	}
+	usec -= sec2 * 1000000;
+	sec += sec2;
+    }
+
+    timew = nsec2timew(sec, usec * 1000);
+    return time_new_timew(rb_cTime, timew);
 }
 
 VALUE
@@ -3405,7 +3430,7 @@ time_init_copy(VALUE copy, VALUE time)
 static VALUE
 time_dup(VALUE time)
 {
-    VALUE dup = time_s_alloc(CLASS_OF(time));
+    VALUE dup = time_s_alloc(rb_obj_class(time));
     time_init_copy(dup, time);
     return dup;
 }
@@ -4264,9 +4289,6 @@ rb_strftime(char *s, size_t maxsize, const char *format,
             const struct vtm *vtm, VALUE timev,
             int gmt);
 
-size_t
-rb_strftime_timespec(char *s, size_t maxsize, const char *format, const struct vtm *vtm, struct timespec *ts, int gmt);
-
 #define SMALLBUF 100
 static size_t
 rb_strftime_alloc(char **buf, const char *format,
@@ -4501,7 +4523,6 @@ strftimev(const char *fmt, VALUE time)
 static VALUE
 time_strftime(VALUE time, VALUE format)
 {
-    void rb_enc_copy(VALUE, VALUE);
     struct time_object *tobj;
     char buffer[SMALLBUF], *buf = buffer;
     const char *fmt;

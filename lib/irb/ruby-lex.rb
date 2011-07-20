@@ -1,7 +1,7 @@
 #
 #   irb/ruby-lex.rb - ruby lexcal analyzer
 #   	$Release Version: 0.9.6$
-#   	$Revision: 31573 $
+#   	$Revision: 32272 $
 #   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
 #
 # --
@@ -14,7 +14,7 @@ require "irb/slex"
 require "irb/ruby-token"
 
 class RubyLex
-  @RCS_ID='-$Id: ruby-lex.rb 31573 2011-05-15 11:55:52Z nobu $-'
+  @RCS_ID='-$Id: ruby-lex.rb 32272 2011-06-28 12:52:21Z keiju $-'
 
   extend Exception2MessageMapper
   def_exception(:AlreadyDefinedToken, "Already defined token(%s)")
@@ -677,7 +677,7 @@ class RubyLex
 	@continue = true
 	Token(TkSPACE)
       else
-	ungetc
+	read_escape
 	Token("\\")
       end
     end
@@ -1046,7 +1046,7 @@ class RubyLex
       while ch = getc
 	if @quoted == ch and nest == 0
 	  break
-	elsif ch == "#" and peek(0) == "{"
+	elsif @ltype != "'" && ch == "#" && peek(0) == "{"
 	  identify_string_dvar
 	elsif @ltype != "'" && @ltype != "]" && @ltype != ":" and ch == "#"
 	  subtype = true

@@ -2,7 +2,7 @@
 
   encoding.c -
 
-  $Author: naruse $
+  $Author: nobu $
   created at: Thu May 24 17:23:27 JST 2007
 
   Copyright (C) 2007 Yukihiro Matsumoto
@@ -11,6 +11,7 @@
 
 #include "ruby/ruby.h"
 #include "ruby/encoding.h"
+#include "internal.h"
 #include "regenc.h"
 #include <ctype.h>
 #ifndef NO_LOCALE_CHARMAP
@@ -684,8 +685,8 @@ rb_enc_get_index(VALUE obj)
     return i;
 }
 
-void
-rb_enc_set_index(VALUE obj, int idx)
+static void
+enc_set_index(VALUE obj, int idx)
 {
     if (idx < ENCODING_INLINE_MAX) {
 	ENCODING_SET_INLINED(obj, idx);
@@ -693,13 +694,20 @@ rb_enc_set_index(VALUE obj, int idx)
     }
     ENCODING_SET_INLINED(obj, ENCODING_INLINE_MAX);
     rb_ivar_set(obj, rb_id_encoding(), INT2NUM(idx));
-    return;
+}
+
+void
+rb_enc_set_index(VALUE obj, int idx)
+{
+    rb_check_frozen(obj);
+    enc_set_index(obj, idx);
 }
 
 VALUE
 rb_enc_associate_index(VALUE obj, int idx)
 {
 /*    enc_check_capable(obj);*/
+    rb_check_frozen(obj);
     if (rb_enc_get_index(obj) == idx)
 	return obj;
     if (SPECIAL_CONST_P(obj)) {
@@ -709,7 +717,7 @@ rb_enc_associate_index(VALUE obj, int idx)
 	!rb_enc_asciicompat(rb_enc_from_index(idx))) {
 	ENC_CODERANGE_CLEAR(obj);
     }
-    rb_enc_set_index(obj, idx);
+    enc_set_index(obj, idx);
     return obj;
 }
 

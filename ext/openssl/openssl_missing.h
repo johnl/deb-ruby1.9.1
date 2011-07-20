@@ -1,5 +1,5 @@
 /*
- * $Id: openssl_missing.h 30886 2011-02-16 11:17:39Z akr $
+ * $Id: openssl_missing.h 32230 2011-06-26 01:32:03Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -183,6 +183,10 @@ char *CONF_get1_default_config_file(void);
 
 #if !defined(HAVE_PEM_DEF_CALLBACK)
 int PEM_def_callback(char *buf, int num, int w, void *key);
+#endif
+
+#if !defined(HAVE_ASN1_PUT_EOC)
+int ASN1_put_eoc(unsigned char **pp);
 #endif
 
 #if defined(__cplusplus)

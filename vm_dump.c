@@ -2,7 +2,7 @@
 
   vm_dump.c -
 
-  $Author: mrkn $
+  $Author: naruse $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -779,18 +779,17 @@ rb_vm_bugreport(void)
 	}
     }
 
-#if defined __MACH__ && defined __APPLE__
-    fprintf(stderr, "-- See Crash Report log file under "
-	    "~/Library/Logs/CrashReporter or ---------\n");
-    fprintf(stderr, "-- /Library/Logs/CrashReporter, for "
-	    "the more detail of ---------------------\n");
-#endif
 #if HAVE_BACKTRACE || defined(_WIN32)
     fprintf(stderr, "-- C level backtrace information "
 	    "-------------------------------------------\n");
 
     {
 #if defined __MACH__ && defined __APPLE__
+	fprintf(stderr, "\n");
+	fprintf(stderr, "   See Crash Report log file under "
+		"~/Library/Logs/CrashReporter or\n");
+	fprintf(stderr, "   /Library/Logs/CrashReporter, for "
+		"the more detail of.\n");
 #elif HAVE_BACKTRACE
 #define MAX_NATIVE_TRACE 1024
 	static void *trace[MAX_NATIVE_TRACE];
@@ -798,7 +797,7 @@ rb_vm_bugreport(void)
 	char **syms = backtrace_symbols(trace, n);
 
 	if (syms) {
-#ifdef __ELF__
+#ifdef USE_ELF
 	    rb_dump_backtrace_with_lines(n, trace, syms);
 #else
 	    int i;
