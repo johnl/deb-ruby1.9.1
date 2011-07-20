@@ -1,3 +1,9 @@
+ruby1.9.1 (1.9.2.180+svn32566-2) experimental; urgency=low
+
+  * New SVN snapshot based on revision 32566 from the ruby_1_9_3 branch.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Wed, 20 Jul 2011 11:25:23 +0200
+
 ruby1.9.1 (1.9.2.180+svn32099-1) experimental; urgency=low
 
   * New SVN snapshot based on revision 32099 from trunk.

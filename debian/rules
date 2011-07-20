@@ -319,8 +319,8 @@ PACKAGE = ruby1.9.1
 SRC_VERSION := $(shell dpkg-parsechangelog | sed -ne 's/^Version: \(\([0-9]\+\):\)\?\(.*\)-.*/\3/p')
 SVN_REVISION := $(shell echo $(SRC_VERSION) | awk -F"+" '{ print $$2 }' | sed 's/svn//' )
 TARBALL = $(PACKAGE)_$(SRC_VERSION).orig.tar.gz
-# SVN_PATH = http://svn.ruby-lang.org/repos/ruby/branches/ruby_1_9_2
-SVN_PATH = http://svn.ruby-lang.org/repos/ruby/trunk
+SVN_PATH = http://svn.ruby-lang.org/repos/ruby/branches/ruby_1_9_3
+#SVN_PATH = http://svn.ruby-lang.org/repos/ruby/trunk
 .PHONY: get-orig-source check-orig-source
 get-orig-source:
 	rm -rf get-orig-source $(TARBALL)
