@@ -2,7 +2,7 @@
 
   io.c -
 
-  $Author: akr $
+  $Author: drbrain $
   created at: Fri Oct 15 18:08:59 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -82,8 +82,6 @@
 #include <sys/syscall.h>
 #endif
 
-extern void Init_File(void);
-
 #if defined(__BEOS__) || defined(__HAIKU__)
 # ifndef NOFILE
 #  define NOFILE (OPEN_MAX)
@@ -141,8 +139,6 @@ static VALUE argf;
 static ID id_write, id_read, id_getc, id_flush, id_readpartial, id_set_encoding;
 static VALUE sym_mode, sym_perm, sym_extenc, sym_intenc, sym_encoding, sym_open_args;
 static VALUE sym_textmode, sym_binmode, sym_autoclose;
-
-struct timeval rb_time_interval(VALUE);
 
 struct argf {
     VALUE filename, current_file;
@@ -1721,6 +1717,9 @@ fill_cbuf(rb_io_t *fptr, int ec_flags)
             if (fptr->rbuf.len == 0) {
 		READ_CHECK(fptr);
                 if (io_fillbuf(fptr) == -1) {
+		    if (!fptr->readconv) {
+			return MORE_CHAR_FINISHED;
+		    }
                     ds = dp = (unsigned char *)fptr->cbuf.ptr + fptr->cbuf.off + fptr->cbuf.len;
                     de = (unsigned char *)fptr->cbuf.ptr + fptr->cbuf.capa;
                     res = rb_econv_convert(fptr->readconv, NULL, NULL, &dp, de, 0);
@@ -2634,12 +2633,15 @@ rb_io_gets_m(int argc, VALUE *argv, VALUE io)
  *  call-seq:
  *     ios.lineno    -> integer
  *
- *  Returns the current line number in <em>ios</em>. The stream must be
+ *  Returns the current line number in <em>ios</em>.  The stream must be
  *  opened for reading. <code>lineno</code> counts the number of times
- *  <code>gets</code> is called, rather than the number of newlines
- *  encountered. The two values will differ if <code>gets</code> is
- *  called with a separator other than newline. See also the
- *  <code>$.</code> variable.
+ *  #gets is called rather than the number of newlines encountered.  The two
+ *  values will differ if #gets is called with a separator other than newline.
+ *
+ *  Methods that use <code>$/</code> like #each, #lines and #readline will
+ *  also increment <code>lineno</code>.
+ *
+ *  See also the <code>$.</code> variable.
  *
  *     f = File.new("testfile")
  *     f.lineno   #=> 0
@@ -3622,6 +3624,12 @@ rb_io_close(VALUE io)
     if (fptr->fd < 0) return Qnil;
 
     fd = fptr->fd;
+#if defined __APPLE__ && defined(__MACH__) && \
+    (!defined(MAC_OS_X_VERSION_MIN_ALLOWED) || MAC_OS_X_VERSION_MIN_ALLOWED <= 1050)
+    /* close(2) on a fd which is being read by another thread causes
+     * deadlock on Mac OS X 10.5 */
+    rb_thread_fd_close(fd);
+#endif
     rb_io_fptr_cleanup(fptr, FALSE);
     rb_thread_fd_close(fd);
 
@@ -5457,11 +5465,13 @@ rb_open_file(int argc, VALUE *argv, VALUE io)
  *     File.open(filename, mode="r" [, opt]) {|file| block } -> obj
  *     File.open(filename [, mode [, perm]] [, opt]) {|file| block } -> obj
  *
- *  With no associated block, <code>open</code> is a synonym for
- *  <code>File.new</code>. If the optional code block is given, it will
- *  be passed <i>file</i> as an argument, and the File object will
- *  automatically be closed when the block terminates. In this instance,
+ *  With no associated block, <code>File.open</code> is a synonym for
+ *  File.new. If the optional code block is given, it will
+ *  be passed the opened +file+ as an argument, and the File object will
+ *  automatically be closed when the block terminates.  In this instance,
  *  <code>File.open</code> returns the value of the block.
+ *  
+ *  See IO.new for a list of values for the +opt+ parameter.
  */
 
 /*
@@ -5471,11 +5481,12 @@ rb_open_file(int argc, VALUE *argv, VALUE io)
  *     IO.open(fd, mode_string="r" [, opt])               -> io
  *     IO.open(fd, mode_string="r" [, opt]) {|io| block } -> obj
  *
- *  With no associated block, <code>open</code> is a synonym for
- *  <code>IO.new</code>. If the optional code block is given, it will
- *  be passed <i>io</i> as an argument, and the IO object will
- *  automatically be closed when the block terminates. In this instance,
- *  <code>IO.open</code> returns the value of the block.
+ *  With no associated block, <code>IO.open</code> is a synonym for IO.new. If
+ *  the optional code block is given, it will be passed +io+ as an
+ *  argument, and the IO object will automatically be closed when the block
+ *  terminates. In this instance, IO.open returns the value of the block.
+ *
+ *  See IO.new for a description of values for the +opt+ parameter.
  *
  */
 
@@ -6411,86 +6422,88 @@ rb_io_stdio_file(rb_io_t *fptr)
  *  call-seq:
  *     IO.new(fd [, mode] [, opt])   -> io
  *
- *  Returns a new <code>IO</code> object (a stream) for the given
- *  <code>IO</code> object or integer file descriptor and mode
- *  string. See also <code>IO.sysopen</code> and
- *  <code>IO.for_fd</code>.
+ *  Returns a new IO object (a stream) for the given IO object or integer file
+ *  descriptor and mode string.  See also IO.sysopen and IO.for_fd.
  *
  *  === Parameters
- *  fd:: numeric file descriptor
+ *
+ *  fd:: numeric file descriptor or IO object
  *  mode:: file mode. a string or an integer
- *  opt:: hash for specifying mode by name.
+ *  opt:: hash for specifying +mode+ by name.
  *
  *  ==== Mode
- *  When <code>mode</code> is an integer it must be combination of
- *  the modes defined in <code>File::Constants</code>.
  *
- *  When <code>mode</code> is a string it must be in one of the
- *  following forms:
+ *  When mode is an integer it must be combination of the modes defined in
+ *  File::Constants.
+ *
+ *  When mode is a string it must be in one of the following forms:
  *  - "fmode",
  *  - "fmode:extern",
  *  - "fmode:extern:intern".
  *  <code>extern</code> is the external encoding name for the IO.
  *  <code>intern</code> is the internal encoding.
- *  <code>fmode</code> must be combination of the directives. See
- *  the description of class +IO+ for a description of the directives.
+ *  <code>fmode</code> must be a file open mode string. See the description of
+ *  class IO for mode string directives.
  *
  *  When the mode of original IO is read only, the mode cannot be changed to
  *  be writable.  Similarly, the mode cannot be changed from write only to
  *  readable.
- *  If such a wrong change is directed, timing where the error actually occurs
- *  is different according to the platform.
+ *
+ *  When such a change is attempted the error is raised in different locations
+ *  according to the platform.
  *
  *  ==== Options
- *  <code>opt</code> can have the following keys
+ *  +opt+ can have the following keys
  *  :mode ::
- *    same as <code>mode</code> parameter
+ *    Same as +mode+ parameter
  *  :external_encoding ::
- *    external encoding for the IO. "-" is a
- *    synonym for the default external encoding.
+ *    External encoding for the IO.  "-" is a synonym for the default external
+ *    encoding.
  *  :internal_encoding ::
- *    internal encoding for the IO.
- *    "-" is a synonym for the default internal encoding.
+ *    Internal encoding for the IO.  "-" is a synonym for the default internal
+ *    encoding.
+ *
  *    If the value is nil no conversion occurs.
  *  :encoding ::
- *    specifies external and internal encodings as "extern:intern".
+ *    Specifies external and internal encodings as "extern:intern".
  *  :textmode ::
- *    If the value is truth value, same as "t" in argument <code>mode</code>.
+ *    If the value is truth value, same as "t" in argument +mode+.
  *  :binmode ::
- *    If the value is truth value, same as "b" in argument <code>mode</code>.
+ *    If the value is truth value, same as "b" in argument +mode+.
  *  :autoclose ::
- *    If the value is +false+, the _fd_ will be kept open after this
- *    +IO+ instance gets finalized.
+ *    If the value is +false+, the +fd+ will be kept open after this IO
+ *    instance gets finalized.
  *
- *  Also <code>opt</code> can have same keys in <code>String#encode</code> for
- *  controlling conversion between the external encoding and the internal encoding.
+ *  Also +opt+ can have same keys in String#encode for controlling conversion
+ *  between the external encoding and the internal encoding.
  *
- *  === Example1
+ *  === Example 1
  *
- *     fd = IO.sysopen("/dev/tty", "w")
- *     a = IO.new(fd,"w")
- *     $stderr.puts "Hello"
- *     a.puts "World"
+ *    fd = IO.sysopen("/dev/tty", "w")
+ *    a = IO.new(fd,"w")
+ *    $stderr.puts "Hello"
+ *    a.puts "World"
  *
  *  <em>produces:</em>
  *
- *     Hello
- *     World
+ *    Hello
+ *    World
  *
- *  === Example2
+ *  === Example 2
  *
- *     require 'fcntl'
+ *    require 'fcntl'
  *
- *     fd = STDERR.fcntl(Fcntl::F_DUPFD)
- *     io = IO.new(fd, mode: 'w:UTF-16LE', cr_newline: true)
- *     io.puts "Hello, World!"
+ *    fd = STDERR.fcntl(Fcntl::F_DUPFD)
+ *    io = IO.new(fd, mode: 'w:UTF-16LE', cr_newline: true)
+ *    io.puts "Hello, World!"
  *
- *     fd = STDERR.fcntl(Fcntl::F_DUPFD)
- *     io = IO.new(fd, mode: 'w', cr_newline: true, external_encoding: Encoding::UTF_16LE)
- *     io.puts "Hello, World!"
+ *    fd = STDERR.fcntl(Fcntl::F_DUPFD)
+ *    io = IO.new(fd, mode: 'w', cr_newline: true,
+ *                external_encoding: Encoding::UTF_16LE)
+ *    io.puts "Hello, World!"
  *
- *  both of above print "Hello, World!" in UTF-16LE to standard error output with
- *  converting EOL generated by <code>puts</code> to CR.
+ *  Both of above print "Hello, World!" in UTF-16LE to standard error output
+ *  with converting EOL generated by <code>puts</code> to CR.
  */
 
 static VALUE
@@ -6513,6 +6526,9 @@ rb_io_initialize(int argc, VALUE *argv, VALUE io)
     rb_io_extract_modeenc(&vmode, 0, opt, &oflags, &fmode, &convconfig);
 
     fd = NUM2INT(fnum);
+    if (rb_reserved_fd_p(fd)) {
+	rb_raise(rb_eArgError, "The given fd is not accessible because RubyVM reserves it");
+    }
 #if defined(HAVE_FCNTL) && defined(F_GETFL)
     oflags = fcntl(fd, F_GETFL);
     if (oflags == -1) rb_sys_fail(0);
@@ -6555,27 +6571,26 @@ rb_io_initialize(int argc, VALUE *argv, VALUE io)
  *     File.new(filename, mode="r" [, opt])            -> file
  *     File.new(filename [, mode [, perm]] [, opt])    -> file
  *
- *  Opens the file named by _filename_ according to
- *  _mode_ (default is ``r'') and returns a new
- *  <code>File</code> object.
+ *  Opens the file named by +filename+ according to +mode+ (default is "r")
+ *  and returns a new <code>File</code> object.
  *
  *  === Parameters
- *  See the description of class +IO+ for a description of _mode_.
- *  The file mode may optionally be specified as a +Fixnum+
- *  by _or_-ing together the flags (O_RDONLY etc,
- *  again described under +IO+).
  *
- *  Optional permission bits may be given in _perm_.
- *  These mode and permission bits are platform dependent;
- *  on Unix systems, see <code>open(2)</code> for details.
+ *  See the description of class IO for a description of +mode+.  The file
+ *  mode may optionally be specified as a Fixnum by +or+-ing together the
+ *  flags (O_RDONLY etc, again described under +IO+).
  *
- *  Optional _opt_ parameter is same as in <code.IO.open</code>.
+ *  Optional permission bits may be given in +perm+.  These mode and
+ *  permission bits are platform dependent; on Unix systems, see
+ *  <code>open(2)</code> for details.
+ *
+ *  Optional +opt+ parameter is same as in IO.open.
  *
  *  === Examples
  *
- *     f = File.new("testfile", "r")
- *     f = File.new("newfile",  "w+")
- *     f = File.new("newfile", File::CREAT|File::TRUNC|File::RDWR, 0644)
+ *    f = File.new("testfile", "r")
+ *    f = File.new("newfile",  "w+")
+ *    f = File.new("newfile", File::CREAT|File::TRUNC|File::RDWR, 0644)
  */
 
 static VALUE
@@ -7470,7 +7485,8 @@ do_io_advise(rb_io_t *fptr, VALUE advice, off_t offset, off_t len)
     ias.offset = offset;
     ias.len    = len;
 
-    if (rv = (int)rb_thread_io_blocking_region(io_advise_internal, &ias, fptr->fd))
+    rv = (int)rb_thread_io_blocking_region(io_advise_internal, &ias, fptr->fd);
+    if (rv)
 	/* posix_fadvise(2) doesn't set errno. On success it returns 0; otherwise
 	   it returns the error code. */
 	rb_syserr_fail(rv, RSTRING_PTR(fptr->pathv));
@@ -8539,11 +8555,12 @@ maygvl_copy_stream_continue_p(int has_gvl, struct copy_stream_struct *stp)
 #if defined(ERESTART)
       case ERESTART:
 #endif
-	if (rb_thread_interrupted(stp->th))
+	if (rb_thread_interrupted(stp->th)) {
             if (has_gvl)
                 rb_thread_execute_interrupts(stp->th);
             else
                 rb_thread_call_with_gvl(exec_interrupts, (void *)stp->th);
+        }
 	return TRUE;
     }
     return FALSE;
@@ -10315,7 +10332,7 @@ argf_write(VALUE argf, VALUE str)
  * Document-class:  ARGF
  *
  * +ARGF+ is a stream designed for use in scripts that process files given as
- * command-line arguments, or passed in via STDIN.
+ * command-line arguments or passed in via STDIN.
  *
  * The arguments passed to your script are stored in the +ARGV+ Array, one
  * argument per element. +ARGF+ assumes that any arguments that aren't
@@ -10331,7 +10348,7 @@ argf_write(VALUE argf, VALUE str)
  * files. For instance, +ARGF.read+ will return the contents of _file1_
  * followed by the contents of _file2_.
  *
- * After a file in +ARGV+ has been read, +ARGF+ removes it from the Array.
+ * After a file in +ARGV+ has been read +ARGF+ removes it from the Array.
  * Thus, after all files have been read +ARGV+ will be empty.
  *
  * You can manipulate +ARGV+ yourself to control what +ARGF+ operates on. If
@@ -10623,9 +10640,11 @@ Init_IO(void)
     orig_stdout = rb_stdout;
     rb_deferr = orig_stderr = rb_stderr;
 
-    /* constants to hold original stdin/stdout/stderr */
+    /* Holds the original stdin */
     rb_define_global_const("STDIN", rb_stdin);
+    /* Holds the original stdout */
     rb_define_global_const("STDOUT", rb_stdout);
+    /* Holds the original stderr */
     rb_define_global_const("STDERR", rb_stderr);
 
     /*
@@ -10702,6 +10721,12 @@ Init_IO(void)
     argf = rb_class_new_instance(0, 0, rb_cARGF);
 
     rb_define_readonly_variable("$<", &argf);
+    /*
+     * ARGF is a stream designed for use in scripts that process files given
+     * as command-line arguments or passed in via STDIN.
+     *
+     * See ARGF (the class) for more details.
+     */
     rb_define_global_const("ARGF", argf);
 
     rb_define_hooked_variable("$.", &argf, argf_lineno_getter, argf_lineno_setter);

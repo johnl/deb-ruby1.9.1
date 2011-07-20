@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #
 # $RoughId: test.rb,v 1.4 2001/07/13 15:38:27 knu Exp $
-# $Id: test_digest.rb 29528 2010-10-18 04:26:06Z knu $
+# $Id: test_digest.rb 32547 2011-07-15 03:05:23Z nahi $
 
 require 'test/unit'
 
@@ -75,6 +75,15 @@ module TestDigest
   def test_instance_eval
     assert_nothing_raised {
       self.class::ALGO.new.instance_eval { update "a" }
+    }
+  end
+
+  def test_alignment
+    md = self.class::ALGO.new
+    assert_nothing_raised('#4320') {
+      md.update('a' * 97)
+      md.update('a' * 97)
+      md.hexdigest
     }
   end
 

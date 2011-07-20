@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey_rsa.c 31826 2011-05-30 21:47:37Z emboss $
+ * $Id: ossl_pkey_rsa.c 32199 2011-06-22 08:41:08Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -157,33 +157,27 @@ ossl_rsa_initialize(int argc, VALUE *argv, VALUE self)
 	in = ossl_obj2bio(arg);
 	rsa = PEM_read_bio_RSAPrivateKey(in, NULL, ossl_pem_passwd_cb, passwd);
 	if (!rsa) {
-	    (void)BIO_reset(in);
-	    (void)ERR_get_error();
+	    OSSL_BIO_reset(in);
 	    rsa = PEM_read_bio_RSA_PUBKEY(in, NULL, NULL, NULL);
 	}
 	if (!rsa) {
-	    (void)BIO_reset(in);
-	    (void)ERR_get_error();
+	    OSSL_BIO_reset(in);
 	    rsa = d2i_RSAPrivateKey_bio(in, NULL);
 	}
 	if (!rsa) {
-	    (void)BIO_reset(in);
-	    (void)ERR_get_error();
+	    OSSL_BIO_reset(in);
 	    rsa = d2i_RSA_PUBKEY_bio(in, NULL);
 	}
 	if (!rsa) {
-	    (void)BIO_reset(in);
-	    (void)ERR_get_error();
+	    OSSL_BIO_reset(in);
 	    rsa = PEM_read_bio_RSAPublicKey(in, NULL, NULL, NULL);
 	}
 	if (!rsa) {
-	    (void)BIO_reset(in);
-	    (void)ERR_get_error();
+	    OSSL_BIO_reset(in);
 	    rsa = d2i_RSAPublicKey_bio(in, NULL);
 	}
 	BIO_free(in);
 	if (!rsa) {
-	    (void)ERR_get_error();
 	    ossl_raise(eRSAError, "Neither PUB key nor PRIV key:");
 	}
     }

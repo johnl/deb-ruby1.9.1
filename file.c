@@ -2,7 +2,7 @@
 
   file.c -
 
-  $Author: naruse $
+  $Author: akr $
   created at: Mon Nov 15 12:24:34 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -23,6 +23,7 @@
 #include "ruby/io.h"
 #include "ruby/util.h"
 #include "dln.h"
+#include "internal.h"
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -2202,8 +2203,6 @@ rb_file_s_lchown(int argc, VALUE *argv)
 #else
 #define rb_file_s_lchown rb_f_notimplement
 #endif
-
-struct timespec rb_time_timespec(VALUE time);
 
 struct utime_args {
     const struct timespec* tsp;
@@ -5007,7 +5006,8 @@ path_check_0(VALUE path, int execpath)
 	    && !(p && execpath && (st.st_mode & S_ISVTX))
 #endif
 	    && !access(p0, W_OK)) {
-	    rb_warn("Insecure world writable dir %s in %sPATH, mode 0%o",
+	    rb_warn("Insecure world writable dir %s in %sPATH, mode 0%"
+		    PRI_MODET_PREFIX"o",
 		    p0, (execpath ? "" : "LOAD_"), st.st_mode);
 	    if (p) *p = '/';
 	    RB_GC_GUARD(path);
@@ -5086,8 +5086,6 @@ is_explicit_relative(const char *path)
     if (*path == '.') path++;
     return isdirsep(*path);
 }
-
-VALUE rb_get_load_path(void);
 
 static VALUE
 copy_path_class(VALUE path, VALUE orig)

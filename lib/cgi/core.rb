@@ -15,7 +15,7 @@ class CGI
   # Standard internet newline sequence
   EOL = CR + LF
 
-  REVISION = '$Id: core.rb 31882 2011-06-01 00:42:06Z drbrain $' #:nodoc:
+  REVISION = '$Id: core.rb 32469 2011-07-09 05:32:19Z xibbar $' #:nodoc:
 
   # Whether processing will be required in binary vs text
   NEEDS_BINMODE = File::BINARY != 0
@@ -557,7 +557,6 @@ class CGI
           @files[name]=body
         end
         ## break loop
-        break if buf.size == 0
         break if content_length == -1
       end
       raise EOFError, "bad boundary end of body part" unless boundary_end =~ /--/

@@ -12,6 +12,7 @@
 #include "ruby/ruby.h"
 #include "ruby/st.h"
 #include "ruby/encoding.h"
+#include "internal.h"
 #include "vm_core.h"
 
 #include <stdio.h>
@@ -20,6 +21,9 @@
 #include <stdlib.h>
 #endif
 #include <errno.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS 0
@@ -34,6 +38,13 @@
 #endif
 
 extern const char ruby_description[];
+
+#define REPORTBUG_MSG \
+	"[NOTE]\n" \
+	"You may have encountered a bug in the Ruby interpreter" \
+	" or extension libraries.\n" \
+	"Bug reports are welcome.\n" \
+	"For details: http://www.ruby-lang.org/bugreport.html\n\n" \
 
 static const char *
 rb_strerrno(int err)
@@ -230,8 +241,6 @@ rb_warn_m(VALUE self, VALUE mesg)
     return Qnil;
 }
 
-void rb_vm_bugreport(void);
-
 static void
 report_bug(const char *file, int line, const char *fmt, va_list args)
 {
@@ -248,12 +257,7 @@ report_bug(const char *file, int line, const char *fmt, va_list args)
 
 	rb_vm_bugreport();
 
-	fprintf(out,
-		"[NOTE]\n"
-		"You may have encountered a bug in the Ruby interpreter"
-		" or extension libraries.\n"
-		"Bug reports are welcome.\n"
-		"For details: http://www.ruby-lang.org/bugreport.html\n\n");
+	fprintf(out, REPORTBUG_MSG);
     }
 }
 
@@ -261,9 +265,16 @@ void
 rb_bug(const char *fmt, ...)
 {
     va_list args;
+    const char *file = NULL;
+    int line = 0;
+
+    if (GET_THREAD()) {
+	file = rb_sourcefile();
+	line = rb_sourceline();
+    }
 
     va_start(args, fmt);
-    report_bug(rb_sourcefile(), rb_sourceline(), fmt, args);
+    report_bug(file, line, fmt, args);
     va_end(args);
 
 #if defined(_WIN32) && defined(RT_VER) && RT_VER >= 80
@@ -285,6 +296,37 @@ rb_bug_errno(const char *mesg, int errno_arg)
         else
             rb_bug("%s: %s (%d)", mesg, strerror(errno_arg), errno_arg);
     }
+}
+
+/*
+ * this is safe to call inside signal handler and timer thread
+ * (which isn't a Ruby Thread object)
+ */
+#define write_or_abort(fd, str, len) (write((fd), (str), (len)) < 0 ? abort() : (void)0)
+#define WRITE_CONST(fd,str) write_or_abort((fd),(str),sizeof(str) - 1)
+
+void
+rb_async_bug_errno(const char *mesg, int errno_arg)
+{
+    WRITE_CONST(2, "[ASYNC BUG] ");
+    write_or_abort(2, mesg, strlen(mesg));
+    WRITE_CONST(2, "\n");
+
+    if (errno_arg == 0) {
+	WRITE_CONST(2, "errno == 0 (NOERROR)\n");
+    }
+    else {
+	const char *errno_str = rb_strerrno(errno_arg);
+
+	if (!errno_str)
+	    errno_str = "undefined errno";
+	write_or_abort(2, errno_str, strlen(errno_str));
+    }
+    WRITE_CONST(2, "\n\n");
+    write_or_abort(2, ruby_description, strlen(ruby_description));
+    WRITE_CONST(2, "\n\n");
+    WRITE_CONST(2, REPORTBUG_MSG);
+    abort();
 }
 
 void
@@ -1432,10 +1474,28 @@ syserr_eqq(VALUE self, VALUE exc)
  */
 
 /*
+ * Document-class: EncodingError
+ *
+ * EncodingError is the base class for encoding errors.
+ */
+
+/*
  *  Document-class: Encoding::CompatibilityError
  *
  *  Raised by Encoding and String methods when the source encoding is
  *  incompatible with the target encoding.
+ */
+
+/*
+ * Document-class: fatal
+ *
+ * fatal is an Exception that is raised when ruby has encountered a fatal
+ * error and must exit.  You are not able to rescue fatal.
+ */
+
+/*
+ * Document-class: NameError::message
+ * :nodoc:
  */
 
 /*

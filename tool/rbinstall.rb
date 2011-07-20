@@ -540,10 +540,11 @@ install?(:ext, :comm, :gem) do
 
   destdir = File.join(gpath, directories.grep(/^spec/)[0])
   default_gems = [
-    ['rake', 'lib/rake.rb'],
+    ['rake', 'lib/rake/version.rb'],
     ['rdoc', 'lib/rdoc.rb'],
     ['minitest', 'lib/minitest/unit.rb'],
     ['json', 'ext/json/lib/json/version.rb'],
+    ['io-console', 'ext/io/console/io-console.gemspec'],
   ]
   default_gems.each do |name, src|
     src = File.join(srcdir, src)

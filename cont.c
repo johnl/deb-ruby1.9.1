@@ -2,7 +2,7 @@
 
   cont.c -
 
-  $Author: nagachika $
+  $Author: kosaki $
   created at: Thu May 23 09:03:43 2007
 
   Copyright (C) 2007 Koichi Sasada
@@ -10,11 +10,12 @@
 **********************************************************************/
 
 #include "ruby/ruby.h"
+#include "internal.h"
 #include "vm_core.h"
 #include "gc.h"
 #include "eval_intern.h"
 
-#if ((defined(_WIN32) && _WIN32_WINNT >= 0x0400) || defined(HAVE_SETCONTEXT)) && !defined(__NetBSD__) && !defined(FIBER_USE_NATIVE)
+#if ((defined(_WIN32) && _WIN32_WINNT >= 0x0400) || defined(HAVE_SETCONTEXT)) && !defined(__NetBSD__) && !defined(sun) && !defined(FIBER_USE_NATIVE)
 #define FIBER_USE_NATIVE 1
 
 /* FIBER_USE_NATIVE enables Fiber performance improvement using system
@@ -46,7 +47,7 @@
 #define RB_PAGE_SIZE (pagesize)
 #define RB_PAGE_MASK (~(RB_PAGE_SIZE - 1))
 static long pagesize;
-#define FIBER_MACHINE_STACK_ALLOCATION_SIZE  (0x10000 / sizeof(VALUE))
+#define FIBER_MACHINE_STACK_ALLOCATION_SIZE  (0x10000)
 #endif
 
 #define CAPTURE_JUST_VALID_VM_STACK 1
@@ -126,7 +127,6 @@ static VALUE rb_eFiberError;
 
 NOINLINE(static VALUE cont_capture(volatile int *stat));
 
-void rb_thread_mark(rb_thread_t *th);
 #define THREAD_MUST_BE_RUNNING(th) do { \
 	if (!(th)->tag) rb_raise(rb_eThreadError, "not running thread");	\
     } while (0)
@@ -327,7 +327,6 @@ static void
 cont_save_machine_stack(rb_thread_t *th, rb_context_t *cont)
 {
     size_t size;
-    rb_thread_t *sth = &cont->saved_thread;
 
     SET_MACHINE_STACK_END(&th->machine_stack_end);
 #ifdef __ia64
@@ -410,8 +409,6 @@ cont_new(VALUE klass)
     return cont;
 }
 
-void rb_vm_stack_to_heap(rb_thread_t *th);
-
 static VALUE
 cont_capture(volatile int *stat)
 {
@@ -440,7 +437,7 @@ cont_capture(volatile int *stat)
     cont_save_machine_stack(th, cont);
 
     if (ruby_setjmp(cont->jmpbuf)) {
-	VALUE value;
+	volatile VALUE value;
 
 	value = cont->value;
 	if (cont->argc == -1) rb_exc_raise(value);
@@ -518,11 +515,22 @@ fiber_entry(void *arg)
     fiber_set_stack_location();
     rb_fiber_start();
 }
+#else /* _WIN32 */
+
+/*
+ * FreeBSD require a first (i.e. addr) argument of mmap(2) is not NULL
+ * if MAP_STACK is passed.
+ */
+#if defined(MAP_STACK) && !defined(__FreeBSD__)
+#define FIBER_STACK_FLAGS (MAP_PRIVATE | MAP_ANON | MAP_STACK)
 #else
-static VALUE*
+#define FIBER_STACK_FLAGS (MAP_PRIVATE | MAP_ANON)
+#endif
+
+static char*
 fiber_machine_stack_alloc(size_t size)
 {
-    VALUE *ptr;
+    char *ptr;
 
     if (machine_stack_cache_index > 0) {
 	if (machine_stack_cache[machine_stack_cache_index - 1].size == (size / sizeof(VALUE))) {
@@ -537,13 +545,17 @@ fiber_machine_stack_alloc(size_t size)
 	}
     }
     else {
+	void *page;
 	STACK_GROW_DIR_DETECTION;
-	ptr = (VALUE*)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-	if (ptr == (VALUE*)(SIGNED_VALUE)-1) {
+
+	ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, FIBER_STACK_FLAGS, -1, 0);
+	if (ptr == MAP_FAILED) {
 	    rb_raise(rb_eFiberError, "can't alloc machine stack to fiber");
 	}
-	if (mprotect(ptr + STACK_DIR_UPPER((size - RB_PAGE_SIZE) / sizeof(VALUE), 0),
-		     RB_PAGE_SIZE, PROT_READ | PROT_WRITE) < 0) {
+
+	/* guard page setup */
+	page = ptr + STACK_DIR_UPPER(size - RB_PAGE_SIZE, 0);
+	if (mprotect(page, RB_PAGE_SIZE, PROT_NONE) < 0) {
 	    rb_raise(rb_eFiberError, "mprotect failed");
 	}
     }
@@ -567,21 +579,21 @@ fiber_initialize_machine_stack_context(rb_fiber_t *fib, size_t size)
 	    rb_raise(rb_eFiberError, "can't create fiber");
 	}
     }
+    sth->machine_stack_maxsize = size;
 #else /* not WIN32 */
     ucontext_t *context = &fib->context;
-    VALUE *ptr;
+    char *ptr;
     STACK_GROW_DIR_DETECTION;
 
     getcontext(context);
     ptr = fiber_machine_stack_alloc(size);
     context->uc_link = NULL;
-    context->uc_stack.ss_sp = (char *)ptr;
+    context->uc_stack.ss_sp = ptr;
     context->uc_stack.ss_size = size;
     makecontext(context, rb_fiber_start, 0);
-    sth->machine_stack_start = ptr + STACK_DIR_UPPER(0, size / sizeof(VALUE));
+    sth->machine_stack_start = (VALUE*)(ptr + STACK_DIR_UPPER(0, size));
+    sth->machine_stack_maxsize = size - RB_PAGE_SIZE;
 #endif
-
-    sth->machine_stack_maxsize = size;
 #ifdef __ia64
     sth->machine_register_stack_maxsize = sth->machine_stack_maxsize;
 #endif
@@ -595,7 +607,7 @@ fiber_setcontext(rb_fiber_t *newfib, rb_fiber_t *oldfib)
     rb_thread_t *th = GET_THREAD(), *sth = &newfib->cont.saved_thread;
 
     if (newfib->status != RUNNING) {
-	fiber_initialize_machine_stack_context(newfib, FIBER_MACHINE_STACK_ALLOCATION_SIZE * sizeof(VALUE));
+	fiber_initialize_machine_stack_context(newfib, FIBER_MACHINE_STACK_ALLOCATION_SIZE);
     }
 
     /* restore thread context */
@@ -656,9 +668,10 @@ cont_restore_1(rb_context_t *cont)
     }
 #endif
     if (cont->machine_stack_src) {
+	size_t i;
 	FLUSH_REGISTER_WINDOWS;
-	MEMCPY(cont->machine_stack_src, cont->machine_stack,
-	       VALUE, cont->machine_stack_size);
+	for (i = 0; i < cont->machine_stack_size; i++)
+	    cont->machine_stack_src[i] = cont->machine_stack[i];
     }
 
 #ifdef __ia64

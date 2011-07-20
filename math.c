@@ -2,7 +2,7 @@
 
   math.c -
 
-  $Author: usa $
+  $Author: drbrain $
   created at: Tue Jan 25 14:12:56 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -10,6 +10,7 @@
 **********************************************************************/
 
 #include "ruby/ruby.h"
+#include "internal.h"
 #include <math.h>
 #include <errno.h>
 
@@ -18,7 +19,6 @@
 VALUE rb_mMath;
 VALUE rb_eMathDomainError;
 
-extern VALUE rb_to_float(VALUE val);
 #define Need_Float(x) do {if (TYPE(x) != T_FLOAT) {(x) = rb_to_float(x);}} while(0)
 #define Need_Float2(x,y) do {\
     Need_Float(x);\
@@ -760,6 +760,8 @@ exp1(sqrt)
  */
 
 /*
+ *  Document-class: Math
+ *
  *  The <code>Math</code> module contains module functions for basic
  *  trigonometric and transcendental functions. See class
  *  <code>Float</code> for a list of constants that

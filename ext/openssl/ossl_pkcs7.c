@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkcs7.c 31046 2011-03-07 08:44:45Z matz $
+ * $Id: ossl_pkcs7.c 32344 2011-06-30 20:20:32Z nobu $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -320,8 +320,10 @@ ossl_pkcs7_initialize(int argc, VALUE *argv, VALUE self)
     p7 = PEM_read_bio_PKCS7(in, &pkcs, NULL, NULL);
     DATA_PTR(self) = pkcs;
     if (!p7) {
-	(void)BIO_reset(in);
+	OSSL_BIO_reset(in);
         p7 = d2i_PKCS7_bio(in, &pkcs);
+	if (!p7)
+	    ossl_raise(rb_eArgError, "Could not parse the PKCS7");
 	DATA_PTR(self) = pkcs;
     }
     BIO_free(in);

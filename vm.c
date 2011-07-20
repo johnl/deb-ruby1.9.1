@@ -2,7 +2,7 @@
 
   vm.c -
 
-  $Author: ko1 $
+  $Author: drbrain $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -12,6 +12,7 @@
 #include "ruby/vm.h"
 #include "ruby/st.h"
 #include "ruby/encoding.h"
+#include "internal.h"
 
 #include "gc.h"
 #include "vm_core.h"
@@ -44,8 +45,6 @@ rb_thread_t *ruby_current_thread = 0;
 rb_vm_t *ruby_current_vm = 0;
 
 static void thread_free(void *ptr);
-
-VALUE rb_insns_name_array(void);
 
 void vm_analysis_operand(int insn, int n, VALUE op);
 void vm_analysis_register(int reg, int isset);
@@ -479,7 +478,7 @@ rb_vm_make_env_object(rb_thread_t * th, rb_control_frame_t *cfp)
 }
 
 void
-rb_vm_stack_to_heap(rb_thread_t * const th)
+rb_vm_stack_to_heap(rb_thread_t *th)
 {
     rb_control_frame_t *cfp = th->cfp;
     while ((cfp = rb_vm_get_ruby_level_next_cfp(th, cfp)) != 0) {
@@ -1662,8 +1661,6 @@ thread_recycle_struct(void)
 }
 #endif
 
-void rb_gc_mark_machine_stack(rb_thread_t *th);
-
 void
 rb_thread_mark(void *ptr)
 {
@@ -1866,8 +1863,6 @@ rb_thread_alloc(VALUE klass)
     return self;
 }
 
-VALUE rb_iseq_clone(VALUE iseqval, VALUE newcbase);
-
 static void
 vm_define_method(rb_thread_t *th, VALUE obj, ID id, VALUE iseqval,
 		 rb_num_t is_singleton, NODE *cref)
@@ -1972,7 +1967,6 @@ m_core_set_postexe(VALUE self, VALUE iseqval)
 	rb_thread_t *th = GET_THREAD();
 	rb_control_frame_t *cfp = rb_vm_get_ruby_level_next_cfp(th, th->cfp);
 	VALUE proc;
-	extern void rb_call_end_proc(VALUE data);
 
 	GetISeqPtr(iseqval, blockiseq);
 
@@ -2134,6 +2128,9 @@ Init_VM(void)
 	th->cfp->pc = iseq->iseq_encoded;
 	th->cfp->self = th->top_self;
 
+	/*
+	 * The Binding of the top level scope
+	 */
 	rb_define_global_const("TOPLEVEL_BINDING", rb_binding_new());
     }
     vm_init_redefined_flag();
@@ -2151,9 +2148,6 @@ rb_vm_set_progname(VALUE filename)
 #if defined(ENABLE_VM_OBJSPACE) && ENABLE_VM_OBJSPACE
 struct rb_objspace *rb_objspace_alloc(void);
 #endif
-void ruby_thread_init_stack(rb_thread_t *th);
-
-extern void Init_native_thread(void);
 
 void
 Init_BareVM(void)

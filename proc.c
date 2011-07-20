@@ -2,7 +2,7 @@
 
   proc.c - Proc, Binding, Env
 
-  $Author: marcandre $
+  $Author: akr $
   created at: Wed Jan 17 12:13:14 2007
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -12,6 +12,7 @@
 #include "eval_intern.h"
 #include "internal.h"
 #include "gc.h"
+#include "iseq.h"
 
 struct METHOD {
     VALUE recv;
@@ -25,11 +26,8 @@ VALUE rb_cMethod;
 VALUE rb_cBinding;
 VALUE rb_cProc;
 
-VALUE rb_iseq_parameters(const rb_iseq_t *iseq, int is_proc);
-
 static VALUE bmcall(VALUE, VALUE);
 static int method_arity(VALUE);
-rb_iseq_t *rb_method_get_iseq(VALUE method);
 
 /* Proc */
 
@@ -1024,7 +1022,6 @@ static VALUE
 method_eq(VALUE method, VALUE other)
 {
     struct METHOD *m1, *m2;
-    extern int rb_method_entry_eq(rb_method_entry_t *m1, rb_method_entry_t *m2);
 
     if (!rb_obj_is_method(other))
 	return Qfalse;
@@ -1424,8 +1421,6 @@ rb_method_call(int argc, VALUE *argv, VALUE method)
     }
     if ((state = EXEC_TAG()) == 0) {
 	rb_thread_t *th = GET_THREAD();
-	VALUE rb_vm_call(rb_thread_t *th, VALUE recv, VALUE id, int argc, const VALUE *argv,
-			 const rb_method_entry_t *me);
 
 	PASS_PASSED_BLOCK_TH(th);
 	result = rb_vm_call(th, data->recv, data->id,  argc, argv, &data->me);

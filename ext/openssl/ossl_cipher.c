@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_cipher.c 31166 2011-03-24 07:29:21Z naruse $
+ * $Id: ossl_cipher.c 32199 2011-06-22 08:41:08Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -293,7 +293,7 @@ ossl_cipher_pkcs5_keyivgen(int argc, VALUE *argv, VALUE self)
     if(!NIL_P(vsalt)){
 	StringValue(vsalt);
 	if(RSTRING_LEN(vsalt) != PKCS5_SALT_LEN)
-	    rb_raise(eCipherError, "salt must be an 8-octet string");
+	    ossl_raise(eCipherError, "salt must be an 8-octet string");
 	salt = (unsigned char *)RSTRING_PTR(vsalt);
     }
     iter = NIL_P(viter) ? 2048 : NUM2INT(viter);
@@ -331,7 +331,7 @@ ossl_cipher_update(int argc, VALUE *argv, VALUE self)
     StringValue(data);
     in = (unsigned char *)RSTRING_PTR(data);
     if ((in_len = RSTRING_LENINT(data)) == 0)
-        rb_raise(rb_eArgError, "data must not be empty");
+        ossl_raise(rb_eArgError, "data must not be empty");
     GetCipher(self, ctx);
     out_len = in_len+EVP_CIPHER_CTX_block_size(ctx);
 
@@ -444,7 +444,7 @@ ossl_cipher_set_iv(VALUE self, VALUE iv)
 
 /*
  *  call-seq:
- *     cipher.key_length = integer -> integer
+ *     cipher.key_len = integer -> integer
  *
  *  Sets the key length of the cipher.  If the cipher is a fixed length cipher then attempting to set the key
  *  length to any value other than the fixed value is an error.
@@ -507,13 +507,13 @@ CIPHER_0ARG_INT(block_size)
 #if 0
 /*
  *  call-seq:
- *     cipher.key_length -> integer
+ *     cipher.key_len -> integer
  *
  */
 static VALUE ossl_cipher_key_length() { }
 /*
  *  call-seq:
- *     cipher.iv_length -> integer
+ *     cipher.iv_len -> integer
  *
  */
 static VALUE ossl_cipher_iv_length() { }

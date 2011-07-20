@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: extconf.rb 31346 2011-04-25 21:45:33Z iwamatsu $
+  $Id: extconf.rb 32230 2011-06-26 01:32:03Z emboss $
 =end
 
 require "mkmf"
@@ -66,6 +66,7 @@ end
 
 message "=== Checking for OpenSSL features... ===\n"
 have_func("ERR_peek_last_error")
+have_func("ASN1_put_eoc")
 have_func("BN_mod_add")
 have_func("BN_mod_sqr")
 have_func("BN_mod_sub")
@@ -94,6 +95,7 @@ have_func("X509_CRL_add0_revoked")
 have_func("X509_CRL_set_issuer_name")
 have_func("X509_CRL_set_version")
 have_func("X509_CRL_sort")
+have_func("X509_NAME_hash_old")
 have_func("X509_STORE_get_ex_data")
 have_func("X509_STORE_set_ex_data")
 have_func("OBJ_NAME_do_all_sorted")

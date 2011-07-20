@@ -1,7 +1,7 @@
 #
 #   irb/completor.rb -
 #   	$Release Version: 0.9$
-#   	$Revision: 31573 $
+#   	$Revision: 32295 $
 #   	by Keiju ISHITSUKA(keiju@ishitsuka.com)
 #       From Original Idea of shugo@ruby-lang.org
 #
@@ -11,7 +11,7 @@ require "readline"
 module IRB
   module InputCompletor
 
-    @RCS_ID='-$Id: completion.rb 31573 2011-05-15 11:55:52Z nobu $-'
+    @RCS_ID='-$Id: completion.rb 32295 2011-06-29 15:08:41Z keiju $-'
 
     ReservedWords = [
       "BEGIN", "END",
@@ -39,6 +39,14 @@ module IRB
 #      puts "input: #{input}"
 
       case input
+      when /^((["'`]).*\2)\.([^.]*)$/
+	# String
+	receiver = $1
+	message = $3
+
+	candidates = String.instance_methods.collect{|m| m.to_s}
+	select_message(receiver, message, candidates)
+
       when /^(\/[^\/]*\/)\.([^.]*)$/
 	# Regexp
 	receiver = $1
@@ -214,7 +222,8 @@ module IRB
 end
 
 if Readline.respond_to?("basic_word_break_characters=")
-  Readline.basic_word_break_characters= " \t\n\"\\'`><=;|&{("
+#  Readline.basic_word_break_characters= " \t\n\"\\'`><=;|&{("
+  Readline.basic_word_break_characters= " \t\n`><=;|&{("
 end
 Readline.completion_append_character = nil
 Readline.completion_proc = IRB::InputCompletor::CompletionProc

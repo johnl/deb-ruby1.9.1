@@ -2,13 +2,13 @@
 
   enumerator.c - provides Enumerator class
 
-  $Author: ryan $
+  $Author: drbrain $
 
   Copyright (C) 2001-2003 Akinori MUSHA
 
   $Idaemons: /home/cvs/rb/enumerator/enumerator.c,v 1.1.1.1 2001/07/15 10:12:48 knu Exp $
   $RoughId: enumerator.c,v 1.6 2003/07/27 11:03:24 nobu Exp $
-  $Id: enumerator.c 31897 2011-06-01 21:16:05Z ryan $
+  $Id: enumerator.c 32466 2011-07-09 00:25:27Z drbrain $
 
 ************************************************/
 
@@ -566,9 +566,9 @@ get_next_values(VALUE obj, struct enumerator *e)
  *   #  yield nil        [nil]            nil
  *   #  yield [1, 2]     [[1, 2]]         [1, 2]
  *
- * Note that enumeration sequenced by +next_values+ does not affect other
- * non-external enumeration methods, unless underlying iteration methods
- * itself has side-effect, e.g. IO#each_line.
+ * Note that +next_values+ does not affect other non-external enumeration
+ * methods unless underlying iteration method itself has side-effect, e.g.
+ * IO#each_line.
  *
  */
 
@@ -1017,8 +1017,6 @@ generator_init(VALUE obj, VALUE proc)
 
     return obj;
 }
-
-VALUE rb_obj_is_proc(VALUE proc);
 
 /* :nodoc: */
 static VALUE

@@ -360,7 +360,7 @@ module Net   #:nodoc:
   class HTTP < Protocol
 
     # :stopdoc:
-    Revision = %q$Revision: 32054 $.split[1]
+    Revision = %q$Revision: 32192 $.split[1]
     HTTPVersion = '1.1'
     begin
       require 'zlib'
@@ -475,7 +475,7 @@ module Net   #:nodoc:
     #                  { "q" => "ruby", "max" => "50" }
     #
     def HTTP.post_form(url, params)
-      req = Post.new(url.path)
+      req = Post.new(url.request_uri)
       req.form_data = params
       req.basic_auth url.user, url.password if url.user
       new(url.hostname, url.port).start {|http|
@@ -619,13 +619,15 @@ module Net   #:nodoc:
     # The port number to connect to.
     attr_reader :port
 
-    # Number of seconds to wait for the connection to open.
-    # If the HTTP object cannot open a connection in this many seconds,
-    # it raises a TimeoutError exception.
+    # Number of seconds to wait for the connection to open. Any number
+    # may be used, including Floats for fractional seconds. If the HTTP
+    # object cannot open a connection in this many seconds, it raises a
+    # TimeoutError exception.
     attr_accessor :open_timeout
 
     # Number of seconds to wait for one block to be read (via one read(2)
-    # call). If the HTTP object cannot read data in this many seconds,
+    # call). Any number may be used, including Floats for fractional
+    # seconds. If the HTTP object cannot read data in this many seconds,
     # it raises a TimeoutError exception.
     attr_reader :read_timeout
 

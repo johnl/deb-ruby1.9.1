@@ -28,8 +28,6 @@ typedef struct rb_thread_cond_struct {
 typedef struct native_thread_data_struct {
     void *signal_thread_list;
     rb_thread_cond_t sleep_cond;
-    rb_thread_cond_t gvl_cond;
-    struct rb_thread_struct *gvl_next;
 } native_thread_data_t;
 
 #include <semaphore.h>
@@ -40,7 +38,7 @@ typedef struct rb_global_vm_lock_struct {
     pthread_mutex_t lock;
 
     /* slow path */
-    unsigned long waiting;
+    volatile unsigned long waiting;
     rb_thread_cond_t cond;
 
     /* yield */

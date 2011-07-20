@@ -31,7 +31,7 @@
  *
  * $OrigId: sha2.c,v 1.1 2001/11/08 00:01:51 adg Exp adg $
  * $RoughId: sha2.c,v 1.3 2002/02/26 22:03:36 knu Exp $
- * $Id: sha2.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: sha2.c 32547 2011-07-15 03:05:23Z nahi $
  */
 
 #include "defs.h"
@@ -559,7 +559,8 @@ void SHA256_Update(SHA256_CTX* context, const sha2_byte *data, size_t len) {
 	}
 	while (len >= SHA256_BLOCK_LENGTH) {
 		/* Process as many complete blocks as we can */
-		SHA256_Transform(context, (sha2_word32*)data);
+		MEMCPY_BCOPY(context->buffer, data, SHA256_BLOCK_LENGTH);
+		SHA256_Transform(context, (sha2_word32*)context->buffer);
 		context->bitcount += SHA256_BLOCK_LENGTH << 3;
 		len -= SHA256_BLOCK_LENGTH;
 		data += SHA256_BLOCK_LENGTH;
@@ -880,7 +881,8 @@ void SHA512_Update(SHA512_CTX* context, const sha2_byte *data, size_t len) {
 	}
 	while (len >= SHA512_BLOCK_LENGTH) {
 		/* Process as many complete blocks as we can */
-		SHA512_Transform(context, (sha2_word64*)data);
+		MEMCPY_BCOPY(context->buffer, data, SHA512_BLOCK_LENGTH);
+		SHA512_Transform(context, (sha2_word64*)context->buffer);
 		ADDINC128(context->bitcount, SHA512_BLOCK_LENGTH << 3);
 		len -= SHA512_BLOCK_LENGTH;
 		data += SHA512_BLOCK_LENGTH;

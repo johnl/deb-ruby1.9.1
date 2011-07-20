@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: cipher.rb 31148 2011-03-22 04:39:04Z nahi $
+  $Id: cipher.rb 32176 2011-06-20 09:48:05Z nahi $
 =end
 
 module OpenSSL
@@ -53,7 +53,7 @@ module OpenSSL
       return str
     end
 
-    # This class is only provided for backwards compatibility.  Use OpenSSL::Digest in the future.
+    # This class is only provided for backwards compatibility.  Use OpenSSL::Cipher in the future.
     class Cipher < Cipher
       # add warning
     end

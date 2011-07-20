@@ -2,7 +2,7 @@
 
   compile.c - ruby node tree -> VM instruction sequence
 
-  $Author: nobu $
+  $Author: mame $
   created at: 04/01/01 03:42:15 JST
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -10,6 +10,7 @@
 **********************************************************************/
 
 #include "ruby/ruby.h"
+#include "internal.h"
 #include <math.h>
 
 #define USE_INSN_STACK_INCREASE 1
@@ -97,8 +98,6 @@ struct iseq_compile_data_ensure_node_stack {
 #define compile_debug iseq->compile_data->option->debug_level
 #endif
 
-NORETURN(PRINTF_ARGS(void rb_compile_bug(const char*, int, const char*, ...), 3, 4));
-
 #if CPDEBUG
 
 #define compile_debug_print_indent(level) \
@@ -155,7 +154,6 @@ r_value(VALUE value)
 #endif
 
 #if CPDEBUG > 1 || CPDEBUG < 0
-PRINTF_ARGS(void ruby_debug_printf(const char*, ...), 1, 2);
 #define debugs if (compile_debug_print_indent(1)) ruby_debug_printf
 #define debug_compile(msg, v) ((void)(compile_debug_print_indent(1) && fputs((msg), stderr)), (v))
 #else
@@ -539,7 +537,6 @@ int
 rb_iseq_translate_threaded_code(rb_iseq_t *iseq)
 {
 #if OPT_DIRECT_THREADED_CODE || OPT_CALL_THREADED_CODE
-    extern const void **rb_vm_get_insns_address_table(void);
     const void * const *table = rb_vm_get_insns_address_table();
     unsigned long i;
 
@@ -2365,7 +2362,14 @@ when_vals(rb_iseq_t *iseq, LINK_ANCHOR *cond_seq, NODE *vals, LABEL *l1, VALUE s
 	    special_literals = Qfalse;
 	}
 
-	COMPILE(cond_seq, "when cond", val);
+	if (nd_type(val) == NODE_STR) {
+	    debugp_param("nd_lit", val->nd_lit);
+	    OBJ_FREEZE(val->nd_lit);
+	    ADD_INSN1(cond_seq, nd_line(val), putobject, val->nd_lit);
+	}
+	else {
+	    COMPILE(cond_seq, "when cond", val);
+	}
 	ADD_INSN1(cond_seq, nd_line(val), topn, INT2FIX(1));
 	ADD_SEND(cond_seq, nd_line(val), ID2SYM(idEqq), INT2FIX(1));
 	ADD_INSNL(cond_seq, nd_line(val), branchif, l1);
@@ -4968,7 +4972,18 @@ iseq_compile_each(rb_iseq_t *iseq, LINK_ANCHOR *ret, NODE * node, int poped)
 
 	    if (flag & VM_CALL_ARGS_BLOCKARG_BIT) {
 		ADD_INSN1(ret, nd_line(node), topn, INT2FIX(1));
+		if (flag & VM_CALL_ARGS_SPLAT_BIT) {
+		    ADD_INSN1(ret, nd_line(node), putobject, INT2FIX(-1));
+		    ADD_SEND(ret, nd_line(node), ID2SYM(idAREF), INT2FIX(1));
+		}
 		ADD_INSN1(ret, nd_line(node), setn, FIXNUM_INC(argc, 3));
+		ADD_INSN (ret, nd_line(node), pop);
+	    }
+	    else if (flag & VM_CALL_ARGS_SPLAT_BIT) {
+		ADD_INSN(ret, nd_line(node), dup);
+		ADD_INSN1(ret, nd_line(node), putobject, INT2FIX(-1));
+		ADD_SEND(ret, nd_line(node), ID2SYM(idAREF), INT2FIX(1));
+		ADD_INSN1(ret, nd_line(node), setn, FIXNUM_INC(argc, 2));
 		ADD_INSN (ret, nd_line(node), pop);
 	    }
 	    else {

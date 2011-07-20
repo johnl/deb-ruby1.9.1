@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_x509crl.c 31109 2011-03-15 09:34:51Z akr $
+ * $Id: ossl_x509crl.c 32199 2011-06-22 08:41:08Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002 Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -102,7 +102,7 @@ ossl_x509crl_initialize(int argc, VALUE *argv, VALUE self)
     crl = PEM_read_bio_X509_CRL(in, &x, NULL, NULL);
     DATA_PTR(self) = x;
     if (!crl) {
-	(void)BIO_reset(in);
+	OSSL_BIO_reset(in);
 	crl = d2i_X509_CRL_bio(in, &x);
 	DATA_PTR(self) = x;
     }

@@ -1,7 +1,7 @@
 #
 #   sync.rb - 2 phase lock with counter
 #       $Release Version: 1.0$
-#       $Revision: 31641 $
+#       $Revision: 32281 $
 #       by Keiju ISHITSUKA(keiju@ishitsuka.com)
 #
 # --
@@ -41,8 +41,11 @@ unless defined? Thread
   raise "Thread not available for this ruby interpreter"
 end
 
+##
+# A module that provides a two-phase lock with a counter.
+
 module Sync_m
-  RCS_ID='-$Id: sync.rb 31641 2011-05-19 00:07:25Z nobu $-'
+  RCS_ID='-$Id: sync.rb 32281 2011-06-29 03:09:34Z drbrain $-'
 
   # lock mode
   UN = :UN
@@ -298,9 +301,21 @@ module Sync_m
     return ret
   end
 end
+
+##
+# An alias for Sync_m from sync.rb
+
 Synchronizer_m = Sync_m
+
+##
+# A class that providesa two-phase lock with a counter.  See Sync_m for
+# details.
 
 class Sync
   include Sync_m
 end
+
+##
+# An alias for Sync from sync.rb.  See Sync_m for details.
+
 Synchronizer = Sync

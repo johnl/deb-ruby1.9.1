@@ -2,7 +2,7 @@
 
   gc.c -
 
-  $Author: nari $
+  $Author: drbrain $
   created at: Tue Oct  5 09:44:46 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -49,8 +49,6 @@
 # define VALGRIND_MAKE_MEM_DEFINED(p, n) /* empty */
 # define VALGRIND_MAKE_MEM_UNDEFINED(p, n) /* empty */
 #endif
-
-int rb_io_fptr_finalize(struct rb_io_t*);
 
 #define rb_setjmp(env) RUBY_SETJMP(env)
 #define rb_jmp_buf rb_jmpbuf_t
@@ -576,12 +574,12 @@ gc_stress_get(VALUE self)
  *  call-seq:
  *    GC.stress = bool          -> bool
  *
- *  updates GC stress mode.
+ *  Updates the GC stress mode.
  *
- *  When GC.stress = true, GC is invoked for all GC opportunity:
- *  all memory and object allocation.
+ *  When stress mode is enabled the GC is invoked at every GC opportunity:
+ *  all memory and object allocations.
  *
- *  Since it makes Ruby very slow, it is only for debugging.
+ *  Enabling stress mode makes Ruby very slow, it is only for debugging.
  */
 
 static VALUE
@@ -597,7 +595,7 @@ gc_stress_set(VALUE self, VALUE flag)
  *  call-seq:
  *    GC::Profiler.enable?                 -> true or false
  *
- *  returns current status of GC profile mode.
+ *  The current status of GC profile mode.
  */
 
 static VALUE
@@ -611,8 +609,7 @@ gc_profile_enable_get(VALUE self)
  *  call-seq:
  *    GC::Profiler.enable          -> nil
  *
- *  updates GC profile mode.
- *  start profiler for GC.
+ *  Starts the GC profiler.
  *
  */
 
@@ -629,8 +626,7 @@ gc_profile_enable(void)
  *  call-seq:
  *    GC::Profiler.disable          -> nil
  *
- *  updates GC profile mode.
- *  stop profiler for GC.
+ *  Stops the GC profiler.
  *
  */
 
@@ -647,7 +643,7 @@ gc_profile_disable(void)
  *  call-seq:
  *    GC::Profiler.clear          -> nil
  *
- *  clear before profile data.
+ *  Clears the GC profiler data.
  *
  */
 
@@ -711,7 +707,7 @@ garbage_collect_with_gvl(rb_objspace_t *objspace)
 
 static void vm_xfree(rb_objspace_t *objspace, void *ptr);
 
-static inline void
+static inline size_t
 vm_malloc_prepare(rb_objspace_t *objspace, size_t size)
 {
     if ((ssize_t)size < 0) {
@@ -727,6 +723,8 @@ vm_malloc_prepare(rb_objspace_t *objspace, size_t size)
 	(malloc_increase+size) > malloc_limit) {
 	garbage_collect_with_gvl(objspace);
     }
+
+    return size;
 }
 
 static inline void *
@@ -757,7 +755,7 @@ vm_xmalloc(rb_objspace_t *objspace, size_t size)
 {
     void *mem;
 
-    vm_malloc_prepare(objspace, size);
+    size = vm_malloc_prepare(objspace, size);
     TRY_WITH_GC(mem = malloc(size));
     return vm_malloc_fixup(objspace, mem, size);
 }
@@ -844,10 +842,12 @@ static void *
 vm_xcalloc(rb_objspace_t *objspace, size_t count, size_t elsize)
 {
     void *mem;
-    const size_t size = xmalloc2_size(count, elsize);
+    size_t size;
 
-    vm_malloc_prepare(objspace, size);
-    TRY_WITH_GC(mem = calloc(count, elsize));
+    size = xmalloc2_size(count, elsize);
+    size = vm_malloc_prepare(objspace, size);
+
+    TRY_WITH_GC(mem = calloc(1, size));
     return vm_malloc_fixup(objspace, mem, size);
 }
 
@@ -1151,7 +1151,7 @@ rb_newobj(void)
 	rb_bug("object allocation during garbage collection phase");
     }
 
-    if (UNLIKELY(ruby_gc_stress) && UNLIKELY(!ruby_disable_gc_stress)) {
+    if (UNLIKELY(ruby_gc_stress && !ruby_disable_gc_stress)) {
 	if (!garbage_collect(objspace)) {
 	    during_gc = 0;
 	    rb_memerror();
@@ -1275,7 +1275,8 @@ ruby_get_stack_grow_direction(volatile VALUE *addr)
 }
 #endif
 
-#define GC_WATER_MARK 512
+#define GC_LEVEL_MAX 250
+#define STACKFRAME_FOR_GC_MARK (GC_LEVEL_MAX * GC_MARK_STACKFRAME_WORD)
 
 size_t
 ruby_stack_length(VALUE **p)
@@ -1287,20 +1288,22 @@ ruby_stack_length(VALUE **p)
 }
 
 static int
-stack_check(void)
+stack_check(int water_mark)
 {
     int ret;
     rb_thread_t *th = GET_THREAD();
     SET_STACK_END;
-    ret = STACK_LENGTH > STACK_LEVEL_MAX - GC_WATER_MARK;
+    ret = STACK_LENGTH > STACK_LEVEL_MAX - water_mark;
 #ifdef __ia64
     if (!ret) {
         ret = (VALUE*)rb_ia64_bsp() - th->machine_register_stack_start >
-              th->machine_register_stack_maxsize/sizeof(VALUE) - GC_WATER_MARK;
+              th->machine_register_stack_maxsize/sizeof(VALUE) - water_mark;
     }
 #endif
     return ret;
 }
+
+#define STACKFRAME_FOR_CALL_CFUNC 512
 
 int
 ruby_stack_check(void)
@@ -1308,7 +1311,7 @@ ruby_stack_check(void)
 #if defined(POSIX_SIGNAL) && defined(SIGSEGV) && defined(HAVE_SIGALTSTACK)
     return 0;
 #else
-    return stack_check();
+    return stack_check(STACKFRAME_FOR_CALL_CFUNC);
 #endif
 }
 
@@ -1598,8 +1601,6 @@ rb_gc_mark_maybe(VALUE obj)
     }
 }
 
-#define GC_LEVEL_MAX 250
-
 static void
 gc_mark(rb_objspace_t *objspace, VALUE ptr, int lev)
 {
@@ -1612,7 +1613,7 @@ gc_mark(rb_objspace_t *objspace, VALUE ptr, int lev)
     obj->as.basic.flags |= FL_MARK;
     objspace->heap.live_num++;
 
-    if (lev > GC_LEVEL_MAX || (lev == 0 && stack_check())) {
+    if (lev > GC_LEVEL_MAX || (lev == 0 && stack_check(STACKFRAME_FOR_GC_MARK))) {
 	if (!mark_stack_overflow) {
 	    if (mark_stack_ptr - mark_stack < MARK_STACK_MAX) {
 		*mark_stack_ptr = ptr;
@@ -2360,8 +2361,6 @@ obj_free(rb_objspace_t *objspace, VALUE obj)
 
 #define GC_NOTIFY 0
 
-void rb_vm_mark(void *ptr);
-
 #if STACK_GROW_DIRECTION < 0
 #define GET_STACK_BOUNDS(start, end, appendix) ((start) = STACK_END, (end) = STACK_START)
 #elif STACK_GROW_DIRECTION > 0
@@ -2401,8 +2400,6 @@ mark_current_machine_context(rb_objspace_t *objspace, rb_thread_t *th)
 			 (STACK_START - STACK_END));
 #endif
 }
-
-void rb_gc_mark_encodings(void);
 
 static void
 gc_clear_mark_on_sweep_slots(rb_objspace_t *objspace)
@@ -3318,15 +3315,24 @@ gc_count(VALUE self)
  *  call-seq:
  *     GC.stat -> Hash
  *
- *  Return information about GC.
+ *  Returns a Hash containing information about the GC.
  *
- *  It returns the hash includes information about internal statistisc
- *  about GC such as: {:count => 42, ...}
+ *  The hash includes information about internal statistics about GC such as:
  *
- *  The contents of the returned hash is implementation defined.
- *  It may be changed in future.
+ *    {
+ *      :count          => 18,
+ *      :heap_used      => 77,
+ *      :heap_length    => 77,
+ *      :heap_increment => 0,
+ *      :heap_live_num  => 23287,
+ *      :heap_free_num  => 8115,
+ *      :heap_final_num => 0,
+ *    }
  *
- *  This method is not expected to work except C Ruby.
+ *  The contents of the hash are implementation defined and may be changed in
+ *  the future.
+ *
+ *  This method is only expected to work on C Ruby.
  *
  */
 
@@ -3430,14 +3436,13 @@ gc_profile_record_get(void)
 
 /*
  *  call-seq:
- *     GC::Profiler.result -> string
+ *     GC::Profiler.result -> String
  *
- *  Report profile data to string.
+ *  Returns a profile data report such as:
  *
- *  It returns a string as:
- *   GC 1 invokes.
- *   Index    Invoke Time(sec)       Use Size(byte)     Total Size(byte)         Total Object                    GC time(ms)
- *       1               0.012               159240               212940                10647         0.00000000000001530000
+ *    GC 1 invokes.
+ *    Index    Invoke Time(sec)       Use Size(byte)     Total Size(byte)         Total Object                    GC time(ms)
+ *        1               0.012               159240               212940                10647         0.00000000000001530000
  */
 
 static VALUE
@@ -3495,8 +3500,9 @@ gc_profile_result(void)
 /*
  *  call-seq:
  *     GC::Profiler.report
+ *     GC::Profiler.report io
  *
- *  GC::Profiler.result display
+ *  Writes the GC::Profiler#result to <tt>$stdout</tt> or the given IO object.
  *
  */
 
@@ -3520,7 +3526,7 @@ gc_profile_report(int argc, VALUE *argv, VALUE self)
  *  call-seq:
  *     GC::Profiler.total_time -> float
  *
- *  return total time that GC used. (msec)
+ *  The total time used for garbage collection in milliseconds
  */
 
 static VALUE
@@ -3538,11 +3544,31 @@ gc_profile_total_time(VALUE self)
     return DBL2NUM(time);
 }
 
+/*  Document-class: GC::Profiler
+ *
+ *  The GC profiler provides access to information on GC runs including time,
+ *  length and object space size.
+ *
+ *  Example:
+ *
+ *    GC::Profiler.enable
+ *
+ *    require 'rdoc/rdoc'
+ *
+ *    puts GC::Profiler.result
+ *
+ *    GC::Profiler.disable
+ *
+ *  See also GC.count, GC.malloc_allocated_size and GC.malloc_allocations
+ */
 
 /*
  *  The <code>GC</code> module provides an interface to Ruby's mark and
  *  sweep garbage collection mechanism. Some of the underlying methods
- *  are also available via the <code>ObjectSpace</code> module.
+ *  are also available via the ObjectSpace module.
+ *
+ *  You may obtain information about the operation of the GC through
+ *  GC::Profiler.
  */
 
 void

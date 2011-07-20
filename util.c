@@ -2,7 +2,7 @@
 
   util.c -
 
-  $Author: akr $
+  $Author: kosaki $
   created at: Fri Mar 10 17:22:34 JST 1995
 
   Copyright (C) 1993-2008 Yukihiro Matsumoto
@@ -10,6 +10,7 @@
 **********************************************************************/
 
 #include "ruby/ruby.h"
+#include "internal.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -260,9 +261,6 @@ static const char suffix1[] = ".$$$";
 static const char suffix2[] = ".~~~";
 
 #define strEQ(s1,s2) (strcmp((s1),(s2)) == 0)
-
-extern const char *ruby_find_basename(const char *, long *, long *);
-extern const char *ruby_find_extname(const char *, long *);
 
 void
 ruby_add_suffix(VALUE str, const char *suffix)
@@ -839,7 +837,7 @@ ruby_getcwd(void)
 
 #ifdef DEBUG
 #include "stdio.h"
-#define Bug(x) {fprintf(stderr, "%s\n", (x)); exit(1);}
+#define Bug(x) {fprintf(stderr, "%s\n", (x)); exit(EXIT_FAILURE);}
 #endif
 
 #include "stdlib.h"

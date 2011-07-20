@@ -285,6 +285,7 @@ typedef struct rb_vm_struct {
     VALUE thgroup_default;
 
     int running;
+    int inhibit_thread_creation;
     int thread_abort_on_exception;
     unsigned long trace_flag;
     volatile int sleeper;
@@ -428,7 +429,6 @@ typedef struct rb_thread_struct {
 
     VALUE errinfo;
     VALUE thrown_errinfo;
-    int exec_signal;
 
     rb_atomic_t interrupt_flag;
     rb_thread_lock_t interrupt_lock;
@@ -647,10 +647,14 @@ VALUE rb_vm_make_proc(rb_thread_t *th, const rb_block_t *block, VALUE klass);
 VALUE rb_vm_make_env_object(rb_thread_t *th, rb_control_frame_t *cfp);
 void rb_vm_inc_const_missing_count(void);
 void rb_vm_gvl_destroy(rb_vm_t *vm);
+VALUE rb_vm_call(rb_thread_t *th, VALUE recv, VALUE id, int argc,
+                 const VALUE *argv, const rb_method_entry_t *me);
 
 void rb_thread_start_timer_thread(void);
-void rb_thread_stop_timer_thread(void);
+void rb_thread_stop_timer_thread(int);
 void rb_thread_reset_timer_thread(void);
+void rb_thread_wakeup_timer_thread(void);
+
 int ruby_thread_has_gvl_p(void);
 VALUE rb_make_backtrace(void);
 typedef int rb_backtrace_iter_func(void *, VALUE, int, VALUE);
@@ -658,8 +662,11 @@ int rb_backtrace_each(rb_backtrace_iter_func *iter, void *arg);
 rb_control_frame_t *rb_vm_get_ruby_level_next_cfp(rb_thread_t *th, rb_control_frame_t *cfp);
 int rb_vm_get_sourceline(const rb_control_frame_t *);
 VALUE rb_name_err_mesg_new(VALUE obj, VALUE mesg, VALUE recv, VALUE method);
+void rb_vm_stack_to_heap(rb_thread_t *th);
+void ruby_thread_init_stack(rb_thread_t *th);
 
 NOINLINE(void rb_gc_save_machine_context(rb_thread_t *));
+void rb_gc_mark_machine_stack(rb_thread_t *th);
 
 #define sysstack_error GET_VM()->special_exceptions[ruby_error_sysstack]
 
@@ -695,6 +702,8 @@ void rb_threadptr_check_signal(rb_thread_t *mth);
 void rb_threadptr_signal_raise(rb_thread_t *th, int sig);
 void rb_threadptr_signal_exit(rb_thread_t *th);
 void rb_threadptr_execute_interrupts(rb_thread_t *);
+void rb_threadptr_interrupt(rb_thread_t *th);
+void rb_threadptr_unlock_all_locking_mutexes(rb_thread_t *th);
 
 void rb_thread_lock_unlock(rb_thread_lock_t *);
 void rb_thread_lock_destroy(rb_thread_lock_t *);

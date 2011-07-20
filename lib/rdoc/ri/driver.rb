@@ -344,8 +344,8 @@ Options may also be set in the 'RI' environment variable.
     @stores   = []
 
     RDoc::RI::Paths.each(options[:use_system], options[:use_site],
-                                   options[:use_home], options[:use_gems],
-                                   *options[:extra_doc_dirs]) do |path, type|
+                         options[:use_home], options[:use_gems],
+                         *options[:extra_doc_dirs]) do |path, type|
       @doc_dirs << path
 
       store = RDoc::RI::Store.new path, type
@@ -456,9 +456,13 @@ Options may also be set in the 'RI' environment variable.
     out << RDoc::Markup::Heading.new(1, "#{name}:")
     out << RDoc::Markup::BlankLine.new
 
-    out.push(*methods.map do |method|
-      RDoc::Markup::Verbatim.new method
-    end)
+    if @use_stdout and !@interactive
+      out.push(*methods.map do |method|
+        RDoc::Markup::Verbatim.new method
+      end)
+    else
+      out << RDoc::Markup::IndentedParagraph.new(2, methods.join(', '))
+    end
 
     out << RDoc::Markup::BlankLine.new
   end
@@ -501,100 +505,10 @@ Options may also be set in the 'RI' environment variable.
   end
 
   ##
-  # Hash mapping a known class or module to the stores it can be loaded from
+  # Builds a RDoc::Markup::Document from +found+, +klasess+ and +includes+
 
-  def classes
-    return @classes if @classes
-
-    @classes = {}
-
-    @stores.each do |store|
-      store.cache[:modules].each do |mod|
-        # using default block causes searched-for modules to be added
-        @classes[mod] ||= []
-        @classes[mod] << store
-      end
-    end
-
-    @classes
-  end
-
-  ##
-  # Completes +name+ based on the caches.  For Readline
-
-  def complete name
-    klasses = classes.keys
-    completions = []
-
-    klass, selector, method = parse_name name
-
-    # may need to include Foo when given Foo::
-    klass_name = method ? name : klass
-
-    if name !~ /#|\./ then
-      completions = klasses.grep(/^#{klass_name}[^:]*$/)
-      completions.concat klasses.grep(/^#{name}[^:]*$/) if name =~ /::$/
-
-      completions << klass if classes.key? klass # to complete a method name
-    elsif selector then
-      completions << klass if classes.key? klass
-    elsif classes.key? klass_name then
-      completions << klass_name
-    end
-
-    if completions.include? klass and name =~ /#|\.|::/ then
-      methods = list_methods_matching name
-
-      if not methods.empty? then
-        # remove Foo if given Foo:: and a method was found
-        completions.delete klass
-      elsif selector then
-        # replace Foo with Foo:: as given
-        completions.delete klass
-        completions << "#{klass}#{selector}"
-      end
-
-      completions.push(*methods)
-    end
-
-    completions.sort.uniq
-  end
-
-  ##
-  # Converts +document+ to text and writes it to the pager
-
-  def display document
-    page do |io|
-      text = document.accept formatter(io)
-
-      io.write text
-    end
-  end
-
-  ##
-  # Outputs formatted RI data for class +name+.  Groups undocumented classes
-
-  def display_class name
-    return if name =~ /#|\./
-
-    klasses = []
-    includes = []
-
-    found = @stores.map do |store|
-      begin
-        klass = store.load_class name
-        klasses  << klass
-        includes << [klass.includes, store] if klass.includes
-        [store, klass]
-      rescue Errno::ENOENT
-      end
-    end.compact
-
-    return if found.empty?
-
+  def class_document name, found, klasses, includes
     also_in = []
-
-    includes.reject! do |modules,| modules.empty? end
 
     out = RDoc::Markup::Document.new
 
@@ -651,6 +565,116 @@ Options may also be set in the 'RI' environment variable.
 
     add_also_in out, also_in
 
+    out
+  end
+
+  ##
+  # Hash mapping a known class or module to the stores it can be loaded from
+
+  def classes
+    return @classes if @classes
+
+    @classes = {}
+
+    @stores.each do |store|
+      store.cache[:modules].each do |mod|
+        # using default block causes searched-for modules to be added
+        @classes[mod] ||= []
+        @classes[mod] << store
+      end
+    end
+
+    @classes
+  end
+
+  ##
+  # Returns the stores wherin +name+ is found along with the classes and
+  # includes that match it
+
+  def classes_and_includes_for name
+    klasses = []
+    includes = []
+
+    found = @stores.map do |store|
+      begin
+        klass = store.load_class name
+        klasses  << klass
+        includes << [klass.includes, store] if klass.includes
+        [store, klass]
+      rescue Errno::ENOENT
+      end
+    end.compact
+
+    includes.reject! do |modules,| modules.empty? end
+
+    [found, klasses, includes]
+  end
+
+  ##
+  # Completes +name+ based on the caches.  For Readline
+
+  def complete name
+    klasses = classes.keys
+    completions = []
+
+    klass, selector, method = parse_name name
+
+    # may need to include Foo when given Foo::
+    klass_name = method ? name : klass
+
+    if name !~ /#|\./ then
+      completions = klasses.grep(/^#{Regexp.escape klass_name}[^:]*$/)
+      completions.concat klasses.grep(/^#{Regexp.escape name}[^:]*$/) if
+        name =~ /::$/
+
+      completions << klass if classes.key? klass # to complete a method name
+    elsif selector then
+      completions << klass if classes.key? klass
+    elsif classes.key? klass_name then
+      completions << klass_name
+    end
+
+    if completions.include? klass and name =~ /#|\.|::/ then
+      methods = list_methods_matching name
+
+      if not methods.empty? then
+        # remove Foo if given Foo:: and a method was found
+        completions.delete klass
+      elsif selector then
+        # replace Foo with Foo:: as given
+        completions.delete klass
+        completions << "#{klass}#{selector}"
+      end
+
+      completions.push(*methods)
+    end
+
+    completions.sort.uniq
+  end
+
+  ##
+  # Converts +document+ to text and writes it to the pager
+
+  def display document
+    page do |io|
+      text = document.accept formatter(io)
+
+      io.write text
+    end
+  end
+
+  ##
+  # Outputs formatted RI data for class +name+.  Groups undocumented classes
+
+  def display_class name
+    return if name =~ /#|\./
+
+    found, klasses, includes = classes_and_includes_for name
+
+    return if found.empty?
+
+    out = class_document name, found, klasses, includes
+
     display out
   end
 
@@ -664,32 +688,7 @@ Options may also be set in the 'RI' environment variable.
 
     filtered = filter_methods found, name
 
-    out = RDoc::Markup::Document.new
-
-    out << RDoc::Markup::Heading.new(1, name)
-    out << RDoc::Markup::BlankLine.new
-
-    filtered.each do |store, methods|
-      methods.each do |method|
-        out << RDoc::Markup::Paragraph.new("(from #{store.friendly_path})")
-
-        unless name =~ /^#{Regexp.escape method.parent_name}/ then
-          out << RDoc::Markup::Heading.new(3, "Implementation from #{method.parent_name}")
-        end
-        out << RDoc::Markup::Rule.new(1)
-
-        if method.arglists then
-          arglists = method.arglists.chomp.split "\n"
-          arglists = arglists.map { |line| line + "\n" }
-          out << RDoc::Markup::Verbatim.new(*arglists)
-          out << RDoc::Markup::Rule.new(1)
-        end
-
-        out << RDoc::Markup::BlankLine.new
-        out << method.comment
-        out << RDoc::Markup::BlankLine.new
-      end
-    end
+    out = method_document name, filtered
 
     display out
   end
@@ -731,6 +730,7 @@ Options may also be set in the 'RI' environment variable.
       display_name name
     end
   end
+
   ##
   # Expands abbreviated klass +klass+ into a fully-qualified class.  "Zl::Da"
   # will be expanded to Zlib::DataError.
@@ -996,6 +996,40 @@ Options may also be set in the 'RI' environment variable.
     end
 
     found.reject do |path, methods| methods.empty? end
+  end
+
+  ##
+  # Builds a RDoc::Markup::Document from +found+, +klasess+ and +includes+
+
+  def method_document name, filtered
+    out = RDoc::Markup::Document.new
+
+    out << RDoc::Markup::Heading.new(1, name)
+    out << RDoc::Markup::BlankLine.new
+
+    filtered.each do |store, methods|
+      methods.each do |method|
+        out << RDoc::Markup::Paragraph.new("(from #{store.friendly_path})")
+
+        unless name =~ /^#{Regexp.escape method.parent_name}/ then
+          out << RDoc::Markup::Heading.new(3, "Implementation from #{method.parent_name}")
+        end
+        out << RDoc::Markup::Rule.new(1)
+
+        if method.arglists then
+          arglists = method.arglists.chomp.split "\n"
+          arglists = arglists.map { |line| line + "\n" }
+          out << RDoc::Markup::Verbatim.new(*arglists)
+          out << RDoc::Markup::Rule.new(1)
+        end
+
+        out << RDoc::Markup::BlankLine.new
+        out << method.comment
+        out << RDoc::Markup::BlankLine.new
+      end
+    end
+
+    out
   end
 
   ##

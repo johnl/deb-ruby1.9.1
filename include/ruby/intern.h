@@ -2,7 +2,7 @@
 
   intern.h -
 
-  $Author: nobu $
+  $Author: ko1 $
   created at: Thu Jun 10 14:22:17 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -482,6 +482,8 @@ void rb_write_error(const char*);
 void rb_write_error2(const char*, long);
 void rb_close_before_exec(int lowfd, int maxhint, VALUE noclose_fds);
 int rb_pipe(int *pipes);
+int rb_reserved_fd_p(int fd);
+#define RB_RESERVED_FD_P(fd) rb_reserved_fd_p(fd)
 /* marshal.c */
 VALUE rb_marshal_dump(VALUE, VALUE);
 VALUE rb_marshal_load(VALUE);
@@ -519,6 +521,7 @@ VALUE rb_obj_class(VALUE);
 VALUE rb_class_real(VALUE);
 VALUE rb_class_inherited_p(VALUE, VALUE);
 VALUE rb_class_superclass(VALUE);
+VALUE rb_class_get_superclass(VALUE);
 VALUE rb_convert_type(VALUE,int,const char*,const char*);
 VALUE rb_check_convert_type(VALUE,int,const char*,const char*);
 VALUE rb_check_to_integer(VALUE, const char *);
@@ -805,7 +808,6 @@ void rb_thread_check_ints(void);
 int rb_thread_interrupted(VALUE thval);
 VALUE rb_thread_blocking_region(rb_blocking_function_t *func, void *data1,
 				rb_unblock_function_t *ubf, void *data2);
-VALUE rb_thread_io_blocking_region(rb_blocking_function_t *func, void *data1, int fd);
 #define RUBY_UBF_IO ((rb_unblock_function_t *)-1)
 #define RUBY_UBF_PROCESS ((rb_unblock_function_t *)-1)
 VALUE rb_mutex_new(void);
