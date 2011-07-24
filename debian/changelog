@@ -1,5 +1,6 @@
 ruby1.9.1 (1.9.2.290-1) unstable; urgency=low
 
+  [ Daigo Moriwaki ]
   * New upstream release.
   * Removed debian/patches/110411_disable_osslv2.patch, which has been applied
     by the upstream.
@@ -7,7 +8,11 @@ ruby1.9.1 (1.9.2.290-1) unstable; urgency=low
     which was backported from the upstream (r30993)
     (CVE-2011-0188; Closes: 628450)
 
- -- Daigo Moriwaki <daigo@debian.org>  Sat, 16 Jul 2011 16:29:14 +0900
+  [ Lucas Nussbaum ]
+  * Build-depend on tcl-dev and tk-dev instead of {tcl,tk}8.4-dev.
+  * Update Lucas' email address.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Sun, 24 Jul 2011 21:22:53 +0200
 
 ruby1.9.1 (1.9.2.180-5) unstable; urgency=low
 
