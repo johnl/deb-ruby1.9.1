@@ -15,7 +15,7 @@ ruby1.9.1 (1.9.2.290-1) unstable; urgency=low
     extension to fix test failure.
   * Add patch 110720_tcltk_disable_rpath.diff: disable rpath in tcltk.
 
- -- Lucas Nussbaum <lucas@debian.org>  Sun, 24 Jul 2011 21:22:53 +0200
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 25 Jul 2011 20:27:20 +0200
 
 ruby1.9.1 (1.9.2.180-5) unstable; urgency=low
 
