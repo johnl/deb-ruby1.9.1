@@ -1,0 +1,1143 @@
+Backport 29048 from trunk. Fixes tests-all failure.
+Also backport a few other changes to test_config.rb from the ruby_1_9_3 branch.
+
+commit 15c39b07bd1301cb262b2d697707afb7f203bfd1
+Author: nahi <nahi@b2dd03c8-39d4-4d8f-98ff-823fe69b080e>
+Date:   Thu Aug 19 08:22:31 2010 +0000
+
+            * backport r28621 and r28632 from ruby_1_8;
+    
+              * ext/openssl/ossl_config.c, ext/openssl/lib/openssl/config.rb,
+                ext/openssl/lib/openssl.rb: reimplement OpenSSL::Config in Ruby.
+                Now it should work on windows.
+    
+              * test/openssl/test_config.rb: added tests for OpenSSL::Config#dup.
+    
+              * test/openssl/test_config.rb: added tests for Config#clone.
+    
+    
+    git-svn-id: svn+ssh://ci.ruby-lang.org/ruby/trunk@29048 b2dd03c8-39d4-4d8f-98ff-823fe69b080e
+
+--- a/ext/openssl/lib/openssl.rb
++++ b/ext/openssl/lib/openssl.rb
+@@ -18,6 +18,7 @@ require 'openssl.so'
+ 
+ require 'openssl/bn'
+ require 'openssl/cipher'
++require 'openssl/config'
+ require 'openssl/digest'
+ require 'openssl/ssl-internal'
+ require 'openssl/x509-internal'
+--- /dev/null
++++ b/ext/openssl/lib/openssl/config.rb
+@@ -0,0 +1,316 @@
++=begin
++= Ruby-space definitions that completes C-space funcs for Config
++
++= Info
++  Copyright (C) 2010  Hiroshi Nakamura <nahi@ruby-lang.org>
++
++= Licence
++  This program is licenced under the same licence as Ruby.
++  (See the file 'LICENCE'.)
++
++=end
++
++##
++# Should we care what if somebody require this file directly?
++#require 'openssl'
++require 'stringio'
++
++module OpenSSL
++  class Config
++    include Enumerable
++
++    class << self
++      def parse(str)
++        c = new()
++        parse_config(StringIO.new(str)).each do |section, hash|
++          c[section] = hash
++        end
++        c
++      end
++
++      alias load new
++
++      def parse_config(io)
++        begin
++          parse_config_lines(io)
++        rescue ConfigError => e
++          e.message.replace("error in line #{io.lineno}: " + e.message)
++          raise
++        end
++      end
++
++      def get_key_string(data, section, key) # :nodoc:
++        if v = data[section] && data[section][key]
++          return v
++        elsif section == 'ENV'
++          if v = ENV[key]
++            return v
++          end
++        end
++        if v = data['default'] && data['default'][key]
++          return v
++        end
++      end
++
++    private
++
++      def parse_config_lines(io)
++        section = 'default'
++        data = {section => {}}
++        while definition = get_definition(io)
++          definition = clear_comments(definition)
++          next if definition.empty?
++          if definition[0] == ?[
++            if /\[([^\]]*)\]/ =~ definition
++              section = $1.strip
++              data[section] ||= {}
++            else
++              raise ConfigError, "missing close square bracket"
++            end
++          else
++            if /\A([^:\s]*)(?:::([^:\s]*))?\s*=(.*)\z/ =~ definition
++              if $2
++                section = $1
++                key = $2
++              else
++                key = $1
++              end
++              value = unescape_value(data, section, $3)
++              (data[section] ||= {})[key] = value.strip
++            else
++              raise ConfigError, "missing equal sign"
++            end
++          end
++        end
++        data
++      end
++
++      # escape with backslash
++      QUOTE_REGEXP_SQ = /\A([^'\\]*(?:\\.[^'\\]*)*)'/
++      # escape with backslash and doubled dq
++      QUOTE_REGEXP_DQ = /\A([^"\\]*(?:""[^"\\]*|\\.[^"\\]*)*)"/
++      # escaped char map
++      ESCAPE_MAP = {
++        "r" => "\r",
++        "n" => "\n",
++        "b" => "\b",
++        "t" => "\t",
++      }
++
++      def unescape_value(data, section, value)
++        scanned = []
++        while m = value.match(/['"\\$]/)
++          scanned << m.pre_match
++          c = m[0]
++          value = m.post_match
++          case c
++          when "'"
++            if m = value.match(QUOTE_REGEXP_SQ)
++              scanned << m[1].gsub(/\\(.)/, '\\1')
++              value = m.post_match
++            else
++              break
++            end
++          when '"'
++            if m = value.match(QUOTE_REGEXP_DQ)
++              scanned << m[1].gsub(/""/, '').gsub(/\\(.)/, '\\1')
++              value = m.post_match
++            else
++              break
++            end
++          when "\\"
++            c = value.slice!(0, 1)
++            scanned << (ESCAPE_MAP[c] || c)
++          when "$"
++            ref, value = extract_reference(value)
++            refsec = section
++            if ref.index('::')
++              refsec, ref = ref.split('::', 2)
++            end
++            if v = get_key_string(data, refsec, ref)
++              scanned << v
++            else
++              raise ConfigError, "variable has no value"
++            end
++          else
++            raise 'must not reaced'
++          end
++        end
++        scanned << value
++        scanned.join
++      end
++
++      def extract_reference(value)
++        rest = ''
++        if m = value.match(/\(([^)]*)\)|\{([^}]*)\}/)
++          value = m[1] || m[2]
++          rest = m.post_match
++        elsif [?(, ?{].include?(value[0])
++          raise ConfigError, "no close brace"
++        end
++        if m = value.match(/[a-zA-Z0-9_]*(?:::[a-zA-Z0-9_]*)?/)
++          return m[0], m.post_match + rest
++        else
++          raise
++        end
++      end
++
++      def clear_comments(line)
++        # FCOMMENT
++        if m = line.match(/\A([\t\n\f ]*);.*\z/)
++          return m[1]
++        end
++        # COMMENT
++        scanned = []
++        while m = line.match(/[#'"\\]/)
++          scanned << m.pre_match
++          c = m[0]
++          line = m.post_match
++          case c
++          when '#'
++            line = nil
++            break
++          when "'", '"'
++            regexp = (c == "'") ? QUOTE_REGEXP_SQ : QUOTE_REGEXP_DQ
++            scanned << c
++            if m = line.match(regexp)
++              scanned << m[0]
++              line = m.post_match
++            else
++              scanned << line
++              line = nil
++              break
++            end
++          when "\\"
++            scanned << c
++            scanned << line.slice!(0, 1)
++          else
++            raise 'must not reaced'
++          end
++        end
++        scanned << line
++        scanned.join
++      end
++
++      def get_definition(io)
++        if line = get_line(io)
++          while /[^\\]\\\z/ =~ line
++            if extra = get_line(io)
++              line += extra
++            else
++              break
++            end
++          end
++          return line.strip
++        end
++      end
++
++      def get_line(io)
++        if line = io.gets
++          line.gsub(/[\r\n]*/, '')
++        end
++      end
++    end
++
++    def initialize(filename = nil)
++      @data = {}
++      if filename
++        File.open(filename.to_s) do |file|
++          Config.parse_config(file).each do |section, hash|
++            self[section] = hash
++          end
++        end
++      end
++    end
++
++    def get_value(section, key)
++      if section.nil?
++        raise TypeError.new('nil not allowed')
++      end
++      section = 'default' if section.empty?
++      get_key_string(section, key)
++    end
++
++    def value(arg1, arg2 = nil)
++      warn('Config#value is deprecated; use Config#get_value')
++      if arg2.nil?
++        section, key = 'default', arg1
++      else
++        section, key = arg1, arg2
++      end
++      section ||= 'default'
++      section = 'default' if section.empty?
++      get_key_string(section, key)
++    end
++
++    def add_value(section, key, value)
++      check_modify
++      (@data[section] ||= {})[key] = value
++    end
++
++    def [](section)
++      @data[section] || {}
++    end
++
++    def section(name)
++      warn('Config#section is deprecated; use Config#[]')
++      @data[name] || {}
++    end
++
++    def []=(section, pairs)
++      check_modify
++      @data[section] ||= {}
++      pairs.each do |key, value|
++        self.add_value(section, key, value)
++      end
++    end
++
++    def sections
++      @data.keys
++    end
++
++    def to_s
++      ary = []
++      @data.keys.sort.each do |section|
++        ary << "[ #{section} ]\n"
++        @data[section].keys.each do |key|
++          ary << "#{key}=#{@data[section][key]}\n"
++        end
++        ary << "\n"
++      end
++      ary.join
++    end
++
++    def each
++      @data.each do |section, hash|
++        hash.each do |key, value|
++          yield [section, key, value]
++        end
++      end
++    end
++
++    def inspect
++      "#<#{self.class.name} sections=#{sections.inspect}>"
++    end
++
++  protected
++
++    def data
++      @data
++    end
++
++  private
++
++    def initialize_copy(other)
++      @data = other.data.dup
++    end
++
++    def check_modify
++      raise TypeError.new("Insecure: can't modify OpenSSL config") if frozen?
++    end
++
++    def get_key_string(section, key)
++      Config.get_key_string(@data, section, key)
++    end
++  end
++end
+--- a/ext/openssl/ossl_config.c
++++ b/ext/openssl/ossl_config.c
+@@ -10,22 +10,6 @@
+  */
+ #include "ossl.h"
+ 
+-#define WrapConfig(klass, obj, conf) do { \
+-    if (!conf) { \
+-	ossl_raise(rb_eRuntimeError, "Config wasn't intitialized!"); \
+-    } \
+-    obj = Data_Wrap_Struct(klass, 0, NCONF_free, conf); \
+-} while (0)
+-#define GetConfig(obj, conf) do { \
+-    Data_Get_Struct(obj, CONF, conf); \
+-    if (!conf) { \
+-	ossl_raise(rb_eRuntimeError, "Config wasn't intitialized!"); \
+-    } \
+-} while (0)
+-#define SafeGetConfig(obj, conf) do { \
+-    OSSL_Check_Kind(obj, cConfig); \
+-    GetConfig(obj, conf); \
+-} while(0);
+ 
+ /*
+  * Classes
+@@ -39,46 +23,31 @@ VALUE eConfigError;
+ 
+ static CONF *parse_config(VALUE, CONF*);
+ 
++/*
++ * GetConfigPtr is a public C-level function for getting OpenSSL CONF struct
++ * from an OpenSSL::Config(eConfig) instance.  We decided to implement
++ * OpenSSL::Config in Ruby level but we need to pass native CONF struct for
++ * some OpenSSL features such as X509V3_EXT_*.
++ */
+ CONF *
+ GetConfigPtr(VALUE obj)
+ {
+     CONF *conf;
+-
+-    SafeGetConfig(obj, conf);
+-
+-    return conf;
+-}
+-
+-CONF *
+-DupConfigPtr(VALUE obj)
+-{
+     VALUE str;
+-
+-    OSSL_Check_Kind(obj, cConfig);
+-    str = rb_funcall(obj, rb_intern("to_s"), 0);
+-
+-    return parse_config(str, NULL);
+-}
+-
+-/*
+- * Private
+- */
+-static CONF *
+-parse_config(VALUE str, CONF *dst)
+-{
+-    CONF *conf;
+     BIO *bio;
+     long eline = -1;
+ 
++    OSSL_Check_Kind(obj, cConfig);
++    str = rb_funcall(obj, rb_intern("to_s"), 0);
+     bio = ossl_obj2bio(str);
+-    conf = dst ? dst : NCONF_new(NULL);
++    conf = NCONF_new(NULL);
+     if(!conf){
+ 	BIO_free(bio);
+ 	ossl_raise(eConfigError, NULL);
+     }
+     if(!NCONF_load_bio(conf, bio, &eline)){
+ 	BIO_free(bio);
+-	if(!dst) NCONF_free(conf);
++	NCONF_free(conf);
+ 	if (eline <= 0) ossl_raise(eConfigError, "wrong config format");
+ 	else ossl_raise(eConfigError, "error in line %d", eline);
+ 	ossl_raise(eConfigError, NULL);
+@@ -88,376 +57,6 @@ parse_config(VALUE str, CONF *dst)
+     return conf;
+ }
+ 
+-static VALUE
+-ossl_config_s_parse(VALUE klass, VALUE str)
+-{
+-    CONF *conf;
+-    VALUE obj;
+-
+-    conf = parse_config(str, NULL);
+-    WrapConfig(klass, obj, conf);
+-
+-    return obj;
+-}
+-
+-static VALUE
+-ossl_config_s_alloc(VALUE klass)
+-{
+-    CONF *conf;
+-    VALUE obj;
+-
+-    if(!(conf = NCONF_new(NULL)))
+-	ossl_raise(eConfigError, NULL);
+-    WrapConfig(klass, obj, conf);
+-
+-    return obj;
+-}
+-
+-static VALUE
+-ossl_config_copy(VALUE self, VALUE other)
+-{
+-    VALUE str;
+-    CONF *conf;
+-
+-    str = rb_funcall(self, rb_intern("to_s"), 0);
+-    GetConfig(other, conf);
+-    parse_config(str, conf);
+-
+-    return self;
+-}
+-
+-static VALUE
+-ossl_config_initialize(int argc, VALUE *argv, VALUE self)
+-{
+-    CONF *conf;
+-    long eline = -1;
+-    char *filename;
+-    VALUE path;
+-
+-    rb_scan_args(argc, argv, "01", &path);
+-    if(!NIL_P(path)){
+-	SafeStringValue(path);
+-        filename = StringValuePtr(path);
+-	GetConfig(self, conf);
+-	if (!NCONF_load(conf, filename, &eline)){
+-	    if (eline <= 0)
+-		ossl_raise(eConfigError, "wrong config file %s", filename);
+-	    else
+-		ossl_raise(eConfigError, "error in %s:%d", filename, eline);
+-        }
+-    }
+-#ifdef OSSL_NO_CONF_API
+-    else rb_raise(rb_eArgError, "wrong number of arguments (0 for 1)");
+-#else
+-    else {
+-	GetConfig(self, conf);
+-	_CONF_new_data(conf);
+-    }
+-#endif
+-
+-    return self;
+-}
+-
+-static VALUE
+-ossl_config_add_value(VALUE self, VALUE section, VALUE name, VALUE value)
+-{
+-#ifdef OSSL_NO_CONF_API
+-    rb_notimplement();
+-#else
+-    CONF *conf;
+-    CONF_VALUE *sv, *cv;
+-
+-    StringValue(section);
+-    StringValue(name);
+-    StringValue(value);
+-    GetConfig(self, conf);
+-    if(!(sv = _CONF_get_section(conf, RSTRING_PTR(section)))){
+-	if(!(sv = _CONF_new_section(conf, RSTRING_PTR(section)))){
+-	    ossl_raise(eConfigError, NULL);
+-	}
+-    }
+-    if(!(cv = OPENSSL_malloc(sizeof(CONF_VALUE)))){
+-	ossl_raise(eConfigError, NULL);
+-    }
+-    cv->name = BUF_strdup(RSTRING_PTR(name));
+-    cv->value = BUF_strdup(RSTRING_PTR(value));
+-    if(!cv->name || !cv->value || !_CONF_add_string(conf, sv, cv)){
+-	OPENSSL_free(cv->name);
+-	OPENSSL_free(cv->value);
+-	OPENSSL_free(cv);
+-	ossl_raise(eConfigError, "_CONF_add_string failure");
+-    }
+-
+-    return value;
+-#endif
+-}
+-
+-static void
+-rb_ossl_config_modify_check(VALUE config)
+-{
+-    if (OBJ_FROZEN(config)) rb_error_frozen("OpenSSL::Config");
+-    if (!OBJ_UNTRUSTED(config) && rb_safe_level() >= 4)
+-	rb_raise(rb_eSecurityError, "Insecure: can't modify OpenSSL config");
+-}
+-
+-#if !defined(OSSL_NO_CONF_API)
+-static VALUE
+-ossl_config_add_value_m(VALUE self, VALUE section, VALUE name, VALUE value)
+-{
+-    rb_ossl_config_modify_check(self);
+-    return ossl_config_add_value(self, section, name, value);
+-}
+-#else
+-#define ossl_config_add_value_m rb_f_notimplement
+-#endif
+-
+-static VALUE
+-ossl_config_get_value(VALUE self, VALUE section, VALUE name)
+-{
+-    CONF *conf;
+-    char *str;
+-
+-    StringValue(section);
+-    StringValue(name);
+-    GetConfig(self, conf);
+-    str = NCONF_get_string(conf, RSTRING_PTR(section), RSTRING_PTR(name));
+-    if(!str){
+-	ERR_clear_error();
+-	return Qnil;
+-    }
+-
+-    return rb_str_new2(str);
+-}
+-
+-static VALUE
+-ossl_config_get_value_old(int argc, VALUE *argv, VALUE self)
+-{
+-    VALUE section, name;
+-
+-    rb_scan_args(argc, argv, "11", &section, &name);
+-
+-    /* support conf.value(nil, "HOME") -> conf.get_value("", "HOME") */
+-    if (NIL_P(section)) section = rb_str_new2("");
+-    /* support conf.value("HOME") -> conf.get_value("", "HOME") */
+-    if (NIL_P(name)) {
+-	name = section;
+-	section = rb_str_new2("");
+-    }
+-    /* NOTE: Don't care about conf.get_value(nil, nil) */
+-    rb_warn("Config#value is deprecated; use Config#get_value");
+-    return ossl_config_get_value(self, section, name);
+-}
+-
+-static VALUE
+-set_conf_section_i(VALUE i, VALUE *arg)
+-{
+-    VALUE name, value;
+-
+-    Check_Type(i, T_ARRAY);
+-    name = rb_ary_entry(i, 0);
+-    value = rb_ary_entry(i, 1);
+-    ossl_config_add_value(arg[0], arg[1], name, value);
+-
+-    return Qnil;
+-}
+-
+-static VALUE
+-ossl_config_set_section(VALUE self, VALUE section, VALUE hash)
+-{
+-    VALUE arg[2];
+-
+-    rb_ossl_config_modify_check(self);
+-    arg[0] = self;
+-    arg[1] = section;
+-    rb_block_call(hash, rb_intern("each"), 0, 0, set_conf_section_i, (VALUE)arg);
+-    return hash;
+-}
+-
+-/*
+- * Get all numbers as strings - use str.to_i to convert
+- * long number = CONF_get_number(confp->config, sect, StringValuePtr(item));
+- */
+-static VALUE
+-ossl_config_get_section(VALUE self, VALUE section)
+-{
+-    CONF *conf;
+-    STACK_OF(CONF_VALUE) *sk;
+-    CONF_VALUE *entry;
+-    int i, entries;
+-    VALUE hash;
+-
+-    hash = rb_hash_new();
+-    StringValue(section);
+-    GetConfig(self, conf);
+-    if (!(sk = NCONF_get_section(conf, StringValuePtr(section)))) {
+-	ERR_clear_error();
+-	return hash;
+-    }
+-    if ((entries = sk_CONF_VALUE_num(sk)) < 0) {
+-	OSSL_Debug("# of items in section is < 0?!?");
+-	return hash;
+-    }
+-    for (i=0; i<entries; i++) {
+-	entry = sk_CONF_VALUE_value(sk, i);
+-	rb_hash_aset(hash, rb_str_new2(entry->name), rb_str_new2(entry->value));
+-    }
+-
+-    return hash;
+-}
+-
+-static VALUE
+-ossl_config_get_section_old(VALUE self, VALUE section)
+-{
+-    rb_warn("Config#section is deprecated; use Config#[]");
+-    return ossl_config_get_section(self, section);
+-}
+-
+-#if defined(IMPLEMENT_LHASH_DOALL_ARG_FN) && defined(LHASH_OF)
+-static void
+-get_conf_section_doall_arg(CONF_VALUE *cv, void *tmp)
+-{
+-    VALUE ary = (VALUE)tmp;
+-    if(cv->name) return;
+-    rb_ary_push(ary, rb_str_new2(cv->section));
+-}
+-
+-static IMPLEMENT_LHASH_DOALL_ARG_FN(get_conf_section, CONF_VALUE, void)
+-
+-static VALUE
+-ossl_config_get_sections(VALUE self)
+-{
+-    CONF *conf;
+-    VALUE ary;
+-
+-    GetConfig(self, conf);
+-    ary = rb_ary_new();
+-    lh_doall_arg((_LHASH *)conf->data, LHASH_DOALL_ARG_FN(get_conf_section),
+-		 (void*)ary);
+-
+-    return ary;
+-}
+-
+-static void
+-dump_conf_value_doall_arg(CONF_VALUE *cv, void *tmp)
+-{
+-    VALUE str = (VALUE)tmp;
+-    STACK_OF(CONF_VALUE) *sk;
+-    CONF_VALUE *v;
+-    int i, num;
+-
+-    if (cv->name) return;
+-    sk = (STACK_OF(CONF_VALUE)*)cv->value;
+-    num = sk_CONF_VALUE_num(sk);
+-    rb_str_cat2(str, "[ ");
+-    rb_str_cat2(str, cv->section);
+-    rb_str_cat2(str, " ]\n");
+-    for(i = 0; i < num; i++){
+-	v = sk_CONF_VALUE_value(sk, i);
+-	rb_str_cat2(str, v->name ? v->name : "None");
+-	rb_str_cat2(str, "=");
+-	rb_str_cat2(str, v->value ? v->value : "None");
+-	rb_str_cat2(str, "\n");
+-    }
+-    rb_str_cat2(str, "\n");
+-}
+-
+-static IMPLEMENT_LHASH_DOALL_ARG_FN(dump_conf_value, CONF_VALUE, void)
+-
+-static VALUE
+-dump_conf(CONF *conf)
+-{
+-    VALUE str;
+-
+-    str = rb_str_new(0, 0);
+-    lh_doall_arg((_LHASH *)conf->data, LHASH_DOALL_ARG_FN(dump_conf_value),
+-		 (void*)str);
+-
+-    return str;
+-}
+-
+-static VALUE
+-ossl_config_to_s(VALUE self)
+-{
+-    CONF *conf;
+-
+-    GetConfig(self, conf);
+-
+-    return dump_conf(conf);
+-}
+-
+-static void
+-each_conf_value_doall_arg(CONF_VALUE *cv, void *dummy)
+-{
+-    STACK_OF(CONF_VALUE) *sk;
+-    CONF_VALUE *v;
+-    VALUE section, name, value, args;
+-    int i, num;
+-
+-    if (cv->name) return;
+-    sk = (STACK_OF(CONF_VALUE)*)cv->value;
+-    num = sk_CONF_VALUE_num(sk);
+-    section = rb_str_new2(cv->section);
+-    for(i = 0; i < num; i++){
+-	v = sk_CONF_VALUE_value(sk, i);
+-	name = v->name ? rb_str_new2(v->name) : Qnil;
+-	value = v->value ? rb_str_new2(v->value) : Qnil;
+-        args = rb_ary_new3(3, section, name, value);
+-	rb_yield(args);
+-    }
+-}
+-
+-static IMPLEMENT_LHASH_DOALL_ARG_FN(each_conf_value, CONF_VALUE, void *)
+-
+-static VALUE
+-ossl_config_each(VALUE self)
+-{
+-    CONF *conf;
+-
+-    RETURN_ENUMERATOR(self, 0, 0);
+-
+-    GetConfig(self, conf);
+-    lh_doall_arg((_LHASH *)conf->data, LHASH_DOALL_ARG_FN(each_conf_value),
+-		 (void*)NULL);
+-
+-    return self;
+-}
+-#else
+-static VALUE
+-ossl_config_get_sections(VALUE self)
+-{
+-    rb_warn("#sections don't work with %s", OPENSSL_VERSION_TEXT);
+-    return rb_ary_new();
+-}
+-
+-static VALUE
+-ossl_config_to_s(VALUE self)
+-{
+-    rb_warn("#to_s don't work with %s", OPENSSL_VERSION_TEXT);
+-    return rb_str_new(0, 0);
+-}
+-
+-static VALUE
+-ossl_config_each(VALUE self)
+-{
+-    rb_warn("#each don't work with %s", OPENSSL_VERSION_TEXT);
+-    return self;
+-}
+-#endif
+-
+-static VALUE
+-ossl_config_inspect(VALUE self)
+-{
+-    VALUE str, ary = ossl_config_get_sections(self);
+-    const char *cname = rb_class2name(rb_obj_class(self));
+-
+-    str = rb_str_new2("#<");
+-    rb_str_cat2(str, cname);
+-    rb_str_cat2(str, " sections=");
+-    rb_str_append(str, rb_inspect(ary));
+-    rb_str_cat2(str, ">");
+-
+-    return str;
+-}
+ 
+ /*
+  * INIT
+@@ -473,20 +72,5 @@ Init_ossl_config()
+     rb_define_const(cConfig, "DEFAULT_CONFIG_FILE",
+ 		    rb_str_new2(default_config_file));
+     OPENSSL_free(default_config_file);
+-    rb_include_module(cConfig, rb_mEnumerable);
+-    rb_define_singleton_method(cConfig, "parse", ossl_config_s_parse, 1);
+-    rb_define_alias(CLASS_OF(cConfig), "load", "new");
+-    rb_define_alloc_func(cConfig, ossl_config_s_alloc);
+-    rb_define_copy_func(cConfig, ossl_config_copy);
+-    rb_define_method(cConfig, "initialize", ossl_config_initialize, -1);
+-    rb_define_method(cConfig, "get_value", ossl_config_get_value, 2);
+-    rb_define_method(cConfig, "value", ossl_config_get_value_old, -1);
+-    rb_define_method(cConfig, "add_value", ossl_config_add_value_m, 3);
+-    rb_define_method(cConfig, "[]", ossl_config_get_section, 1);
+-    rb_define_method(cConfig, "section", ossl_config_get_section_old, 1);
+-    rb_define_method(cConfig, "[]=", ossl_config_set_section, 2);
+-    rb_define_method(cConfig, "sections", ossl_config_get_sections, 0);
+-    rb_define_method(cConfig, "to_s", ossl_config_to_s, 0);
+-    rb_define_method(cConfig, "each", ossl_config_each, 0);
+-    rb_define_method(cConfig, "inspect", ossl_config_inspect, 0);
++    /* methods are defined by openssl/config.rb */
+ }
+--- a/test/openssl/test_config.rb
++++ b/test/openssl/test_config.rb
+@@ -1,16 +1,288 @@
+-require 'openssl'
+-require "test/unit"
++require_relative 'utils'
+ 
+ class OpenSSL::TestConfig < Test::Unit::TestCase
++  def setup
++    file = Tempfile.open("openssl.cnf")
++    file << <<__EOD__
++HOME = .
++[ ca ]
++default_ca = CA_default
++[ CA_default ]
++dir = ./demoCA
++certs                =                  ./certs
++__EOD__
++    file.close
++    @it = OpenSSL::Config.new(file.path)
++  end
++
++  def test_constants
++    assert(defined?(OpenSSL::Config::DEFAULT_CONFIG_FILE))
++    assert_nothing_raised do
++      OpenSSL::Config.load(OpenSSL::Config::DEFAULT_CONFIG_FILE)
++    end
++  end
++
++  def test_s_parse
++    c = OpenSSL::Config.parse('')
++    assert_equal("[ default ]\n\n", c.to_s)
++    c = OpenSSL::Config.parse(@it.to_s)
++    assert_equal(['CA_default', 'ca', 'default'], c.sections.sort)
++  end
++
++  def test_s_parse_format
++    c = OpenSSL::Config.parse(<<__EOC__)
++ baz =qx\t                # "baz = qx"
++
++foo::bar = baz            # shortcut section::key format
++  default::bar = baz      # ditto
++a=\t \t                   # "a = ": trailing spaces are ignored
++ =b                       # " = b": empty key
++ =c                       # " = c": empty key (override the above line)
++    d=                    # "c = ": trailing comment is ignored
++
++sq = 'foo''b\\'ar'
++    dq ="foo""''\\""
++    dq2 = foo""bar
++esc=a\\r\\n\\b\\tb
++foo\\bar = foo\\b\\\\ar
++foo\\bar::foo\\bar = baz
++[default1  default2]\t\t  # space is allowed in section name
++          fo =b  ar       # space allowed in value
++[emptysection]
++ [doller ]
++foo=bar
++bar = $(foo)
++baz = 123$(default::bar)456${foo}798
++qux = ${baz}
++quxx = $qux.$qux
++__EOC__
++    assert_equal(['default', 'default1  default2', 'doller', 'emptysection', 'foo', 'foo\\bar'], c.sections.sort)
++    assert_equal(['', 'a', 'bar', 'baz', 'd', 'dq', 'dq2', 'esc', 'foo\\bar', 'sq'], c['default'].keys.sort)
++    assert_equal('c', c['default'][''])
++    assert_equal('', c['default']['a'])
++    assert_equal('qx', c['default']['baz'])
++    assert_equal('', c['default']['d'])
++    assert_equal('baz', c['default']['bar'])
++    assert_equal("foob'ar", c['default']['sq'])
++    assert_equal("foo''\"", c['default']['dq'])
++    assert_equal("foobar", c['default']['dq2'])
++    assert_equal("a\r\n\b\tb", c['default']['esc'])
++    assert_equal("foo\b\\ar", c['default']['foo\\bar'])
++    assert_equal('baz', c['foo']['bar'])
++    assert_equal('baz', c['foo\\bar']['foo\\bar'])
++    assert_equal('b  ar', c['default1  default2']['fo'])
++
++    # dolloer
++    assert_equal('bar', c['doller']['foo'])
++    assert_equal('bar', c['doller']['bar'])
++    assert_equal('123baz456bar798', c['doller']['baz'])
++    assert_equal('123baz456bar798', c['doller']['qux'])
++    assert_equal('123baz456bar798.123baz456bar798', c['doller']['quxx'])
++
++    excn = assert_raise(OpenSSL::ConfigError) do
++      OpenSSL::Config.parse("foo = $bar")
++    end
++    assert_equal("error in line 1: variable has no value", excn.message)
++
++    excn = assert_raise(OpenSSL::ConfigError) do
++      OpenSSL::Config.parse("foo = $(bar")
++    end
++    assert_equal("error in line 1: no close brace", excn.message)
++
++    excn = assert_raise(OpenSSL::ConfigError) do
++      OpenSSL::Config.parse("f o =b  ar      # no space in key")
++    end
++    assert_equal("error in line 1: missing equal sign", excn.message)
++
++    excn = assert_raise(OpenSSL::ConfigError) do
++      OpenSSL::Config.parse(<<__EOC__)
++# comment 1               # comments
++
++#
++ # comment 2
++\t#comment 3
++  [second    ]\t
++[third                    # section not terminated
++__EOC__
++    end
++    assert_equal("error in line 7: missing close square bracket", excn.message)
++  end
++
++  def test_s_load
++    # alias of new
++    c = OpenSSL::Config.load
++    assert_equal("", c.to_s)
++    assert_equal([], c.sections)
++    #
++    file = Tempfile.open("openssl.cnf")
++    file.close
++    c = OpenSSL::Config.load(file.path)
++    assert_equal("[ default ]\n\n", c.to_s)
++    assert_equal(['default'], c.sections)
++  end
++
++  def test_initialize
++    c = OpenSSL::Config.new
++    assert_equal("", c.to_s)
++    assert_equal([], c.sections)
++  end
++
++  def test_initialize_with_empty_file
++    file = Tempfile.open("openssl.cnf")
++    file.close
++    c = OpenSSL::Config.new(file.path)
++    assert_equal("[ default ]\n\n", c.to_s)
++    assert_equal(['default'], c.sections)
++  end
++
++  def test_initialize_with_example_file
++    assert_equal(['CA_default', 'ca', 'default'], @it.sections.sort)
++  end
++
++  def test_get_value
++    assert_equal('CA_default', @it.get_value('ca', 'default_ca'))
++    assert_equal(nil, @it.get_value('ca', 'no such key'))
++    assert_equal(nil, @it.get_value('no such section', 'no such key'))
++    assert_equal('.', @it.get_value('', 'HOME'))
++    assert_raise(TypeError) do
++      @it.get_value(nil, 'HOME') # not allowed unlike Config#value
++    end
++    # fallback to 'default' ugly...
++    assert_equal('.', @it.get_value('unknown', 'HOME'))
++  end
++
++  def test_get_value_ENV
++    key = ENV.keys.first
++    assert_not_nil(key) # make sure we have at least one ENV var.
++    assert_equal(ENV[key], @it.get_value('ENV', key))
++  end
++
++  def test_value
++    # supress deprecation warnings
++    OpenSSL::TestUtils.silent do
++      assert_equal('CA_default', @it.value('ca', 'default_ca'))
++      assert_equal(nil, @it.value('ca', 'no such key'))
++      assert_equal(nil, @it.value('no such section', 'no such key'))
++      assert_equal('.', @it.value('', 'HOME'))
++      assert_equal('.', @it.value(nil, 'HOME'))
++      assert_equal('.', @it.value('HOME'))
++      # fallback to 'default' ugly...
++      assert_equal('.', @it.value('unknown', 'HOME'))
++    end
++  end
++
++  def test_value_ENV
++    OpenSSL::TestUtils.silent do
++      key = ENV.keys.first
++      assert_not_nil(key) # make sure we have at least one ENV var.
++      assert_equal(ENV[key], @it.value('ENV', key))
++    end
++  end
++
++  def test_aref
++    assert_equal({'HOME' => '.'}, @it['default'])
++    assert_equal({'dir' => './demoCA', 'certs' => './certs'}, @it['CA_default'])
++    assert_equal({}, @it['no_such_section'])
++    assert_equal({}, @it[''])
++  end
++
++  def test_section
++    OpenSSL::TestUtils.silent do
++      assert_equal({'HOME' => '.'}, @it.section('default'))
++      assert_equal({'dir' => './demoCA', 'certs' => './certs'}, @it.section('CA_default'))
++      assert_equal({}, @it.section('no_such_section'))
++      assert_equal({}, @it.section(''))
++    end
++  end
++
++  def test_sections
++    assert_equal(['CA_default', 'ca', 'default'], @it.sections.sort)
++    @it['new_section'] = {'foo' => 'bar'}
++    assert_equal(['CA_default', 'ca', 'default', 'new_section'], @it.sections.sort)
++    @it['new_section'] = {}
++    assert_equal(['CA_default', 'ca', 'default', 'new_section'], @it.sections.sort)
++  end
++
++  def test_add_value
++    c = OpenSSL::Config.new
++    assert_equal("", c.to_s)
++    # add key
++    c.add_value('default', 'foo', 'bar')
++    assert_equal("[ default ]\nfoo=bar\n\n", c.to_s)
++    # add another key
++    c.add_value('default', 'baz', 'qux')
++    assert_equal('bar', c['default']['foo'])
++    assert_equal('qux', c['default']['baz'])
++    # update the value
++    c.add_value('default', 'baz', 'quxxx')
++    assert_equal('bar', c['default']['foo'])
++    assert_equal('quxxx', c['default']['baz'])
++    # add section and key
++    c.add_value('section', 'foo', 'bar')
++    assert_equal('bar', c['default']['foo'])
++    assert_equal('quxxx', c['default']['baz'])
++    assert_equal('bar', c['section']['foo'])
++  end
++
++  def test_aset
++    @it['foo'] = {'bar' => 'baz'}
++    assert_equal({'bar' => 'baz'}, @it['foo'])
++    @it['foo'] = {'bar' => 'qux', 'baz' => 'quxx'}
++    assert_equal({'bar' => 'qux', 'baz' => 'quxx'}, @it['foo'])
++
++    # OpenSSL::Config is add only for now.
++    @it['foo'] = {'foo' => 'foo'}
++    assert_equal({'foo' => 'foo', 'bar' => 'qux', 'baz' => 'quxx'}, @it['foo'])
++    # you cannot override or remove any section and key.
++    @it['foo'] = {}
++    assert_equal({'foo' => 'foo', 'bar' => 'qux', 'baz' => 'quxx'}, @it['foo'])
++  end
++
++  def test_each
++    # each returns [section, key, value] array.
++    ary = @it.map { |e| e }.sort { |a, b| a[0] <=> b[0] }
++    assert_equal(4, ary.size)
++    assert_equal('CA_default', ary[0][0])
++    assert_equal('CA_default', ary[1][0])
++    assert_equal(["ca", "default_ca", "CA_default"], ary[2])
++    assert_equal(["default", "HOME", "."], ary[3])
++  end
++
++  def test_to_s
++    c = OpenSSL::Config.parse("[empty]\n")
++    assert_equal("[ default ]\n\n[ empty ]\n\n", c.to_s)
++  end
++
++  def test_inspect
++    assert_match(/#<OpenSSL::Config sections=\[.*\]>/, @it.inspect)
++  end
++
+   def test_freeze
+-    skip "need an argument for OpenSSL::Config.new on Windows" if /mswin|mingw/ =~ RUBY_PLATFORM
+     c = OpenSSL::Config.new
+     c['foo'] = [['key', 'value']]
+     c.freeze
+ 
+-    # [ruby-core:18377]
+-    assert_raise(RuntimeError, /frozen/) do
++    bug = '[ruby-core:18377]'
++    # RuntimeError for 1.9, TypeError for 1.8
++    e = assert_raise(TypeError, bug) do
+       c['foo'] = [['key', 'wrong']]
+     end
++    assert_match(/can't modify/, e.message, bug)
++  end
++
++  def test_dup
++    assert(!@it.sections.empty?)
++    c = @it.dup
++    assert_equal(@it.sections.sort, c.sections.sort)
++    @it['newsection'] = {'a' => 'b'}
++    assert_not_equal(@it.sections.sort, c.sections.sort)
++  end
++
++  def test_clone
++    assert(!@it.sections.empty?)
++    c = @it.clone
++    assert_equal(@it.sections.sort, c.sections.sort)
++    @it['newsection'] = {'a' => 'b'}
++    assert_not_equal(@it.sections.sort, c.sections.sort)
+   end
+-end
++end if defined?(OpenSSL)
+--- a/test/openssl/utils.rb
++++ b/test/openssl/utils.rb
+@@ -132,4 +132,13 @@ Q1VB8qkJN7rA7/2HrCR3gTsWNb1YhAsnFsoeRscC
+     pkvalue   = publickey.value
+     OpenSSL::Digest::SHA1.hexdigest(pkvalue).scan(/../).join(":").upcase
+   end
++
++  def silent
++    begin
++      back, $VERBOSE = $VERBOSE, nil
++      yield
++    ensure
++      $VERBOSE = back if back
++    end
++  end
+ end

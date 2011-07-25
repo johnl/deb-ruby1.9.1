@@ -26,3 +26,4 @@
 20100829-rubygems_disable_update_system.diff
 20100829-rubygems_default_dir.diff
 110716-bigdecimal
+110825-ossl-config.diff

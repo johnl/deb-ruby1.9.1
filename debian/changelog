@@ -11,6 +11,8 @@ ruby1.9.1 (1.9.2.290-1) unstable; urgency=low
   [ Lucas Nussbaum ]
   * Build-depend on tcl-dev and tk-dev instead of {tcl,tk}8.4-dev.
   * Update Lucas' email address.
+  * Add 110825-ossl-config.diff: backport changes to the OpenSSL
+    extension to fix test failure.
 
  -- Lucas Nussbaum <lucas@debian.org>  Sun, 24 Jul 2011 21:22:53 +0200
 
