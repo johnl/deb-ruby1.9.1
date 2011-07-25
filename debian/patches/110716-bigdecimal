@@ -1,3 +1,5 @@
+Backport to fix CVE-2011-0188; Closes: 628450
+
 Index: ruby1.9.1/ext/bigdecimal/bigdecimal.c
 ===================================================================
 --- ruby1.9.1.orig/ext/bigdecimal/bigdecimal.c	2011-07-16 16:27:11.000000000 +0900
