@@ -1,3 +1,9 @@
+ruby1.9.1 (1.9.2.290-2) unstable; urgency=low
+
+  * Add -fno-tree-sra on armel. Same workaround as for ruby1.8 (see #634260)
+
+ -- Lucas Nussbaum <lucas@debian.org>  Tue, 26 Jul 2011 15:23:12 +0200
+
 ruby1.9.1 (1.9.2.290-1) unstable; urgency=low
 
   [ Daigo Moriwaki ]
