@@ -1,3 +1,9 @@
+ruby1.9.1 (1.9.3~preview1-1) experimental; urgency=low
+
+  * New upstream version: 1.9.3 preview 1.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 01 Aug 2011 16:30:48 +0200
+
 ruby1.9.1 (1.9.2.180+svn32566-1) experimental; urgency=low
 
   * New SVN snapshot based on revision 32566 from the ruby_1_9_3 branch.
