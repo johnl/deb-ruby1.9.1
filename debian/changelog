@@ -1,8 +1,11 @@
 ruby1.9.1 (1.9.3~preview1-1) experimental; urgency=low
 
   * New upstream version: 1.9.3 preview 1.
+  * debian/patches/20100829-rubygems_default_dir.diff: refreshed patch.
+  * debian/patches/20100829-rubygems_disable_update_system.diff: refreshed patch.
+  * Add 110801-ftbfs-ia64-missing-semicolon.diff. Fixes FTBFS on ia64.
 
- -- Lucas Nussbaum <lucas@debian.org>  Mon, 01 Aug 2011 16:30:48 +0200
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 01 Aug 2011 16:59:35 +0200
 
 ruby1.9.1 (1.9.2.180+svn32566-1) experimental; urgency=low
 
