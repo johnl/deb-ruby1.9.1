@@ -43,10 +43,6 @@ class TestBigDecimal < Test::Unit::TestCase
                  "Expected #{x.inspect} to be negative zero")
   end
 
-  def test_version
-    assert_equal("1.0.1", BigDecimal.ver)
-  end
-
   def test_global_new
     assert_equal(1, BigDecimal("1"))
     assert_equal(1, BigDecimal("1", 1))
@@ -72,6 +68,19 @@ class TestBigDecimal < Test::Unit::TestCase
     assert_raise(ArgumentError) { BigDecimal(0.1) }
     assert_raise(ArgumentError) { BigDecimal(0.1, Float::DIG + 2) }
     assert_nothing_raised { BigDecimal(0.1, Float::DIG + 1) }
+  end
+
+  def test_global_new_with_big_decimal
+    assert_equal(BigDecimal(1), BigDecimal(BigDecimal(1)))
+    assert_equal(BigDecimal('+0'), BigDecimal(BigDecimal('+0')))
+    assert_equal(BigDecimal('-0'), BigDecimal(BigDecimal('-0')))
+    BigDecimal.save_exception_mode do
+      BigDecimal.mode(BigDecimal::EXCEPTION_OVERFLOW, false)
+      BigDecimal.mode(BigDecimal::EXCEPTION_NaN, false)
+      assert_positive_infinite(BigDecimal(BigDecimal('Infinity')))
+      assert_negative_infinite(BigDecimal(BigDecimal('-Infinity')))
+      assert_nan(BigDecimal(BigDecimal('NaN')))
+    end
   end
 
   def test_new
@@ -109,6 +118,19 @@ class TestBigDecimal < Test::Unit::TestCase
     assert_raise(ArgumentError) { BigDecimal.new(0.1) }
     assert_raise(ArgumentError) { BigDecimal.new(0.1, Float::DIG + 2) }
     assert_nothing_raised { BigDecimal.new(0.1, Float::DIG + 1) }
+  end
+
+  def test_new_with_big_decimal
+    assert_equal(BigDecimal(1), BigDecimal.new(BigDecimal(1)))
+    assert_equal(BigDecimal('+0'), BigDecimal.new(BigDecimal('+0')))
+    assert_equal(BigDecimal('-0'), BigDecimal.new(BigDecimal('-0')))
+    BigDecimal.save_exception_mode do
+      BigDecimal.mode(BigDecimal::EXCEPTION_OVERFLOW, false)
+      BigDecimal.mode(BigDecimal::EXCEPTION_NaN, false)
+      assert_positive_infinite(BigDecimal.new(BigDecimal('Infinity')))
+      assert_negative_infinite(BigDecimal.new(BigDecimal('-Infinity')))
+      assert_nan(BigDecimal(BigDecimal.new('NaN')))
+    end
   end
 
   def _test_mode(type)

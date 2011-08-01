@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_bio.c 31166 2011-03-24 07:29:21Z naruse $
+ * $Id: ossl_bio.c 32591 2011-07-20 22:11:56Z akr $
  * 'OpenSSL for Ruby' team members
  * Copyright (C) 2003
  * All rights reserved.
@@ -28,6 +28,7 @@ ossl_obj2bio(VALUE obj)
 	if ((fd = dup(FPTR_TO_FD(fptr))) < 0){
 	    rb_sys_fail(0);
 	}
+        rb_update_max_fd(fd);
 	if (!(fp = fdopen(fd, "r"))){
 	    close(fd);
 	    rb_sys_fail(0);

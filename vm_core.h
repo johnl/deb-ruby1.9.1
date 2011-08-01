@@ -383,6 +383,12 @@ struct rb_unblock_callback {
 
 struct rb_mutex_struct;
 
+#ifdef SIGSTKSZ
+#define ALT_STACK_SIZE (SIGSTKSZ*2)
+#else
+#define ALT_STACK_SIZE (4*1024)
+#endif
+
 typedef struct rb_thread_struct {
     VALUE self;
     rb_vm_t *vm;
@@ -649,6 +655,8 @@ void rb_vm_inc_const_missing_count(void);
 void rb_vm_gvl_destroy(rb_vm_t *vm);
 VALUE rb_vm_call(rb_thread_t *th, VALUE recv, VALUE id, int argc,
                  const VALUE *argv, const rb_method_entry_t *me);
+void rb_unlink_method_entry(rb_method_entry_t *me);
+void rb_gc_mark_unlinked_live_method_entries(void *pvm);
 
 void rb_thread_start_timer_thread(void);
 void rb_thread_stop_timer_thread(int);

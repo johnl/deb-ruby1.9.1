@@ -1,9 +1,2 @@
-module OpenSSL
-  module X509
-    class StoreContext
-      def cleanup
-        warn "(#{caller.first}) OpenSSL::X509::StoreContext#cleanup is deprecated with no replacement" if $VERBOSE
-      end
-    end
-  end
-end
+warn 'deprecated openssl/x509 use: require "openssl" instead of "openssl/x509"'
+require 'openssl'

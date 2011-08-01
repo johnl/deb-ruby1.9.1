@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_hmac.c 31166 2011-03-24 07:29:21Z naruse $
+ * $Id: ossl_hmac.c 32610 2011-07-22 04:17:39Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -70,8 +70,8 @@ ossl_hmac_initialize(VALUE self, VALUE key, VALUE digest)
 
     StringValue(key);
     GetHMAC(self, ctx);
-    HMAC_Init_ex(ctx, RSTRING_PTR(key), RSTRING_LENINT(key),
-		 GetDigestPtr(digest), NULL);
+    HMAC_Init(ctx, RSTRING_PTR(key), RSTRING_LENINT(key),
+		 GetDigestPtr(digest));
 
     return self;
 }
@@ -180,7 +180,7 @@ ossl_hmac_reset(VALUE self)
     HMAC_CTX *ctx;
 
     GetHMAC(self, ctx);
-    HMAC_Init_ex(ctx, NULL, 0, NULL, NULL);
+    HMAC_Init(ctx, NULL, 0, NULL);
 
     return self;
 }

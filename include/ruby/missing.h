@@ -3,7 +3,7 @@
   missing.h - prototype for *.c in ./missing, and
   	      for missing timeval struct
 
-  $Author: nobu $
+  $Author: naruse $
   created at: Sat May 11 23:46:03 JST 2002
 
 ************************************************/
@@ -49,6 +49,11 @@ struct timezone {
     int tz_minuteswest;
     int tz_dsttime;
 };
+#endif
+
+#if defined(HAVE___SYSCALL) && defined(__APPLE__)
+/* Mac OS X has __syscall but doen't defined in headers */
+off_t __syscall(quad_t number, ...);
 #endif
 
 #ifdef RUBY_EXPORT

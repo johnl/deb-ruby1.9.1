@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_ssl.c 32344 2011-06-30 20:20:32Z nobu $
+ * $Id: ossl_ssl.c 32660 2011-07-25 04:36:42Z nahi $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2000-2002  GOTOU Yuuzou <gotoyuzo@notwork.org>
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
@@ -983,7 +983,8 @@ ossl_ssl_shutdown(SSL *ssl)
 	    if (rc = SSL_shutdown(ssl))
 		break;
 	}
-        SSL_clear(ssl);
+	ERR_clear_error();
+	SSL_clear(ssl);
     }
 }
 

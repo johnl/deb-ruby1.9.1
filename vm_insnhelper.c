@@ -2,7 +2,7 @@
 
   vm_insnhelper.c - instruction helper functions.
 
-  $Author: ko1 $
+  $Author: kosaki $
 
   Copyright (C) 2007 Koichi Sasada
 
@@ -387,7 +387,7 @@ call_cfunc(VALUE (*func)(), VALUE recv,
 
 static inline VALUE
 vm_call_cfunc(rb_thread_t *th, volatile rb_control_frame_t *reg_cfp,
-	      int num, VALUE recv, const rb_block_t *blockptr,
+	      int num, volatile VALUE recv, const rb_block_t *blockptr,
 	      const rb_method_entry_t *me)
 {
     volatile VALUE val = 0;

@@ -2,7 +2,7 @@
 
   enum.c -
 
-  $Author: nobu $
+  $Author: naruse $
   created at: Fri Oct  1 15:15:19 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -521,7 +521,6 @@ inject_op_i(VALUE i, VALUE p, int argc, VALUE *argv)
  *     enum.inject(sym)          -> obj
  *     enum.inject(initial) {| memo, obj | block }  -> obj
  *     enum.inject          {| memo, obj | block }  -> obj
- *
  *     enum.reduce(initial, sym) -> obj
  *     enum.reduce(sym)          -> obj
  *     enum.reduce(initial) {| memo, obj | block }  -> obj

@@ -2,7 +2,7 @@
 
   gc.c -
 
-  $Author: drbrain $
+  $Author: mame $
   created at: Tue Oct  5 09:44:46 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -2460,6 +2460,8 @@ gc_marks(rb_objspace_t *objspace)
     rb_mark_generic_ivar_tbl();
 
     rb_gc_mark_parser();
+
+    rb_gc_mark_unlinked_live_method_entries(th->vm);
 
     /* gc_mark objects whose marking are not completed*/
     while (!MARK_STACK_EMPTY) {

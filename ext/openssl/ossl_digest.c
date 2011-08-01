@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_digest.c 32045 2011-06-13 04:09:04Z emboss $
+ * $Id: ossl_digest.c 32607 2011-07-22 02:25:06Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -68,7 +68,9 @@ ossl_digest_new(const EVP_MD *md)
 
     ret = ossl_digest_alloc(cDigest);
     GetDigest(ret, ctx);
-    EVP_DigestInit_ex(ctx, md, NULL);
+    if (EVP_DigestInit_ex(ctx, md, NULL) != 1) {
+	ossl_raise(eDigestError, "Digest initialization failed.");
+    }
 
     return ret;
 }
@@ -122,7 +124,9 @@ ossl_digest_initialize(int argc, VALUE *argv, VALUE self)
     if (!NIL_P(data)) StringValue(data);
 
     GetDigest(self, ctx);
-    EVP_DigestInit_ex(ctx, md, NULL);
+    if (EVP_DigestInit_ex(ctx, md, NULL) != 1) {
+	ossl_raise(eDigestError, "Digest initialization failed.");
+    }
 
     if (!NIL_P(data)) return ossl_digest_update(self, data);
     return self;
@@ -159,7 +163,9 @@ ossl_digest_reset(VALUE self)
     EVP_MD_CTX *ctx;
 
     GetDigest(self, ctx);
-    EVP_DigestInit_ex(ctx, EVP_MD_CTX_md(ctx), NULL);
+    if (EVP_DigestInit_ex(ctx, EVP_MD_CTX_md(ctx), NULL) != 1) {
+	ossl_raise(eDigestError, "Digest initialization failed.");
+    }
 
     return self;
 }
