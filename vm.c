@@ -2,7 +2,7 @@
 
   vm.c -
 
-  $Author: drbrain $
+  $Author: ktsj $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -854,6 +854,10 @@ rb_vm_cref(void)
 {
     rb_thread_t *th = GET_THREAD();
     rb_control_frame_t *cfp = rb_vm_get_ruby_level_next_cfp(th, th->cfp);
+
+    if (cfp == 0) {
+	rb_raise(rb_eRuntimeError, "Can't call on top of Fiber or Thread");
+    }
     return vm_get_cref(cfp->iseq, cfp->lfp, cfp->dfp);
 }
 
@@ -875,6 +879,9 @@ rb_vm_cbase(void)
     rb_thread_t *th = GET_THREAD();
     rb_control_frame_t *cfp = rb_vm_get_ruby_level_next_cfp(th, th->cfp);
 
+    if (cfp == 0) {
+	rb_raise(rb_eRuntimeError, "Can't call on top of Fiber or Thread");
+    }
     return vm_get_cbase(cfp->iseq, cfp->lfp, cfp->dfp);
 }
 
@@ -1754,7 +1761,7 @@ thread_free(void *ptr)
 	else {
 #ifdef USE_SIGALTSTACK
 	    if (th->altstack) {
-		free(th->altstack);
+		xfree(th->altstack);
 	    }
 #endif
 	    ruby_xfree(ptr);
@@ -1826,6 +1833,9 @@ th_init(rb_thread_t *th, VALUE self)
     th->self = self;
 
     /* allocate thread stack */
+#ifdef USE_SIGALTSTACK
+    th->altstack = xmalloc(ALT_STACK_SIZE);
+#endif
     th->stack_size = RUBY_VM_THREAD_STACK_SIZE;
     th->stack = thread_recycle_stack(th->stack_size);
 
@@ -1967,6 +1977,10 @@ m_core_set_postexe(VALUE self, VALUE iseqval)
 	rb_thread_t *th = GET_THREAD();
 	rb_control_frame_t *cfp = rb_vm_get_ruby_level_next_cfp(th, th->cfp);
 	VALUE proc;
+
+	if (cfp == 0) {
+	    rb_bug("m_core_set_postexe: unreachable");
+	}
 
 	GetISeqPtr(iseqval, blockiseq);
 

@@ -2,7 +2,7 @@
 
   intern.h -
 
-  $Author: ko1 $
+  $Author: akr $
   created at: Thu Jun 10 14:22:17 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -484,6 +484,7 @@ void rb_close_before_exec(int lowfd, int maxhint, VALUE noclose_fds);
 int rb_pipe(int *pipes);
 int rb_reserved_fd_p(int fd);
 #define RB_RESERVED_FD_P(fd) rb_reserved_fd_p(fd)
+void rb_update_max_fd(int fd);
 /* marshal.c */
 VALUE rb_marshal_dump(VALUE, VALUE);
 VALUE rb_marshal_load(VALUE);

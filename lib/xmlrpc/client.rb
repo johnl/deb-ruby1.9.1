@@ -268,7 +268,7 @@ Note: Inherited methods from class (({Object})) cannot be used as XML-RPC names,
 
 
 = History
-    $Id: client.rb 25189 2009-10-02 12:04:37Z akr $
+    $Id: client.rb 32668 2011-07-25 13:25:27Z nahi $
 
 =end
 
@@ -493,7 +493,7 @@ module XMLRPC
       else
         a =  "#@user"
         a << ":#@password" if @password != nil
-        @auth = ("Basic " + [a].pack("m")).chomp
+        @auth = "Basic " + [a].pack("m0")
       end
     end
 

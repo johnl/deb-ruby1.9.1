@@ -2,7 +2,7 @@
 
   ruby.c -
 
-  $Author: nobu $
+  $Author: akr $
   created at: Tue Aug 10 12:47:31 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -1527,6 +1527,7 @@ load_file_internal(VALUE arg)
 	if ((fd = open(fname, mode)) < 0) {
 	    rb_load_fail(fname);
 	}
+        rb_update_max_fd(fd);
 
 	f = rb_io_fdopen(fd, mode, fname);
     }

@@ -2,7 +2,7 @@
 
   proc.c - Proc, Binding, Env
 
-  $Author: akr $
+  $Author: mame $
   created at: Wed Jan 17 12:13:14 2007
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -18,7 +18,8 @@ struct METHOD {
     VALUE recv;
     VALUE rclass;
     ID id;
-    rb_method_entry_t me;
+    rb_method_entry_t *me;
+    struct unlinked_method_entry_list_entry *ume;
 };
 
 VALUE rb_cUnboundMethod;
@@ -860,18 +861,17 @@ bm_mark(void *ptr)
     struct METHOD *data = ptr;
     rb_gc_mark(data->rclass);
     rb_gc_mark(data->recv);
-    rb_mark_method_entry(&data->me);
+    if (data->me) rb_mark_method_entry(data->me);
 }
 
 static void
 bm_free(void *ptr)
 {
     struct METHOD *data = ptr;
-    rb_method_definition_t *def = data->me.def;
-    if (def->alias_count == 0)
-	xfree(def);
-    else if (def->alias_count > 0)
-	def->alias_count--;
+    struct unlinked_method_entry_list_entry *ume = data->ume;
+    ume->me = data->me;
+    ume->next = GET_VM()->unlinked_method_entry_list;
+    GET_VM()->unlinked_method_entry_list = ume;
     xfree(ptr);
 }
 
@@ -977,8 +977,10 @@ mnew(VALUE klass, VALUE obj, ID id, VALUE mclass, int scope)
     data->recv = obj;
     data->rclass = rclass;
     data->id = rid;
-    data->me = *me;
-    if (def) def->alias_count++;
+    data->me = ALLOC(rb_method_entry_t);
+    *data->me = *me;
+    data->me->def->alias_count++;
+    data->ume = ALLOC(struct unlinked_method_entry_list_entry);
 
     OBJ_INFECT(method, klass);
 
@@ -1032,7 +1034,7 @@ method_eq(VALUE method, VALUE other)
     m1 = (struct METHOD *)DATA_PTR(method);
     m2 = (struct METHOD *)DATA_PTR(other);
 
-    if (!rb_method_entry_eq(&m1->me, &m2->me) ||
+    if (!rb_method_entry_eq(m1->me, m2->me) ||
 	m1->rclass != m2->rclass ||
 	m1->recv != m2->recv) {
 	return Qfalse;
@@ -1057,7 +1059,7 @@ method_hash(VALUE method)
     TypedData_Get_Struct(method, struct METHOD, &method_data_type, m);
     hash = rb_hash_start((st_index_t)m->rclass);
     hash = rb_hash_uint(hash, (st_index_t)m->recv);
-    hash = rb_hash_uint(hash, (st_index_t)m->me.def);
+    hash = rb_hash_uint(hash, (st_index_t)m->me->def);
     hash = rb_hash_end(hash);
 
     return INT2FIX(hash);
@@ -1083,9 +1085,11 @@ method_unbind(VALUE obj)
 				   &method_data_type, data);
     data->recv = Qundef;
     data->id = orig->id;
-    data->me = orig->me;
-    if (orig->me.def) orig->me.def->alias_count++;
+    data->me = ALLOC(rb_method_entry_t);
+    *data->me = *orig->me;
+    if (orig->me->def) orig->me->def->alias_count++;
     data->rclass = orig->rclass;
+    data->ume = ALLOC(struct unlinked_method_entry_list_entry);
     OBJ_INFECT(method, obj);
 
     return method;
@@ -1136,7 +1140,7 @@ method_owner(VALUE obj)
     struct METHOD *data;
 
     TypedData_Get_Struct(obj, struct METHOD, &method_data_type, data);
-    return data->me.klass;
+    return data->me->klass;
 }
 
 /*
@@ -1311,7 +1315,7 @@ rb_mod_define_method(int argc, VALUE *argv, VALUE mod)
 			 rb_class2name(rclass));
 	    }
 	}
-	rb_method_entry_set(mod, id, &method->me, noex);
+	rb_method_entry_set(mod, id, method->me, noex);
     }
     else if (rb_obj_is_proc(body)) {
 	rb_proc_t *proc;
@@ -1382,7 +1386,10 @@ method_clone(VALUE self)
     clone = TypedData_Make_Struct(CLASS_OF(self), struct METHOD, &method_data_type, data);
     CLONESETUP(clone, self);
     *data = *orig;
-    if (data->me.def) data->me.def->alias_count++;
+    data->me = ALLOC(rb_method_entry_t);
+    *data->me = *orig->me;
+    if (data->me->def) data->me->def->alias_count++;
+    data->ume = ALLOC(struct unlinked_method_entry_list_entry);
 
     return clone;
 }
@@ -1423,7 +1430,7 @@ rb_method_call(int argc, VALUE *argv, VALUE method)
 	rb_thread_t *th = GET_THREAD();
 
 	PASS_PASSED_BLOCK_TH(th);
-	result = rb_vm_call(th, data->recv, data->id,  argc, argv, &data->me);
+	result = rb_vm_call(th, data->recv, data->id,  argc, argv, data->me);
     }
     POP_TAG();
     if (safe >= 0)
@@ -1544,9 +1551,12 @@ umethod_bind(VALUE method, VALUE recv)
 
     method = TypedData_Make_Struct(rb_cMethod, struct METHOD, &method_data_type, bound);
     *bound = *data;
-    if (bound->me.def) bound->me.def->alias_count++;
+    bound->me = ALLOC(rb_method_entry_t);
+    *bound->me = *data->me;
+    if (bound->me->def) bound->me->def->alias_count++;
     bound->recv = recv;
     bound->rclass = CLASS_OF(recv);
+    data->ume = ALLOC(struct unlinked_method_entry_list_entry);
 
     return method;
 }
@@ -1641,7 +1651,7 @@ method_arity(VALUE method)
     struct METHOD *data;
 
     TypedData_Get_Struct(method, struct METHOD, &method_data_type, data);
-    return rb_method_entry_arity(&data->me);
+    return rb_method_entry_arity(data->me);
 }
 
 int
@@ -1663,7 +1673,7 @@ method_get_def(VALUE method)
     struct METHOD *data;
 
     TypedData_Get_Struct(method, struct METHOD, &method_data_type, data);
-    return data->me.def;
+    return data->me->def;
 }
 
 static rb_iseq_t *
@@ -1746,11 +1756,11 @@ method_inspect(VALUE method)
     rb_str_buf_cat2(str, s);
     rb_str_buf_cat2(str, ": ");
 
-    if (FL_TEST(data->me.klass, FL_SINGLETON)) {
-	VALUE v = rb_iv_get(data->me.klass, "__attached__");
+    if (FL_TEST(data->me->klass, FL_SINGLETON)) {
+	VALUE v = rb_iv_get(data->me->klass, "__attached__");
 
 	if (data->recv == Qundef) {
-	    rb_str_buf_append(str, rb_inspect(data->me.klass));
+	    rb_str_buf_append(str, rb_inspect(data->me->klass));
 	}
 	else if (data->recv == v) {
 	    rb_str_buf_append(str, rb_inspect(v));
@@ -1766,15 +1776,15 @@ method_inspect(VALUE method)
     }
     else {
 	rb_str_buf_cat2(str, rb_class2name(data->rclass));
-	if (data->rclass != data->me.klass) {
+	if (data->rclass != data->me->klass) {
 	    rb_str_buf_cat2(str, "(");
-	    rb_str_buf_cat2(str, rb_class2name(data->me.klass));
+	    rb_str_buf_cat2(str, rb_class2name(data->me->klass));
 	    rb_str_buf_cat2(str, ")");
 	}
     }
     rb_str_buf_cat2(str, sharp);
-    rb_str_append(str, rb_id2str(data->me.def->original_id));
-    if (data->me.def->type == VM_METHOD_TYPE_NOTIMPLEMENTED) {
+    rb_str_append(str, rb_id2str(data->me->def->original_id));
+    if (data->me->def->type == VM_METHOD_TYPE_NOTIMPLEMENTED) {
         rb_str_buf_cat2(str, " (not-implemented)");
     }
     rb_str_buf_cat2(str, ">");
