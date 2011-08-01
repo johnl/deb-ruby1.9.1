@@ -1,6 +1,6 @@
 --- a/lib/rubygems/defaults.rb
 +++ b/lib/rubygems/defaults.rb
-@@ -23,8 +23,13 @@ module Gem
+@@ -17,8 +17,13 @@ module Gem
    ##
    # Default home directory path to be used if an alternate value is not
    # specified in the environment
@@ -14,7 +14,7 @@
      path = if defined? RUBY_FRAMEWORK_VERSION then
               [
                 File.dirname(ConfigMap[:sitedir]),
-@@ -83,8 +88,12 @@ module Gem
+@@ -77,8 +82,12 @@ module Gem
  
    ##
    # The default directory for binaries
