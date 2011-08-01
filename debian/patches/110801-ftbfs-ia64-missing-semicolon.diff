@@ -1,0 +1,40 @@
+Backport from upstream, ruby_1_9_3 branch (post preview1)
+
+commit c6fcfd6da48cad4a82abe52de3af6d5f269566c1
+Author: naruse <naruse@b2dd03c8-39d4-4d8f-98ff-823fe69b080e>
+Date:   Sun Jul 31 20:22:03 2011 +0000
+
+    merge revision(s) 32582:
+    
+    	* cont.c (cont_save_thread): fix missing semicolon.
+    
+    
+    git-svn-id: svn+ssh://ci.ruby-lang.org/ruby/branches/ruby_1_9_3@32790 b2dd03c8-39d4-4d8f-98ff-823fe69b080e
+
+diff --git a/ChangeLog b/ChangeLog
+index 34929d3..c5beee9 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,7 @@
++Mon Aug  1 05:21:42 2011  TAKANO Mitsuhiro (takano32)  <tak@no32.tk>
++
++	* cont.c (cont_save_thread): fix missing semicolon.
++
+ Sun Jul 31 22:57:16 2011  Yuki Sonoda (Yugui)  <yugui@yugui.jp>
+ 
+ 	* enc/Makefile.in (ECHO1): Same as the recent fix in common.mk.
+diff --git a/cont.c b/cont.c
+index 9092061..d44afaa 100644
+--- a/cont.c
++++ b/cont.c
+@@ -382,8 +382,8 @@ cont_save_thread(rb_context_t *cont, rb_thread_t *th)
+     cont->saved_thread.machine_stack_start = 0;
+     cont->saved_thread.machine_stack_end = 0;
+ #ifdef __ia64
+-    cont->saved_thread.machine_register_stack_start = 0
+-    cont->saved_thread.machine_register_stack_end = 0
++    cont->saved_thread.machine_register_stack_start = 0;
++    cont->saved_thread.machine_register_stack_end = 0;
+ #endif
+ }
+ 
