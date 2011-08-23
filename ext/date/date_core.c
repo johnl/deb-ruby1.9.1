@@ -4089,6 +4089,9 @@ d_new_by_frags(VALUE klass, VALUE hash, VALUE sg)
 	rb_warning("invalid start is ignored");
     }
 
+    if (NIL_P(hash))
+	rb_raise(rb_eArgError, "invalid date");
+
     if (NIL_P(ref_hash("jd")) &&
 	NIL_P(ref_hash("yday")) &&
 	!NIL_P(ref_hash("year")) &&
@@ -6606,30 +6609,39 @@ static VALUE
 mk_inspect_raw(union DateData *x, const char *klass)
 {
     if (simple_dat_p(x)) {
+	VALUE nth, flags;
+
+	RB_GC_GUARD(nth) = f_inspect(x->s.nth);
+	RB_GC_GUARD(flags) = mk_inspect_flags(x);
+
 	return rb_enc_sprintf(rb_usascii_encoding(),
 			      "#<%s: "
 			      "(%sth,%dj),+0s,%.0fj; "
 			      "%dy%dm%dd; %s>",
 			      klass ? klass : "?",
-			      RSTRING_PTR(f_inspect(x->s.nth)),
-			      x->s.jd, x->s.sg,
+			      RSTRING_PTR(nth), x->s.jd, x->s.sg,
 #ifndef USE_PACK
 			      x->s.year, x->s.mon, x->s.mday,
 #else
 			      x->s.year,
 			      EX_MON(x->s.pc), EX_MDAY(x->s.pc),
 #endif
-			      RSTRING_PTR(mk_inspect_flags(x)));
+			      RSTRING_PTR(flags));
     }
     else {
+	VALUE nth, sf, flags;
+
+	RB_GC_GUARD(nth) = f_inspect(x->c.nth);
+	RB_GC_GUARD(sf) = f_inspect(x->c.sf);
+	RB_GC_GUARD(flags) = mk_inspect_flags(x);
+
 	return rb_enc_sprintf(rb_usascii_encoding(),
 			      "#<%s: "
 			      "(%sth,%dj,%ds,%sn),%+ds,%.0fj; "
 			      "%dy%dm%dd %dh%dm%ds; %s>",
 			      klass ? klass : "?",
-			      RSTRING_PTR(f_inspect(x->c.nth)),
-			      x->c.jd, x->c.df,
-			      RSTRING_PTR(f_inspect(x->c.sf)),
+			      RSTRING_PTR(nth), x->c.jd, x->c.df,
+			      RSTRING_PTR(sf),
 			      x->c.of, x->c.sg,
 #ifndef USE_PACK
 			      x->c.year, x->c.mon, x->c.mday,
@@ -6640,7 +6652,7 @@ mk_inspect_raw(union DateData *x, const char *klass)
 			      EX_HOUR(x->c.pc), EX_MIN(x->c.pc),
 			      EX_SEC(x->c.pc),
 #endif
-			      RSTRING_PTR(mk_inspect_flags(x)));
+			      RSTRING_PTR(flags));
     }
 }
 
@@ -6655,12 +6667,16 @@ d_lite_inspect_raw(VALUE self)
 static VALUE
 mk_inspect(union DateData *x, const char *klass, const char *to_s)
 {
+    VALUE jd, sf;
+
+    RB_GC_GUARD(jd) = f_inspect(m_real_jd(x));
+    RB_GC_GUARD(sf) = f_inspect(m_sf(x));
+
     return rb_enc_sprintf(rb_usascii_encoding(),
 			  "#<%s: %s ((%sj,%ds,%sn),%+ds,%.0fj)>",
 			  klass ? klass : "?",
 			  to_s ? to_s : "?",
-			  RSTRING_PTR(f_inspect(m_real_jd(x))), m_df(x),
-			  RSTRING_PTR(f_inspect(m_sf(x))),
+			  RSTRING_PTR(jd), m_df(x), RSTRING_PTR(sf),
 			  m_of(x), m_sg(x));
 }
 
@@ -6682,8 +6698,12 @@ static VALUE
 d_lite_inspect(VALUE self)
 {
     get_d1(self);
-    return mk_inspect(dat, rb_obj_classname(self),
-		      RSTRING_PTR(f_to_s(self)));
+    {
+	VALUE to_s;
+
+	RB_GC_GUARD(to_s) = f_to_s(self);
+	return mk_inspect(dat, rb_obj_classname(self), RSTRING_PTR(to_s));
+    }
 }
 
 #include <errno.h>
@@ -6718,8 +6738,12 @@ date_strftime_alloc(char **buf, const char *format,
 	 * if the buffer is 1024 times bigger than the length of the
 	 * format string, it's not failing for lack of room.
 	 */
-	if (len > 0 || size >= 1024 * flen) break;
+	if (len > 0) break;
 	xfree(*buf);
+	if (size >= 1024 * flen) {
+	    rb_sys_fail(format);
+	    break;
+	}
     }
     return len;
 }
@@ -7852,6 +7876,9 @@ dt_new_by_frags(VALUE klass, VALUE hash, VALUE sg)
 	sg = INT2FIX(DEFAULT_SG);
 	rb_warning("invalid start is ignored");
     }
+
+    if (NIL_P(hash))
+	rb_raise(rb_eArgError, "invalid date");
 
     if (NIL_P(ref_hash("jd")) &&
 	NIL_P(ref_hash("yday")) &&

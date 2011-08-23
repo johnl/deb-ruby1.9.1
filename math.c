@@ -2,7 +2,7 @@
 
   math.c -
 
-  $Author: yugui $
+  $Author: ngoto $
   created at: Tue Jan 25 14:12:56 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -14,8 +14,9 @@
 #include <math.h>
 #include <errno.h>
 
-#if defined(HAVE_SIGNBIT) && defined(__GNUC__) && defined(__sun__)
-    extern int signbit(double x);
+#if defined(HAVE_SIGNBIT) && defined(__GNUC__) && defined(__sun__) && \
+    !defined(signbit)
+    extern int signbit(double);
 #endif
 
 #define numberof(array) (int)(sizeof(array) / sizeof((array)[0]))

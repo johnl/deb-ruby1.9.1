@@ -2,7 +2,7 @@
 
   gc.c -
 
-  $Author: mame $
+  $Author: nari $
   created at: Tue Oct  5 09:44:46 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -1085,6 +1085,15 @@ static void
 init_heap(rb_objspace_t *objspace)
 {
     add_heap_slots(objspace, HEAP_MIN_SLOTS / HEAP_OBJ_LIMIT);
+#ifdef USE_SIGALTSTACK
+    {
+	/* altstack of another threads are allocated in another place */
+	rb_thread_t *th = GET_THREAD();
+	void *tmp = th->altstack;
+	th->altstack = malloc(ALT_STACK_SIZE);
+	free(tmp); /* free previously allocated area */
+    }
+#endif
 
     heaps_inc = 0;
     objspace->profile.invoke_time = getrusage_time();
@@ -2163,6 +2172,12 @@ gc_lazy_sweep(rb_objspace_t *objspace)
         }
         after_gc_sweep(objspace);
     }
+    else {
+        if (heaps_increment(objspace)) {
+            during_gc = 0;
+            return TRUE;
+        }
+    }
 
     gc_marks(objspace);
 
@@ -2408,6 +2423,7 @@ gc_clear_mark_on_sweep_slots(rb_objspace_t *objspace)
     RVALUE *p, *pend;
 
     if (objspace->heap.sweep_slots) {
+        while (heaps_increment(objspace));
         while (objspace->heap.sweep_slots) {
             scan = objspace->heap.sweep_slots;
             p = scan->slot; pend = p + scan->limit;

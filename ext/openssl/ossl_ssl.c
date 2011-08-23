@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_ssl.c 32660 2011-07-25 04:36:42Z nahi $
+ * $Id: ossl_ssl.c 32975 2011-08-15 01:20:27Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2000-2002  GOTOU Yuuzou <gotoyuzo@notwork.org>
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
@@ -1996,6 +1996,9 @@ Init_ossl_ssl()
     ossl_ssl_def_const(OP_NO_TLSv1);
 #if defined(SSL_OP_NO_TICKET)
     ossl_ssl_def_const(OP_NO_TICKET);
+#endif
+#if defined(SSL_OP_NO_COMPRESSION)
+    ossl_ssl_def_const(OP_NO_COMPRESSION);
 #endif
     ossl_ssl_def_const(OP_PKCS1_CHECK_1);
     ossl_ssl_def_const(OP_PKCS1_CHECK_2);

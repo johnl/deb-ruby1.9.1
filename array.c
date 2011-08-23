@@ -2,7 +2,7 @@
 
   array.c -
 
-  $Author: nobu $
+  $Author: shyouhei $
   created at: Fri Aug  6 09:46:12 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -3591,7 +3591,7 @@ rb_ary_uniq(VALUE ary)
  *
  *  Removes +nil+ elements from the array.
  *  Returns +nil+ if no changes were made, otherwise returns
- *  </i>ary</i>.
+ *  <i>ary</i>.
  *
  *     [ "a", nil, "b", nil, "c" ].compact! #=> [ "a", "b", "c" ]
  *     [ "a", "b", "c" ].compact!           #=> nil

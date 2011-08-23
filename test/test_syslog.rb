@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # $RoughId: test.rb,v 1.9 2002/02/25 08:20:14 knu Exp $
-# $Id: test_syslog.rb 31178 2011-03-25 11:06:57Z shyouhei $
+# $Id: test_syslog.rb 32887 2011-08-07 15:11:03Z kosaki $
 
 # Please only run this test on machines reasonable for testing.
 # If in doubt, ask your admin.
@@ -115,6 +115,10 @@ class TestSyslog < Test::Unit::TestCase
     Syslog.close if Syslog.opened?
   end
 
+  def syslog_line_regex(ident, message)
+    /(?:^| )#{Regexp.quote(ident)}(?:\[([1-9][0-9]*)\])?(?: |[: ].* )#{Regexp.quote(message)}$/
+  end
+
   def test_log
     stderr = IO::pipe
 
@@ -145,11 +149,23 @@ class TestSyslog < Test::Unit::TestCase
     return unless Syslog.const_defined?(:LOG_PERROR)
 
     2.times {
-      assert_equal("syslog_test: test1 - hello, world!\n", stderr[0].gets)
+      re = syslog_line_regex("syslog_test", "test1 - hello, world!")
+      line = stderr[0].gets
+      m = re.match(line)
+      assert_not_nil(m)
+      if m[1]
+        # pid is written regardless of LOG_PID on OS X 10.7+
+        assert_equal(pid, m[1].to_i)
+      end
     }
 
     2.times {
-      assert_equal(format("syslog_test[%d]: test2 - pid\n", pid), stderr[0].gets)
+      re = syslog_line_regex("syslog_test", "test2 - pid")
+      line = stderr[0].gets
+      m = re.match(line)
+      assert_not_nil(m)
+      assert_not_nil(m[1])
+      assert_equal(pid, m[1].to_i)
     }
   end
 

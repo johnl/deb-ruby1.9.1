@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey.c 32344 2011-06-30 20:20:32Z nobu $
+ * $Id: ossl_pkey.c 32989 2011-08-16 20:06:13Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -370,11 +370,11 @@ Init_ossl_pkey()
     /* Document-class: OpenSSL::PKey::PKey
      *
      * An abstract class that bundles signature creation (PKey#sign) and
-     * validation (PKey#verify) that is common to all implementations:
+     * validation (PKey#verify) that is common to all implementations except
+     * OpenSSL::PKey::DH
      * * OpenSSL::PKey::RSA
      * * OpenSSL::PKey::DSA
      * * OpenSSL::PKey::EC
-     * * OpenSSL::PKey::DH
      */
     cPKey = rb_define_class_under(mPKey, "PKey", rb_cObject);
 

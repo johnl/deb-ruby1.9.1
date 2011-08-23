@@ -1,5 +1,5 @@
 /* -*- C -*-
- * $Id: cptr.c 28676 2010-07-18 07:31:54Z nobu $
+ * $Id: cptr.c 32983 2011-08-16 00:51:58Z drbrain $
  */
 
 #include <ruby/ruby.h>
@@ -617,6 +617,11 @@ Init_dlptr(void)
 {
     id_to_ptr = rb_intern("to_ptr");
 
+    /* Document-class: DL::CPtr
+     *
+     * CPtr is a class to handle C pointers
+     *
+     */
     rb_cDLCPtr = rb_define_class_under(rb_mDL, "CPtr", rb_cObject);
     rb_define_alloc_func(rb_cDLCPtr, rb_dlptr_s_allocate);
     rb_define_singleton_method(rb_cDLCPtr, "malloc", rb_dlptr_s_malloc, -1);
@@ -646,5 +651,9 @@ Init_dlptr(void)
     rb_define_method(rb_cDLCPtr, "size", rb_dlptr_size_get, 0);
     rb_define_method(rb_cDLCPtr, "size=", rb_dlptr_size_set, 1);
 
+    /*  Document-const: NULL
+     *
+     * A NULL pointer
+     */
     rb_define_const(rb_mDL, "NULL", rb_dlptr_new(0, 0, 0));
 }

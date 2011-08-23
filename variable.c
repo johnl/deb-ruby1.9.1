@@ -2,7 +2,7 @@
 
   variable.c -
 
-  $Author: matz $
+  $Author: nahi $
   created at: Tue Apr 19 23:55:15 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -1484,9 +1484,7 @@ autoload_delete(VALUE mod, ID id)
 
 	if (tbl->num_entries == 0) {
 	    n = autoload;
-	    st_delete(RCLASS_CONST_TBL(mod), &n, &val);
-	    ce = (rb_const_entry_t*)val;
-	    if (ce) xfree(ce);
+	    st_delete(RCLASS_IV_TBL(mod), &n, &val);
 	}
     }
 
