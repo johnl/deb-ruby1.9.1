@@ -268,7 +268,7 @@ Note: Inherited methods from class (({Object})) cannot be used as XML-RPC names,
 
 
 = History
-    $Id: client.rb 32668 2011-07-25 13:25:27Z nahi $
+    $Id: client.rb 32947 2011-08-12 08:06:49Z shugo $
 
 =end
 
@@ -501,7 +501,7 @@ module XMLRPC
       header = {
        "User-Agent"     =>  USER_AGENT,
        "Content-Type"   => "text/xml; charset=utf-8",
-       "Content-Length" => request.size.to_s,
+       "Content-Length" => request.bytesize.to_s,
        "Connection"     => (async ? "close" : "keep-alive")
       }
 
@@ -559,10 +559,10 @@ module XMLRPC
       end
 
       expected = resp["Content-Length"] || "<unknown>"
-      if data.nil? or data.size == 0
-        raise "Wrong size. Was #{data.size}, should be #{expected}"
-      elsif expected != "<unknown>" and expected.to_i != data.size and resp["Transfer-Encoding"].nil?
-        raise "Wrong size. Was #{data.size}, should be #{expected}"
+      if data.nil? or data.bytesize == 0
+        raise "Wrong size. Was #{data.bytesize}, should be #{expected}"
+      elsif expected != "<unknown>" and expected.to_i != data.bytesize and resp["Transfer-Encoding"].nil?
+        raise "Wrong size. Was #{data.bytesize}, should be #{expected}"
       end
 
       set_cookies = resp.get_fields("Set-Cookie")

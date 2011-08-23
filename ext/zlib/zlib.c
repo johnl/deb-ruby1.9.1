@@ -3,7 +3,7 @@
  *
  *   Copyright (C) UENO Katsuhiro 2000-2003
  *
- * $Id: zlib.c 31876 2011-05-31 22:25:32Z drbrain $
+ * $Id: zlib.c 33025 2011-08-23 06:16:16Z nahi $
  */
 
 #include <ruby.h>
@@ -2306,6 +2306,9 @@ gzfile_read_header(struct gzfile *gz)
 	zstream_discard_input(&gz->z, 2 + len);
     }
     if (flags & GZ_FLAG_ORIG_NAME) {
+	if (!gzfile_read_raw_ensure(gz, 1)) {
+	    rb_raise(cGzError, "unexpected end of file");
+	}
 	p = gzfile_read_raw_until_zero(gz, 0);
 	len = p - RSTRING_PTR(gz->z.input);
 	gz->orig_name = rb_str_new(RSTRING_PTR(gz->z.input), len);
@@ -2313,6 +2316,9 @@ gzfile_read_header(struct gzfile *gz)
 	zstream_discard_input(&gz->z, len + 1);
     }
     if (flags & GZ_FLAG_COMMENT) {
+	if (!gzfile_read_raw_ensure(gz, 1)) {
+	    rb_raise(cGzError, "unexpected end of file");
+	}
 	p = gzfile_read_raw_until_zero(gz, 0);
 	len = p - RSTRING_PTR(gz->z.input);
 	gz->comment = rb_str_new(RSTRING_PTR(gz->z.input), len);

@@ -2,7 +2,7 @@
 
   marshal.c -
 
-  $Author: akr $
+  $Author: drbrain $
   created at: Thu Apr 27 16:30:01 JST 1995
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -824,7 +824,7 @@ w_object(VALUE obj, struct dump_arg *arg, int limit)
 
 		if (!rb_respond_to(obj, s_dump_data)) {
 		    rb_raise(rb_eTypeError,
-			     "no marshal_dump is defined for class %s",
+			     "no _dump_data is defined for class %s",
 			     rb_obj_classname(obj));
 		}
 		v = rb_funcall(obj, s_dump_data, 0);

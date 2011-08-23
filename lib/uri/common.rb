@@ -2,7 +2,7 @@
 # = uri/common.rb
 #
 # Author:: Akira Yamada <akira@ruby-lang.org>
-# Revision:: $Id: common.rb 32633 2011-07-22 21:17:36Z naruse $
+# Revision:: $Id: common.rb 32954 2011-08-12 18:43:49Z drbrain $
 # License::
 #   You can redistribute it and/or modify it under the same term as Ruby.
 #
@@ -78,15 +78,15 @@ module URI
     #
     # You can use the following keys:
     #
-    #   * <tt>:ESCAPED</tt> (URI::PATTERN::ESCAPED in default)
-    #   * <tt>:UNRESERVED</tt> (URI::PATTERN::UNRESERVED in default)
-    #   * <tt>:DOMLABEL</tt> (URI::PATTERN::DOMLABEL in default)
-    #   * <tt>:TOPLABEL</tt> (URI::PATTERN::TOPLABEL in default)
-    #   * <tt>:HOSTNAME</tt> (URI::PATTERN::HOSTNAME in default)
+    #   * :ESCAPED (URI::PATTERN::ESCAPED in default)
+    #   * :UNRESERVED (URI::PATTERN::UNRESERVED in default)
+    #   * :DOMLABEL (URI::PATTERN::DOMLABEL in default)
+    #   * :TOPLABEL (URI::PATTERN::TOPLABEL in default)
+    #   * :HOSTNAME (URI::PATTERN::HOSTNAME in default)
     #
     # == Examples
     #
-    #   p = URI::Parser.new(:ESCPAED => "(?:%[a-fA-F0-9]{2}|%u[a-fA-F0-9]{4})"
+    #   p = URI::Parser.new(:ESCAPED => "(?:%[a-fA-F0-9]{2}|%u[a-fA-F0-9]{4})"
     #   u = p.parse("http://example.jp/%uABCD") #=> #<URI::HTTP:0xb78cf4f8 URL:http://example.jp/%uABCD>
     #   URI.parse(u.to_s) #=> raises URI::InvalidURIError
     #

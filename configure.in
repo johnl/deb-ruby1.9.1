@@ -87,35 +87,40 @@ if test "$MAJOR" = "1"; then
   AC_DEFINE(CANONICALIZATION_FOR_MATHN)
 fi
 
-AC_CANONICAL_TARGET
-target_os=`echo $target_os | sed 's/linux-gnu$/linux/;s/linux-gnu/linux-/'`
-ac_install_sh='' # unusable for extension libraries.
-
 dnl checks for alternative programs
+AC_CANONICAL_BUILD
+AS_CASE(["$build_os"],
+  [darwin11.*], [
+    default_cc=cc-4.2
+    default_gcc=gcc-4.2
+  ], [
+    default_cc=cc
+    default_gcc=gcc
+  ])
+
 AC_ARG_WITH(gcc,
 	AS_HELP_STRING([--without-gcc], [never use gcc]),
 	[
 	AS_CASE([$withval],
-	    [no],  [: ${CC=cc}],
-	    [yes], [: ${CC=gcc}],
-	           [CC=$withval])
-	AS_CASE([$withval], [no|yes],
-		[with_gcc_specified=no],
-		[with_gcc_specified=yes])])
-AS_CASE(["$target_os"], [darwin11.*],
-	[if test -z "$CC"; then
-	   CC=gcc-4.2
-	 else
-	   if test "x$with_gcc_specified" = "xno" && $CC -v 2>&1 | grep -i LLVM > /dev/null; then
-	     CC=gcc-4.2
-	   fi
-	 fi])
+	    [no],  [: ${CC=$default_cc}],
+	    [yes], [: ${CC=$default_gcc}],
+	           [CC=$withval])])
 dnl If the user switches compilers, we can't believe the cache
 if test ! -z "$ac_cv_prog_CC" -a ! -z "$CC" -a "$CC" != "$ac_cv_prog_CC"
 then
   AC_MSG_ERROR(cached CC is different -- throw away $cache_file
 (it is also a good idea to do 'make clean' before compiling))
 fi
+AS_CASE(["$build_os"],
+  [darwin11.*], [
+    test -z "$withval" && : ${CC=gcc-4.2}
+    AS_CASE(["x$CC"],
+      [xgcc-4.2|x/usr/bin/gcc-4.2], [: ${CXX=g++-4.2}],
+      [xgcc|x/usr/bin/gcc],         [: ${CXX=g++}],
+      [xcc-4.2|x/usr/bin/cc-4.2],   [: ${CXX=c++-4.2}],
+      [xcc|x/usr/bin/cc],           [: ${CXX=c++}],
+      [xclang|x/usr/bin/clang],     [: ${CXX=clang++}])
+  ])
 test -z "$CC" || ac_cv_prog_CC="$CC"
 
 if test "$program_prefix" = NONE; then
@@ -125,6 +130,10 @@ RUBY_BASE_NAME=`echo ruby | sed "$program_transform_name"`
 RUBYW_BASE_NAME=`echo rubyw | sed "$program_transform_name"`
 AC_SUBST(RUBY_BASE_NAME)
 AC_SUBST(RUBYW_BASE_NAME)
+
+AC_CANONICAL_TARGET
+target_os=`echo $target_os | sed 's/linux-gnu$/linux/;s/linux-gnu/linux-/'`
+ac_install_sh='' # unusable for extension libraries.
 
 AC_DEFUN([RUBY_APPEND_OPTION],
 	[# RUBY_APPEND_OPTION($1, $2)
@@ -1145,7 +1154,7 @@ AC_CHECK_HEADERS(limits.h sys/file.h sys/ioctl.h sys/syscall.h\
 		 syscall.h pwd.h grp.h a.out.h utime.h direct.h sys/resource.h \
 		 sys/mkdev.h sys/utime.h xti.h netinet/in_systm.h float.h ieeefp.h \
 		 ucontext.h intrinsics.h langinfo.h locale.h sys/sendfile.h time.h \
-		 net/socket.h sys/socket.h)
+		 net/socket.h sys/socket.h process.h)
 
 AC_TYPE_SIZE_T
 RUBY_CHECK_SIZEOF(size_t, [int long void*], [], [@%:@include <sys/types.h>])
@@ -2017,7 +2026,10 @@ if test "$with_dln_a_out" != yes; then
 				LDFLAGS="$LDFLAGS -Wl,-E"
 			    fi
 			else
-			    : ${LDSHARED='ld -G'}
+			    : ${LDSHARED='$(CC) -G'}
+			fi
+			if test "$ac_cv_sizeof_voidp" = 8; then
+			    : ${LIBPATHENV=LD_LIBRARY_PATH_64}
 			fi
 			rb_cv_dlopen=yes],
 	[sunos*], [	: ${LDSHARED='ld -assert nodefinitions'}
