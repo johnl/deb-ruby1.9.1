@@ -27,4 +27,3 @@
 20100829-rubygems_default_dir.diff
 #110411_disable_osslv2.patch
 110720_tcltk_disable_rpath.diff
-110801-ftbfs-ia64-missing-semicolon.diff
