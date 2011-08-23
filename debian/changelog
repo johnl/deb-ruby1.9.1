@@ -1,3 +1,9 @@
+ruby1.9.1 (1.9.3~preview1+svn33029-1) experimental; urgency=low
+
+  * New upstream snapshot (SVN rev 33029, ruby_1_9_3 branch).
+
+ -- Lucas Nussbaum <lucas@debian.org>  Tue, 23 Aug 2011 20:25:54 +0200
+
 ruby1.9.1 (1.9.3~preview1-2) experimental; urgency=low
 
   * Add -fno-tree-sra on armel. Same workaround as for ruby1.8 (see #634260)
