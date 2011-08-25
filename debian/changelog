@@ -1,8 +1,33 @@
 ruby1.9.1 (1.9.3~preview1+svn33029-1) experimental; urgency=low
 
   * New upstream snapshot (SVN rev 33029, ruby_1_9_3 branch).
+  * Cleanup disabled patches in debian/patches:
+    + Drop patch 110801-ftbfs-ia64-missing-semicolon.diff: fixed upstream.
+    + remove patch 110411_disable_osslv2.patch (was already disabled)
+    + Remove 201_gem_prelude.diff and 202_gem_default_dir.diff. Merged into
+      20100829-rubygems_default_dir.diff
+    + Remove 203_adjust_base_of_search_path.diff. Not needed anymore.
+    + Remove 900_ri_pager.diff. Applied upstream in lib/rdoc/ri/driver.rb
+    + Remove 902_define_YAML_in_yaml_stringio.rb.diff. This code has changed,
+      and the reason for this patch has been lost.
+    + Remove 904_linux_target_os.diff. This patch was only required for the
+      LPIA Ubuntu architecture, which no longer exists.
+    + Remove 931_libruby_suffix.diff. No longer needed.
+    + Remove 940_hppa_disable_test_propag_signal.diff. hppa is dead.
+    + Remove 940_test_file_exhaustive_fails_as_root.diff. Applied upstream.
+    + Remove 940_test_priority_fails.diff. Fixed upstream.
+    + re-enable and refresh 090729_fix_Makefile_deps.diff
+    + re-enable and refresh 090803_exclude_rdoc.diff
+    + Remove 091207_test_dl_free_func.diff. Merged upstream.
+    + Remove 100327_r24850_bootstraptest_test_thread.diff. Applied upstream.
+    + Remove 100503_r27337_rb_string_value_cstr.diff. Applied upstream.
+    + Remove 100503_r27356_queue_race.diff.diff. Applied upstream.
+    + Remove 100518_load_libc_libm.diff,
+      100518_r23483_suppress_pathname_warning.diff and
+      100518_r26515_free_rb_classext.diff. Were upstream backports.
+    + Remove 110801-ftbfs-ia64-missing-semicolon.diff. fixed upstream.
 
- -- Lucas Nussbaum <lucas@debian.org>  Tue, 23 Aug 2011 20:25:54 +0200
+ -- Lucas Nussbaum <lucas@debian.org>  Thu, 25 Aug 2011 16:16:25 +0200
 
 ruby1.9.1 (1.9.3~preview1-2) experimental; urgency=low
 
