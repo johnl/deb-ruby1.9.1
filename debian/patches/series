@@ -10,3 +10,4 @@
 110720_tcltk_disable_rpath.diff
 090729_fix_Makefile_deps.diff
 090803_exclude_rdoc.diff
+110825-run-tests-verbose.patch
