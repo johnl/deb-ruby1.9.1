@@ -1,7 +1,6 @@
 # Might still be useful
 #919_common.mk_tweaks.diff
 #940_test_thread_mutex_sync_shorter.diff
-#100327_r24850_bootstraptest_test_thread.diff
 #100503_r27337_rb_string_value_cstr.diff
 #100503_r27356_queue_race.diff.diff
 #100518_r26515_free_rb_classext.diff
