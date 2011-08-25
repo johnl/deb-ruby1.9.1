@@ -1,6 +1,7 @@
 ruby1.9.1 (1.9.3~preview1+svn33029-1) experimental; urgency=low
 
   * New upstream snapshot (SVN rev 33029, ruby_1_9_3 branch).
+    + Should fix FTBFS on m68k. Closes: #611691.
   * Cleanup disabled patches in debian/patches:
     + Drop patch 110801-ftbfs-ia64-missing-semicolon.diff: fixed upstream.
     + remove patch 110411_disable_osslv2.patch (was already disabled)
@@ -27,7 +28,7 @@ ruby1.9.1 (1.9.3~preview1+svn33029-1) experimental; urgency=low
       100518_r26515_free_rb_classext.diff. Were upstream backports.
     + Remove 110801-ftbfs-ia64-missing-semicolon.diff. fixed upstream.
 
- -- Lucas Nussbaum <lucas@debian.org>  Thu, 25 Aug 2011 16:16:25 +0200
+ -- Lucas Nussbaum <lucas@debian.org>  Thu, 25 Aug 2011 16:33:12 +0200
 
 ruby1.9.1 (1.9.3~preview1-2) experimental; urgency=low
 
