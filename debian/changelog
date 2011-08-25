@@ -27,8 +27,15 @@ ruby1.9.1 (1.9.3~preview1+svn33029-1) experimental; urgency=low
       100518_r23483_suppress_pathname_warning.diff and
       100518_r26515_free_rb_classext.diff. Were upstream backports.
     + Remove 110801-ftbfs-ia64-missing-semicolon.diff. fixed upstream.
+  * Add 110825-run-tests-verbose.patch: run tests in verbose mode
+  * Add openssl to build-depends. Needed for
+    test_constants(OpenSSL::TestConfig).
+  * Improve rubygems_default_dir.diff to avoid warnings.
+  * Add 110825-tests_broken_as_root.patch: skip some tests when root.
+  * Introduce ruby1.9.3 package to improve the confusing situation.
+  * Fix 1.9.2 -> 1.9.3 in descriptions.
 
- -- Lucas Nussbaum <lucas@debian.org>  Thu, 25 Aug 2011 16:33:12 +0200
+ -- Lucas Nussbaum <lucas@debian.org>  Thu, 25 Aug 2011 19:17:08 +0200
 
 ruby1.9.1 (1.9.3~preview1-2) experimental; urgency=low
 
