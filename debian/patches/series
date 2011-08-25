@@ -1,5 +1,3 @@
-#201_gem_prelude.diff
-#202_gem_default_dir.diff
 #203_adjust_base_of_search_path.diff
 #900_ri_pager.diff
 #902_define_YAML_in_yaml_stringio.rb.diff
