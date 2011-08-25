@@ -1,4 +1,3 @@
-#904_linux_target_os.diff
 #919_common.mk_tweaks.diff
 #931_libruby_suffix.diff
 #940_hppa_disable_test_propag_signal.diff
