@@ -1,9 +1,6 @@
 # Might still be useful
 #919_common.mk_tweaks.diff
 #940_test_thread_mutex_sync_shorter.diff
-#100518_r26515_free_rb_classext.diff
-#100518_load_libc_libm.diff
-#100518_r23483_suppress_pathname_warning.diff
 #100518_r27464_threading_non-nptl.diff
 909_update_lib_README.diff
 100731_disable-tests.diff
