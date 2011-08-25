@@ -1,6 +1,5 @@
 # Might still be useful
 #919_common.mk_tweaks.diff
-#940_hppa_disable_test_propag_signal.diff
 #940_test_thread_mutex_sync_shorter.diff
 #940_test_file_exhaustive_fails_as_root.diff
 #940_test_priority_fails.diff
