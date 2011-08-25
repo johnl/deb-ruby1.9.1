@@ -1,7 +1,6 @@
 # Might still be useful
 #919_common.mk_tweaks.diff
 #940_test_thread_mutex_sync_shorter.diff
-#940_test_priority_fails.diff
 #090729_fix_Makefile_deps.diff
 #090803_exclude_rdoc.diff
 #091207_test_dl_free_func.diff
