@@ -118,7 +118,7 @@ require "rubygems/deprecate"
 # -The RubyGems Team
 
 module Gem
-  VERSION = '1.8.8'
+  VERSION = '1.8.10'
 
   ##
   # Raised when RubyGems is unable to load or activate a gem.  Contains the
@@ -644,7 +644,15 @@ module Gem
 
   def self.load_yaml
     begin
-      require 'psych'
+      gem 'psych', '~> 1.2', '>= 1.2.1' unless ENV['TEST_SYCK']
+    rescue Gem::LoadError
+      # It's OK if the user does not have the psych gem installed.  We will
+      # attempt to require the stdlib version
+    end
+
+    begin
+      # Try requiring the gem version *or* stdlib version of psych.
+      require 'psych' unless ENV['TEST_SYCK']
     rescue ::LoadError
     ensure
       require 'yaml'
@@ -1027,7 +1035,9 @@ module Gem
   # Use the +home+ and +paths+ values for Gem.dir and Gem.path.  Used mainly
   # by the unit tests to provide environment isolation.
 
-  def self.use_paths(home, paths=[])
+  def self.use_paths(home, *paths)
+    paths = nil if paths == [nil]
+    paths = paths.first if Array === Array(paths).first
     self.paths = { "GEM_HOME" => home, "GEM_PATH" => paths }
     # TODO: self.paths = home, paths
   end

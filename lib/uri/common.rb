@@ -2,7 +2,7 @@
 # = uri/common.rb
 #
 # Author:: Akira Yamada <akira@ruby-lang.org>
-# Revision:: $Id: common.rb 32954 2011-08-12 18:43:49Z drbrain $
+# Revision:: $Id: common.rb 33048 2011-08-24 07:29:33Z naruse $
 # License::
 #   You can redistribute it and/or modify it under the same term as Ruby.
 #
@@ -86,7 +86,7 @@ module URI
     #
     # == Examples
     #
-    #   p = URI::Parser.new(:ESCAPED => "(?:%[a-fA-F0-9]{2}|%u[a-fA-F0-9]{4})"
+    #   p = URI::Parser.new(:ESCAPED => "(?:%[a-fA-F0-9]{2}|%u[a-fA-F0-9]{4})")
     #   u = p.parse("http://example.jp/%uABCD") #=> #<URI::HTTP:0xb78cf4f8 URL:http://example.jp/%uABCD>
     #   URI.parse(u.to_s) #=> raises URI::InvalidURIError
     #
