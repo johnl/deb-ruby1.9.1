@@ -1,4 +1,4 @@
-ruby1.9.1 (1.9.3~preview1+svn33029-1) experimental; urgency=low
+ruby1.9.1 (1.9.3~preview1+svn33077-1) experimental; urgency=low
 
   * New upstream snapshot (SVN rev 33029, ruby_1_9_3 branch).
     + Should fix FTBFS on m68k. Closes: #611691.
@@ -35,7 +35,7 @@ ruby1.9.1 (1.9.3~preview1+svn33029-1) experimental; urgency=low
   * Introduce ruby1.9.3 package to improve the confusing situation.
   * Fix 1.9.2 -> 1.9.3 in descriptions.
 
- -- Lucas Nussbaum <lucas@debian.org>  Thu, 25 Aug 2011 19:17:08 +0200
+ -- Lucas Nussbaum <lucas@debian.org>  Fri, 26 Aug 2011 11:37:58 +0200
 
 ruby1.9.1 (1.9.3~preview1-2) experimental; urgency=low
 
