@@ -1,3 +1,89 @@
+Fri Aug 26 10:10:37 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* backport r33074 from trunk.
+
+	* lib/rubygems:  Update to RubyGems 1.8.10.  Fixes security issue in
+	  creating ruby-format gemspecs.  Fixes Gem.dir not being at the front
+	  of Gem.path to fix uninstall and cleanup commands.  Fixes gem
+	  uninstall stopping on the first missing gem.
+
+Wed Aug 24 09:49:10 2011  Koichi Sasada  <ko1@atdot.net>
+
+	* backport r33045 from trunk.
+
+	* insns.def (defined): fix to checking class variable.
+	  A patch by Magnus Holm <judofyr@gmail.com>.  Thanks!
+Fri Aug 26 08:21:10 2011  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* test/ruby/test_variable.rb: add a test for above.
+
+Thu Aug 25 09:43:16 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* backport r33066 from trunk.
+
+	* ext/openssl/lib/openssl/bn.rb:  Hide copyright info from RDoc.
+	* ext/openssl/lib/openssl/digest.rb:  ditto
+	* ext/openssl/lib/openssl/cipher.rb:  ditto
+
+Thu Aug 25 09:25:48 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* backport r33065 from trunk.
+
+	* ext/openssl/ossl_digest.c:  Document OpenSSL::Digest::digest and add
+	  an example to OpenSSL::Digest.  Patch by Sylvain Daubert.
+	  [Ruby 1.9 - Bug #5166]
+	* ext/openssl/lib/openssl/digest.rb (module OpenSSL):  ditto
+
+Thu Aug 25 08:19:43 2011  Koichi Sasada  <ko1@atdot.net>
+
+	* vm.c (vm_make_env_each): work around to solve Bug #2729.
+	  fixes: Bug #2729
+	  a patch from Kazuki Tsujimoto <kazuki@callcc.net>
+	  This problem is caused by changing dfp (dynamic env pointer)
+	  from saved dfp.  Saved dfp is pointed env in VM stack.  However,
+	  the dfp can be moved because VM copies env from VM stack to
+	  the heap.  At this copying, dfp was also changed.  To solve this
+	  problem, I'll try to change throw mechanism (not save target dfp,
+	  but save target cfp).
+
+	* bootstraptest/test_flow.rb: add a test for above.
+
+Thu Aug 25 08:04:08 2011  Marc-Andre Lafortune  <ruby-core@marc-andre.ca>
+
+	* numeric.c (int_round): Fix Integer#round [ruby-core:39096]
+
+Thu Aug 25 06:51:08 2011  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/psych/lib/psych.rb: Fixing psych version number.
+
+Thu Aug 25 06:11:35 2011  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/psych/lib/psych/nodes/node.rb: default `to_yaml` encoding to be
+	  UTF-8.
+	* test/psych/test_encoding.rb: test yaml dump encoding.
+
+Wed Aug 24 08:53:06 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* backport r33043 from trunk.
+
+	* lib/rdoc:  Update to RDoc 3.9.3.  Fixes RDoc with `ruby -Ku`.  Allows
+	  HTTPS image paths to be turned into <img> tags.  Prevents special
+	  markup inside <tt> from being processed.
+
+Wed Aug 24 07:57:43 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* backport r33040 from trunk.
+
+	* lib/rubygems:  Update to RubyGems 1.8.9.  Fixes uninstalling multiple
+	  gems and gem cleanup.
+
+Wed Aug 24 06:45:20 2011  Ryan Davis  <ryand-ruby@zenspider.com>
+
+	* backport r33036 from trunk.
+
+	* lib/minitest/*: Imported minitest 2.5.0 (r6557)
+	* test/minitest/*: ditto
+
 Tue Aug 23 15:23:56 2011  Eric Hodel  <drbrain@segment7.net>
 
 	* backport r33027 from trunk.

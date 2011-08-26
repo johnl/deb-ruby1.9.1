@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_digest.c 32607 2011-07-22 02:25:06Z emboss $
+ * $Id: ossl_digest.c 33067 2011-08-25 00:52:10Z drbrain $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -403,6 +403,17 @@ Init_ossl_digest()
      *   sha256 << data2
      *   sha256 << data3
      *   digest = sha256.digest
+     *
+     * === Reuse a Digest instance
+     *
+     *   data1 = File.read('file1')
+     *   sha256 = OpenSSL::Digest::SHA256.new
+     *   digest1 = sha256.digest(data1)
+     *   
+     *   data2 = File.read('file2')
+     *   sha256.reset
+     *   digest2 = sha256.digest(data2)
+     *
      */
     cDigest = rb_define_class_under(mOSSL, "Digest", rb_path2class("Digest::Class"));
     /* Document-class: OpenSSL::Digest::DigestError
