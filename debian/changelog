@@ -1,16 +1,14 @@
 ruby1.9.1 (1.9.3~preview1+svn33077-2) experimental; urgency=low
 
-  * Status of build failures:
-  * FreeBSD:
-    http://redmine.ruby-lang.org/issues/5239. runner.rb, will be fixed upstream.
-    http://redmine.ruby-lang.org/issues/5240. Hang. needs more investigation.
-    http://redmine.ruby-lang.org/issues/5241. massign+stack. will be fixed upstream.
-  * Sparc:
-    http://redmine.ruby-lang.org/issues/5244. Continuations broken. needs more investigation.
-  * ia64:
-    http://redmine.ruby-lang.org/issues/5246. cont.c segfaults. needs more investigation.
+  * Also add --no-tree-sra on sparc.
+  * Add 110829-freebsd_map_stack.patch. Work around FreeBSD bug.
+  * Add 110829-freebsd_assert_normal_exit.patch: workaround FreeBSD
+    bug in testsuite runner.
+  * Add 110829-hurd_dirent_usage.patch: Fix dirent issue on hurd.
+    Closes: #639664
+  * Modified 20100829-rubygems_default_dir.diff: avoid warning.
 
- -- Lucas Nussbaum <lucas@debian.org>  Sun, 28 Aug 2011 15:51:17 +0200
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 29 Aug 2011 22:41:14 +0200
 
 ruby1.9.1 (1.9.3~preview1+svn33077-1) experimental; urgency=low
 
@@ -69,6 +67,8 @@ ruby1.9.1 (1.9.3~preview1-1) experimental; urgency=low
 ruby1.9.1 (1.9.2.180+svn32566-1) experimental; urgency=low
 
   * New SVN snapshot based on revision 32566 from the ruby_1_9_3 branch.
+  * Add patch 110720_tcltk_disable_rpath.diff: disable rpath in tcltk.
+
   * Add patch 110720_tcltk_disable_rpath.diff: disable rpath in tcltk.
 
  -- Lucas Nussbaum <lucas@debian.org>  Wed, 20 Jul 2011 11:25:23 +0200
@@ -890,8 +890,6 @@ ruby1.9 (1.9.0+20050412-4) unstable; urgency=low
  -- akira yamada <akira@debian.org>  Sun, 17 Apr 2005 03:30:22 +0900
 
 ruby1.9 (1.9.0+20050412-3) unstable; urgency=high
-
-  * akira yamada <akira@debian.org>
   - debian/rules: fixed wrong filename conversion.  (closes: #304809)
   - debian/libruby1.9.*.in: should not be empty.
 
