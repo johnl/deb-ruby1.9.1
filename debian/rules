@@ -39,7 +39,7 @@ ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 else
 	CFLAGS += -g -O2
 # Workaround for #634260 (ruby1.8). Can be removed when #635126 is fixed.
-ifeq ($(DEB_BUILD_ARCH),armel)
+ifneq (,$(filter $(DEB_BUILD_ARCH),armel sparc))
 	CFLAGS += -fno-tree-sra
 endif
 endif
