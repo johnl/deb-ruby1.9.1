@@ -1,6 +1,6 @@
 --- a/lib/rubygems/defaults.rb
 +++ b/lib/rubygems/defaults.rb
-@@ -17,6 +17,10 @@ module Gem
+@@ -17,30 +17,35 @@ module Gem
    ##
    # Default home directory path to be used if an alternate value is not
    # specified in the environment
@@ -10,13 +10,50 @@
 +  #
  
    def self.default_dir
-     path = if defined? RUBY_FRAMEWORK_VERSION then
-@@ -40,7 +44,8 @@ module Gem
-              ]
-            end
- 
+-    path = if defined? RUBY_FRAMEWORK_VERSION then
+-             [
+-               File.dirname(ConfigMap[:sitedir]),
+-               'Gems',
+-               ConfigMap[:ruby_version]
+-             ]
+-           elsif ConfigMap[:rubylibprefix] then
+-             [
+-              ConfigMap[:rubylibprefix],
+-              'gems',
+-              ConfigMap[:ruby_version]
+-             ]
+-           else
+-             [
+-               ConfigMap[:libdir],
+-               ruby_engine,
+-               'gems',
+-               ConfigMap[:ruby_version]
+-             ]
+-           end
+-
 -    @default_dir ||= File.join(*path)
-+    # @default_dir ||= File.join(*path)
++#    path = if defined? RUBY_FRAMEWORK_VERSION then
++#             [
++#               File.dirname(ConfigMap[:sitedir]),
++#               'Gems',
++#               ConfigMap[:ruby_version]
++#             ]
++#           elsif ConfigMap[:rubylibprefix] then
++#             [
++#              ConfigMap[:rubylibprefix],
++#              'gems',
++#              ConfigMap[:ruby_version]
++#             ]
++#           else
++#             [
++#               ConfigMap[:libdir],
++#               ruby_engine,
++#               'gems',
++#               ConfigMap[:ruby_version]
++#             ]
++#           end
++#
++#    @default_dir ||= File.join(*path)
 +    @default_dir ||= File.join('/', 'var', 'lib', 'gems', ConfigMap[:ruby_version])
    end
  
