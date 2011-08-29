@@ -1,0 +1,20 @@
+[kfreebsd] mmap() with MAP_STACK requires non-null first arg
+http://redmine.ruby-lang.org/issues/5241
+http://www.FreeBSD.org/cgi/query-pr.cgi?pr=158755
+Will be applied upstream.
+
+Index: ruby1.9.1-1.9.3~preview1+svn33077/cont.c
+===================================================================
+--- ruby1.9.1-1.9.3~preview1+svn33077.orig/cont.c	2011-08-28 07:30:41.000000000 +0100
++++ ruby1.9.1-1.9.3~preview1+svn33077/cont.c	2011-08-28 07:34:24.000000000 +0100
+@@ -520,8 +520,9 @@
+ /*
+  * FreeBSD require a first (i.e. addr) argument of mmap(2) is not NULL
+  * if MAP_STACK is passed.
++ * http://www.FreeBSD.org/cgi/query-pr.cgi?pr=158755
+  */
+-#if defined(MAP_STACK) && !defined(__FreeBSD__)
++#if defined(MAP_STACK) && !defined(__FreeBSD__) && !defined(__FreeBSD_kernel__)
+ #define FIBER_STACK_FLAGS (MAP_PRIVATE | MAP_ANON | MAP_STACK)
+ #else
+ #define FIBER_STACK_FLAGS (MAP_PRIVATE | MAP_ANON)

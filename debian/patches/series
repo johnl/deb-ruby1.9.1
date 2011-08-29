@@ -12,3 +12,4 @@
 090803_exclude_rdoc.diff
 110825-run-tests-verbose.patch
 110825-tests_broken_as_root.patch
+110829-freebsd_map_stack.patch
