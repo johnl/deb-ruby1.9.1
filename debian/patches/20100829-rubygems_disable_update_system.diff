@@ -17,3 +17,59 @@ This patch was imported from the rubygems package.
      unless options[:args].empty? then
        alert_error "Gem names are not allowed with the --system option"
        terminate_interaction 1
+--- a/test/rubygems/test_gem_commands_update_command.rb
++++ b/test/rubygems/test_gem_commands_update_command.rb
+@@ -83,7 +83,7 @@ class TestGemCommandsUpdateCommand < Gem
+     end
+   end
+ 
+-  def test_execute_system
++  def est_execute_system
+     util_clear_gems
+     util_setup_rubygem9
+     util_setup_spec_fetcher @rubygem9
+@@ -107,7 +107,7 @@ class TestGemCommandsUpdateCommand < Gem
+     assert_empty out
+   end
+ 
+-  def test_execute_system_at_latest
++  def est_execute_system_at_latest
+     util_clear_gems
+     util_setup_rubygem_current
+     util_setup_spec_fetcher @rubygem_current
+@@ -129,7 +129,7 @@ class TestGemCommandsUpdateCommand < Gem
+     assert_empty out
+   end
+ 
+-  def test_execute_system_multiple
++  def est_execute_system_multiple
+     util_clear_gems
+     util_setup_rubygem9
+     util_setup_rubygem8
+@@ -154,7 +154,7 @@ class TestGemCommandsUpdateCommand < Gem
+     assert_empty out
+   end
+ 
+-  def test_execute_system_specific
++  def est_execute_system_specific
+     util_clear_gems
+     util_setup_rubygem9
+     util_setup_rubygem8
+@@ -179,7 +179,7 @@ class TestGemCommandsUpdateCommand < Gem
+     assert_empty out
+   end
+ 
+-  def test_execute_system_specifically_to_latest_version
++  def est_execute_system_specifically_to_latest_version
+     util_clear_gems
+     util_setup_rubygem9
+     util_setup_rubygem8
+@@ -204,7 +204,7 @@ class TestGemCommandsUpdateCommand < Gem
+     assert_empty out
+   end
+ 
+-  def test_execute_system_with_gems
++  def est_execute_system_with_gems
+     @cmd.options[:args]          = %w[gem]
+     @cmd.options[:system]        = true
+     @cmd.options[:generate_rdoc] = false
