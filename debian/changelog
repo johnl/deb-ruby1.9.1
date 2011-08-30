@@ -1,3 +1,14 @@
+ruby1.9.1 (1.9.3~preview1+svn33077-3) experimental; urgency=low
+
+  * Add debian/run-test-suites.bash: test suites wrapper that
+    checks the number of failures and exit if there are too many.
+  * debian/rules: optimizations were dropped on ia64. Revert.
+  * 20100829-rubygems_default_dir.diff,
+    20100829-rubygems_disable_update_system.diff:
+    disable tests that are broken by those changes.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Tue, 30 Aug 2011 07:44:33 +0200
+
 ruby1.9.1 (1.9.3~preview1+svn33077-2) experimental; urgency=low
 
   * Also add --no-tree-sra on sparc.
