@@ -43,16 +43,6 @@ ifneq (,$(filter $(DEB_BUILD_ARCH),armel sparc))
 	CFLAGS += -fno-tree-sra
 endif
 endif
-ifneq (,$(findstring $(DEB_HOST_GNU_CPU),ia64))
-	CFLAGS := $(patsubst -O1,,$(CFLAGS))
-	CFLAGS := $(patsubst -O2,,$(CFLAGS))
-	CFLAGS := $(patsubst -O3,,$(CFLAGS))
-	CFLAGS += -O0
-	CXXFLAGS := $(patsubst -O1,,$(CFLAGS))
-	CXXFLAGS := $(patsubst -O2,,$(CFLAGS))
-	CXXFLAGS := $(patsubst -O3,,$(CFLAGS))
-	CXXFLAGS += -O0
-endif
 
 # Renesas SH(sh4) needs -mieee option. #591785
 ifeq (sh4,$(shell dpkg-architecture -qDEB_HOST_ARCH))
