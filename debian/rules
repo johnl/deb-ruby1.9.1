@@ -143,13 +143,7 @@ pre-build::
 
 common-post-build-arch::
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-# On FreeBSD, do not consider test suite failures as fatal
-ifeq ($(DEB_HOST_GNU_SYSTEM),kfreebsd-gnu)
-	-$(MAKE) OPTS=-v test
-else
-	$(MAKE) OPTS=-v test
-endif
-	-$(MAKE) OPTS=-v test-all
+	debian/run-test-suites.bash
 endif
 
 binary-install/libtcltk-ruby$(ruby_ver)::
