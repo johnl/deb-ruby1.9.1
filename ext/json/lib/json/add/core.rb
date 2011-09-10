@@ -230,8 +230,8 @@ class Regexp
   def as_json(*)
     {
       JSON.create_id => self.class.name,
-      'o' => options,
-      's' => source,
+      'o'            => options,
+      's'            => source,
     }
   end
 
