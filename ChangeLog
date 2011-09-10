@@ -1,3 +1,222 @@
+Fri Sep  9 16:02:04 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* insns.def (concatstrings): don't use initial ASCII-8BIT string.
+	  [ruby-core:38635] [Bug #5126]
+
+Thu Sep  8 21:17:36 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/nkf/nkf-utf8/nkf.c: import nkf 2.1.2 (be9c280)
+	  Bump version number/release date only.
+
+Wed Sep  7 23:42:45 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* io.c (argf_next_argv): open in default text mode.
+	  [ruby-core:39234] [Bug #5268]
+
+Mon Sep  5 15:06:55 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* test/rubygems/test_gem_security.rb
+	  (test_class_build_self_signed_cert): reset opt[:trust_dir] to apply
+	  temporary Gem.user_home.
+
+Sun Sep  4 00:56:58 2011  Kazuki Tsujimoto  <kazuki@callcc.net>
+
+	* backport r33177 from trunk.
+
+	* test/ruby/test_fiber.rb (TestFiber#test_no_valid_cfp):
+	  add a test. Unlike TestThread#test_no_valid_cfp,
+	  this test succeeds even if win32ole is required (see r33153).
+
+Fri Sep  2 21:11:16 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* io.c (validate_enc_binmode, prep_stdio): default to text mode on
+	  dosish platforms.  [ruby-core:38822] [Bug #5164]
+
+	* transcode.c (rb_econv_prepare_options): keep default ecflags
+	  unchanged if no options.
+
+Fri Sep  2 14:36:47 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm_insnhelper.c (vm_search_const_defined_class): search
+	  ancestors only when global scope.  [ruby-core:39227] [Bug #5264]
+
+Fri Sep  2 09:58:08 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* parse.y (parser_tokadd_string, parser_yylex): ignore a backslash
+	  which prefixes an non-ascii character, which has no escape
+	  syntax.  [ruby-core:39222] [Ruby 1.9 - Bug #5262]
+
+Thu Sep  1 17:31:22 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* insns.def (defineclass), vm_insnhelper.c (vm_get_cvar_base): see
+	  also inherited constants for classes without superclass and
+	  modules.  [ruby-core:37698] [Bug #3423]
+
+Thu Sep  1 14:11:16 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/ruby/test_thread.rb (TestThread#test_no_valid_cfp): skip when
+	  win32ole is required.  in such case, win32ole redefines
+	  Thread#initialize, and the block argument becomes to be not the top
+	  of the thread, then this testcase always fails.
+
+Wed Aug 31 16:02:45 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/json: Merge json gem v1.5.4 (3dab4c5a6a97fac03dac).
+
+Wed Aug 31 13:19:31 2011  Marc-Andre Lafortune  <ruby-core@marc-andre.ca>
+
+	* numeric.c (flo_round): Avoid overflow by optimizing for trivial
+	  cases
+	  [Bug #5227]
+
+Wed Aug 31 06:45:32 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* configure.in: fix r32835. $withval can't be used outer AC_ARG_WITH().
+
+Wed Aug 31 05:29:03 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/win32.c (rb_w32_select_with_thread): and my typo. we all must
+	  be more careful.
+
+Wed Aug 31 05:28:45 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* thread.c (rb_thread_select): critical typo in r33117.
+
+Wed Aug 31 05:28:26 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/-ext-/old_thread_select/test_old_thread_select.rb
+	  (TestOldThreadSelect#test_old_select_read_timeout): if the machine
+	  is fast enough, the time used by code around IO.select may be smaller
+	  than Time implement threshold.
+
+Wed Aug 31 05:27:59 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ext/-test-/old_thread_select/old_thread_select.c (old_thread_select):
+	  typo.
+
+	* test/-ext-/old_thread_select/test_old_thread_select.rb
+	  (TestOldThreadSelect#test_old_select_signal_safe): use SIGINT instead
+	  of SIGUSR1 because the former is general and the latter is platform
+	  dependent.
+
+Wed Aug 31 05:26:30 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/win32.c, include/ruby/intern.h (rb_w32_fd_copy): implement
+	  for rb_thread_select() in thread.c.  the use of rb_fd_copy() is
+	  introduced in r33117.
+	  [Bug #5229] [ruby-core:39102]
+
+	* thread.c (rb_thread_select): must call rb_fd_init() before using
+	  rb_fdset_t.  see the implementations of rb_fd_init()s if you want to
+	  know the reason.
+
+Tue Aug 30 11:25:21 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/json: Merge json gem 1.5.4+ (2149f4185c598fb97db1).
+	  [Bug #5173] [ruby-core:38866]
+
+Tue Aug 30 09:53:59 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* cont.c (fiber_entry): fix stack allocation failure on Debian
+	  GNU/kFreeBSD.
+	  Patch by Lucas Nussbaum <lucas at lucas-nussbaum dot net>.
+	  [Bug #5241] [ruby-core:39147]
+
+Tue Aug 30 09:52:29 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* backport r33117 from trunk.
+	
+	* thread.c (rb_thread_select): rewrite by using
+	  rb_thread_fd_select(). old one is EINTR unsafe.
+	  Patch by Eric Wong. [Bug #5229] [ruby-core:39102]
+	
+	* test/-ext-/old_thread_select/test_old_thread_select.rb:
+	  a testcase for rb_thread_select().
+	* ext/-test-/old_thread_select/old_thread_select.c: ditto.
+	* ext/-test-/old_thread_select/depend: ditto.
+	* ext/-test-/old_thread_select/extconf.rb: ditto.
+
+Tue Aug 30 09:16:17 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* configure.in: fix a build failure on GNU Hurd.
+	  Patch by Samuel Thibault <sthibault at debian dot org>. Thank you!
+	  [Bug #5250] [ruby-core:39185]
+
+Sun Aug 28 15:38:17 2011  CHIKANAGA Tomoyuki  <nagachika00@gmail.com>
+
+	* backport r33106 from trunk.
+
+	* ext/date/date_parse.c (date_zone_to_diff): keep a temporary string
+	  stored in variable while the contents buffer is beeing used.
+
+	* ext/date/date_parse.c (date_zone_to_diff): get rid of out of bounds
+	  memory read. [ruby-dev:44409] [Bug #5213]
+
+Sun Aug 28 05:29:50 2011  Ryan Davis  <ryand-ruby@zenspider.com>
+
+	* backport r33102 from trunk.
+
+	* lib/minitest/*: Imported minitest 2.5.1 (r6596)
+	* test/minitest/*: ditto
+
+Sat Aug 27 20:54:54 2011  Kazuki Tsujimoto  <kazuki@callcc.net>
+
+	* backport r33099 from trunk.
+
+	* vm.c (rb_vm_rewrite_dfp_in_errinfo): change return type
+	  to suppress a warning.
+
+	* vm_core.h: ditto.
+
+Sat Aug 27 19:03:44 2011  Kazuki Tsujimoto  <kazuki@callcc.net>
+
+	* backport r33096 from trunk.
+
+	* proc.c (proc_new): force to rewrite errinfo when calling Proc.new in ensure.
+	  [Bug #5234] [ruby-core:39125]
+
+	* vm.c (rb_vm_rewrite_dfp_in_errinfo): new function.
+
+	* vm.c (vm_make_env_each): changed accordingly.
+
+	* vm_core.h: ditto.
+
+	* bootstraptest/test_flow.rb: add tests for above.
+
+Sat Aug 27 08:59:12 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* NEWS:  Update version of rake to 0.9.2.2.
+
+Sat Aug 27 08:44:58 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* backport r33087 from trunk
+
+	* lib/rdoc:  Import RDoc 3.9.4.  Typo and grammar fixes by Luke Gruber.
+	  [Ruby 1.9 - Bug #5203]
+
+Sat Aug 27 07:53:34 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* backport r33087 from trunk.
+
+	* lib/open-uri.rb:  Fix indentation of OpenURI::OpenRead#open.  Use ++
+	  instead of `' for method arguments in open-uri.rb
+
+Sat Aug 27 07:22:07 2011  Eric Hodel  <drbrain@segment7.net>
+
+	* backport r33086 from trunk.
+
+	* ext/pathname/lib/pathname.rb:  Fix typos and grammar mistakes.  Patch
+	  by Luke Gruber.  [#5203]
+	* ext/pty/lib/expect.rb:  ditto
+	* lib/mathn.rb:  ditto
+	* lib/net/http.rb:  ditto
+	* lib/open-uri.rb:  ditto
+	* lib/ostruct.rb:  ditto
+	* lib/tempfile.rb:  ditto
+	* lib/thread.rb:  ditto
+	* lib/weakref.rb:  ditto
+	* sample/webrick/httpproxy.rb:  ditto
+
 Fri Aug 26 10:10:37 2011  Eric Hodel  <drbrain@segment7.net>
 
 	* backport r33074 from trunk.
@@ -13,6 +232,7 @@ Wed Aug 24 09:49:10 2011  Koichi Sasada  <ko1@atdot.net>
 
 	* insns.def (defined): fix to checking class variable.
 	  A patch by Magnus Holm <judofyr@gmail.com>.  Thanks!
+
 Fri Aug 26 08:21:10 2011  Aaron Patterson <aaron@tenderlovemaking.com>
 
 	* test/ruby/test_variable.rb: add a test for above.

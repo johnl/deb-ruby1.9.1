@@ -2,7 +2,7 @@
 
   transcode.c -
 
-  $Author: akr $
+  $Author: nobu $
   created at: Tue Oct 30 16:10:22 JST 2007
 
   Copyright (C) 2007 Martin Duerst
@@ -2533,7 +2533,7 @@ rb_econv_prepare_options(VALUE opthash, VALUE *opts, int ecflags)
 
     if (NIL_P(opthash)) {
         *opts = Qnil;
-        return 0;
+        return ecflags;
     }
     ecflags = econv_opts(opthash, ecflags);
 

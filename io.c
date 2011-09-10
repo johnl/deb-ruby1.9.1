@@ -2,7 +2,7 @@
 
   io.c -
 
-  $Author: nobu $
+  $Author: kosaki $
   created at: Fri Oct 15 18:08:59 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -4440,7 +4440,7 @@ validate_enc_binmode(int *fmode_p, int ecflags, rb_encoding *enc, rb_encoding *e
         rb_raise(rb_eArgError, "ASCII incompatible encoding needs binmode");
 
     if (!(fmode & FMODE_BINMODE) &&
-	(ecflags & ECONV_NEWLINE_DECORATOR_MASK)) {
+	(DEFAULT_TEXTMODE || (ecflags & ECONV_NEWLINE_DECORATOR_MASK))) {
 	fmode |= DEFAULT_TEXTMODE;
 	*fmode_p = fmode;
     }
@@ -6409,9 +6409,10 @@ static VALUE
 prep_stdio(FILE *f, int fmode, VALUE klass, const char *path)
 {
     rb_io_t *fptr;
-    VALUE io = prep_io(fileno(f), fmode|FMODE_PREP, klass, path);
+    VALUE io = prep_io(fileno(f), fmode|FMODE_PREP|DEFAULT_TEXTMODE, klass, path);
 
     GetOpenFile(io, fptr);
+    fptr->encs.ecflags |= ECONV_DEFAULT_NEWLINE_DECORATOR;
     fptr->stdio_file = f;
 
     return io;
@@ -6839,6 +6840,7 @@ argf_next_argv(VALUE argf)
     char *fn;
     rb_io_t *fptr;
     int stdout_binmode = 0;
+    int fmode;
 
     if (TYPE(rb_stdout) == T_FILE) {
         GetOpenFile(rb_stdout, fptr);
@@ -6947,18 +6949,24 @@ argf_next_argv(VALUE argf)
 		    rb_stdout = write_io;
 		    if (stdout_binmode) rb_io_binmode(rb_stdout);
 		}
-		ARGF.current_file = prep_io(fr, FMODE_READABLE, rb_cFile, fn);
+		fmode = FMODE_READABLE;
+		if (!ARGF.binmode) fmode |= DEFAULT_TEXTMODE;
+		ARGF.current_file = prep_io(fr, fmode, rb_cFile, fn);
 		if (!NIL_P(write_io)) {
 		    rb_io_set_write_io(ARGF.current_file, write_io);
 		}
 	    }
 	    if (ARGF.binmode) rb_io_ascii8bit_binmode(ARGF.current_file);
+	    GetOpenFile(ARGF.current_file, fptr);
 	    if (ARGF.encs.enc) {
-		rb_io_t *fptr;
-
-		GetOpenFile(ARGF.current_file, fptr);
 		fptr->encs = ARGF.encs;
                 clear_codeconv(fptr);
+	    }
+	    else {
+		fptr->encs.ecflags &= ~ECONV_NEWLINE_DECORATOR_MASK;
+		if (!ARGF.binmode) {
+		    fptr->encs.ecflags |= ECONV_DEFAULT_NEWLINE_DECORATOR;
+		}
 	    }
 	    ARGF.next_p = 0;
 	}

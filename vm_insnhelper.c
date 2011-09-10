@@ -2,7 +2,7 @@
 
   vm_insnhelper.c - instruction helper functions.
 
-  $Author: kosaki $
+  $Author: nobu $
 
   Copyright (C) 2007 Koichi Sasada
 
@@ -1252,6 +1252,19 @@ vm_get_cvar_base(NODE *cref)
     return klass;
 }
 
+static VALUE
+vm_search_const_defined_class(const VALUE cbase, ID id)
+{
+    if (rb_const_defined_at(cbase, id)) return cbase;
+    if (cbase == rb_cObject) {
+	VALUE tmp = RCLASS_SUPER(cbase);
+	while (tmp) {
+	    if (rb_const_defined_at(tmp, id)) return tmp;
+	    tmp = RCLASS_SUPER(tmp);
+	}
+    }
+    return 0;
+}
 
 #ifndef USE_IC_FOR_IVAR
 #define USE_IC_FOR_IVAR 1

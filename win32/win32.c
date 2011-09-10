@@ -2368,6 +2368,21 @@ rb_w32_fdisset(int fd, fd_set *set)
 }
 
 void
+rb_w32_fd_copy(rb_fdset_t *dst, const fd_set *src, int max)
+{
+    max = min(src->fd_count, (UINT)max);
+    if ((UINT)dst->capa < (UINT)max) {
+	dst->capa = (src->fd_count / FD_SETSIZE + 1) * FD_SETSIZE;
+	dst->fdset = xrealloc(dst->fdset, sizeof(unsigned int) + sizeof(SOCKET) * dst->capa);
+    }
+
+    memcpy(dst->fdset->fd_array, src->fd_array,
+	   max * sizeof(src->fd_array[0]));
+    dst->fdset->fd_count = src->fd_count;
+}
+
+/* License: Ruby's */
+void
 rb_w32_fd_dup(rb_fdset_t *dst, const rb_fdset_t *src)
 {
     if ((UINT)dst->capa < src->fdset->fd_count) {
@@ -2377,6 +2392,7 @@ rb_w32_fd_dup(rb_fdset_t *dst, const rb_fdset_t *src)
 
     memcpy(dst->fdset->fd_array, src->fdset->fd_array,
 	   src->fdset->fd_count * sizeof(src->fdset->fd_array[0]));
+    dst->fdset->fd_count = src->fdset->fd_count;
 }
 
 //
@@ -2690,7 +2706,7 @@ rb_w32_select_with_thread(int nfds, fd_set *rd, fd_set *wr, fd_set *ex,
 	    if (else_rd.fdset->fd_count || else_wr.fdset->fd_count) {
 		r = do_select(nfds, rd, wr, ex, &zero); // polling
 		if (r < 0) break; // XXX: should I ignore error and return signaled handles?
-		r = copy_fd(rd, else_rd.fdset);
+		r += copy_fd(rd, else_rd.fdset);
 		r += copy_fd(wr, else_wr.fdset);
 		if (ex)
 		    r += ex->fd_count;
