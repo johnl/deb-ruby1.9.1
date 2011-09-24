@@ -3,7 +3,7 @@
 
   thread_pthread.c -
 
-  $Author: mrkn $
+  $Author: kosaki $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -1013,6 +1013,7 @@ ubf_select(void *ptr)
 {
     rb_thread_t *th = (rb_thread_t *)ptr;
     add_signal_thread_list(th);
+    rb_thread_wakeup_timer_thread(); /* activate timer thread */
     ubf_select_each(th);
 }
 

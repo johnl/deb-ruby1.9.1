@@ -2,7 +2,7 @@
 
   encoding.c -
 
-  $Author: nobu $
+  $Author: yugui $
   created at: Thu May 24 17:23:27 JST 2007
 
   Copyright (C) 2007 Yukihiro Matsumoto
@@ -554,6 +554,7 @@ load_encoding(const char *name)
 	else if (ISUPPER(*s)) *s = TOLOWER(*s);
 	++s;
     }
+    FL_UNSET(enclib, FL_TAINT|FL_UNTRUSTED);
     OBJ_FREEZE(enclib);
     ruby_verbose = Qfalse;
     ruby_debug = Qfalse;

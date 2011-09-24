@@ -14,6 +14,13 @@ with all sufficient information, see the ChangeLog file.
 * Ruby's License is changed from a dual license with GPLv2
   to a dual license with 2-clause BSDL.
 
+=== Known platform dependent issues
+==== OS X Lion
+
+* You have to configure ruby with '--with-gcc=gcc-4.2' if you're using
+  Xcode 4.1, or, if you're using Xcode 4.2, you have to configure ruby
+  with '--with-gcc=clang'.
+
 === C API updates
 
 * rb_scan_args() is enhanced with support for option hash argument
@@ -21,6 +28,9 @@ with all sufficient information, see the ChangeLog file.
 
 * ruby_vm_at_exit() added.  This enables extension libs to hook a VM
   termination.
+
+* rb_reserved_fd_p() added.  If you want to close all file descriptors,
+  check using this API.  [ruby-core:37759]
 
 === Library updates (outstanding ones only)
 
@@ -235,6 +245,10 @@ with all sufficient information, see the ChangeLog file.
   * new method:
     * Net::HTTPRequest#set_form): Added to support
       both application/x-www-form-urlencoded and multipart/form-data.
+
+* objspace
+  * new method:
+    * ObjectSpace::memsize_of_all
 
 * openssl
   * PKey::RSA and PKey::DSA now use the generic X.509 encoding scheme

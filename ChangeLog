@@ -1,3 +1,97 @@
+Sat Sep 17 23:34:10 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* parse.y (parser_data_type): inherit the core type in ripper so
+	  that checks in core would work.  [ruby-core:39591] [Bug #5331]
+
+Fri Sep 23 14:15:01 2011  Martin Bosslet  <Martin.Bosslet@googlemail.com>
+
+	* ext/openssl/ossl_asn1.c
+	  ext/openssl/ossl_pkey.c: Remove unused variables.
+
+Fri Sep 23 06:54:44 2011  Martin Bosslet  <Martin.Bosslet@googlemail.com>
+
+	* backport r33315 from trunk.
+
+	* test/openssl/test_ssl_session.rb: execute test_session_exts_read
+	  only for OpenSSL versions >= 0.9.8k. Thanks, Eric Wong, for
+	  reporting this.
+	  [Bug #4961] [ruby-core:37726]
+
+Fri Sep 23 12:18:52 2011  Martin Bosslet  <Martin.Bosslet@googlemail.com>
+
+	* backport r33311 from trunk.
+
+	* test/openssl/test_ssl_session.rb: ensure server calls callbacks in
+	  test_ctx_server_session_cb. Thanks to Eric Wong for the patch.
+	  [Bug #5336] [ruby-core:39619]
+
+Thu Sep 22 19:45:22 2011  CHIKANAGA Tomoyuki  <nagachika00@gmail.com>
+
+	* thread_pthread.c (ubf_select): activate timer thread when interrupt
+	  blocking thread.
+	  A patch created by Koichi Sasada. [ruby-core:39634] [Bug #5343]
+	  to cover race condition, timer thread periodically send SIGVTARLM to
+	  threads in signal thread list. so you should activate timer thread
+	  when interrupt a thread.
+
+Wed Sep 21 16:57:03 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/io/wait/test_io_wait.rb (TestIOWait#setup): of course, the
+	  behavior of mingw is just same with mswin.
+
+Sat Sep 17 22:21:26 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* vm.c (rb_vm_make_env_object, rb_vm_get_sourceline): export as a
+	  workaround for ruby-debug19 for the time being.
+	  [ruby-core:38972] [Bug #5193]
+
+Fri Sep 16 01:08:19 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* NEWS: cosmetic changes.
+
+Wed Sep 14 12:39:00 2011  Kenta Murata  <mrkn@mrkn.jp>
+
+	* configure.in: do not use gcc-4.2 as the default compiler.
+
+	* NEWS: describe the issue about Xcode.
+
+Wed Sep 14 11:46:30 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* thread.c (rb_fd_rcopy): added an argument guard.
+	  Patch by NAKAMURA Usaku. [Bug #5306] [ruby-core:39435]
+
+Tue Sep 13 09:28:58 2011  Koichi Sasada  <ko1@atdot.net>
+
+	* NEWS: wrote about rb_reserved_fd_p() and objspace.
+
+Mon Sep 12 20:47:52 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* thread.c (rb_thread_select): fix a typo to initialize efds
+	  properly.  [Bug #5299] [ruby-core:39380]
+
+Mon Sep 12 20:41:20 2011  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* thread.c (rb_thread_select): fix to ignore an argument
+	  modification of rb_thread_fd_select().
+	  based on a patch by Eric Wong. [Bug #5306] [ruby-core:39435]
+	* thread.c (rb_fd_rcopy): New. for reverse fd copy.
+
+	* test/-ext-/old_thread_select/test_old_thread_select.rb
+	(test_old_select_false_positive): test for bug5306.
+
+	* ext/-test-/old_thread_select/old_thread_select.c (fdset2array):
+	  New. convert fdsets to array.
+	* ext/-test-/old_thread_select/old_thread_select.c (old_thread_select):
+	  return 'read', 'write', 'except' argument of rb_thread_select()
+	  to ruby script.
+
+Tue Sep  6 13:15:44 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* encoding.c (load_encoding): predefined encoding names are safe.
+	  [ruby-dev:44469] [Bug #5279]
+
+	* transcode.c (load_transcoder_entry): ditto.
+
 Fri Sep  9 16:02:04 2011  NARUSE, Yui  <naruse@ruby-lang.org>
 
 	* insns.def (concatstrings): don't use initial ASCII-8BIT string.
