@@ -1,6 +1,12 @@
+ruby1.9.1 (1.9.3~rc1-1) experimental; urgency=low
+
+  * New upstream release: 1.9.3 RC1.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Sat, 24 Sep 2011 19:16:17 +0200
+
 ruby1.9.1 (1.9.3~preview1+svn33236-1) experimental; urgency=low
 
-  * New upsrream snapshot.
+  * New upstream snapshot.
   * add README.porters: instructions on how to run specific tests.
   * 110829-freebsd_map_stack.patch: merged usptream, dropped.
   * 110829-hurd_dirent_usage.patch: refresh.
