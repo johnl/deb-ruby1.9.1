@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey.c 32989 2011-08-16 20:06:13Z emboss $
+ * $Id: ossl_pkey.c 33317 2011-09-23 05:17:47Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -101,7 +101,6 @@ ossl_pkey_new_from_file(VALUE filename)
 static VALUE
 ossl_pkey_new_from_data(int argc, VALUE *argv, VALUE self)
 {
-     FILE *fp;
      EVP_PKEY *pkey;
      BIO *bio;
      VALUE data, pass;
