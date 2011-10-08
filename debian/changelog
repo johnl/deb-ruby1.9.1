@@ -1,3 +1,15 @@
+ruby1.9.1 (1.9.3~rc1-2) experimental; urgency=low
+
+  * Add symbols file.
+    Some symbols were removed between 1.9.2.0 and 1.9.3~rc1, but this does
+    not constitute an ABI change as those symbols were not supposed to be used
+    by third-party extensions (not in header files, etc.)
+    See http://redmine.ruby-lang.org/issues/4666 for details.
+    Closes: #636966.
+  * Upload to experimental to test-build this.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Sat, 08 Oct 2011 10:30:33 +0200
+
 ruby1.9.1 (1.9.3~rc1-1) unstable; urgency=low
 
   * New upstream release: 1.9.3 RC1.
