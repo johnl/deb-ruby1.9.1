@@ -584,9 +584,9 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_find_file_ext@Base 1.9.2.0
  rb_find_file_ext_safe@Base 1.9.2.0
  rb_find_file_safe@Base 1.9.2.0
- rb_fix2int@Base 1.9.2.0
+ (arch=amd64)rb_fix2int@Base 1.9.2.0
  rb_fix2str@Base 1.9.2.0
- rb_fix2uint@Base 1.9.2.0
+ (arch=amd64)rb_fix2uint@Base 1.9.2.0
  rb_float_new@Base 1.9.2.0
  rb_fork@Base 1.9.2.0
  rb_fork_err@Base 1.9.2.0
@@ -847,10 +847,10 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_notimplement@Base 1.9.2.0
  rb_num2dbl@Base 1.9.2.0
  rb_num2fix@Base 1.9.2.0
- rb_num2int@Base 1.9.2.0
+ (arch=amd64)rb_num2int@Base 1.9.2.0
  rb_num2ll@Base 1.9.2.0
  rb_num2long@Base 1.9.2.0
- rb_num2uint@Base 1.9.2.0
+ (arch=amd64)rb_num2uint@Base 1.9.2.0
  rb_num2ull@Base 1.9.2.0
  rb_num2ulong@Base 1.9.2.0
  rb_num_coerce_bin@Base 1.9.2.0
@@ -891,7 +891,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_objspace_data_type_memsize@Base 1.9.2.0
  rb_objspace_data_type_name@Base 1.9.2.0
  rb_objspace_each_objects@Base 1.9.2.0
- rb_out_of_int@Base 1.9.2.0
+ (arch=amd64)rb_out_of_int@Base 1.9.2.0
  rb_output_fs@Base 1.9.2.0
  rb_output_rs@Base 1.9.2.0
  rb_p@Base 1.9.2.0
