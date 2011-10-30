@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_asn1.c 33317 2011-09-23 05:17:47Z emboss $
+ * $Id: ossl_asn1.c 33347 2011-09-27 04:06:02Z kosaki $
  * 'OpenSSL for Ruby' team members
  * Copyright (C) 2003
  * All rights reserved.
@@ -877,13 +877,23 @@ int_ossl_asn1_decode0_cons(unsigned char **pp, long max_len, long length,
 	}
     }
 
-    if (tc == sUNIVERSAL && (tag == V_ASN1_SEQUENCE || V_ASN1_SET)) {
+    if (tc == sUNIVERSAL) {
 	VALUE args[4];
-	VALUE klass = *ossl_asn1_info[tag].klass;
-	if (infinite && tag != V_ASN1_SEQUENCE && tag != V_ASN1_SET) {
-	    asn1data = rb_obj_alloc(cASN1Constructive);
+	int not_sequence_or_set;
+
+	not_sequence_or_set = tag != V_ASN1_SEQUENCE && tag != V_ASN1_SET;
+
+	if (not_sequence_or_set) {
+	    if (infinite) {
+		asn1data = rb_obj_alloc(cASN1Constructive);
+	    }
+	    else {
+		ossl_raise(eASN1Error, "invalid non-infinite tag");
+		return Qnil;
+	    }
 	}
 	else {
+	    VALUE klass = *ossl_asn1_info[tag].klass;
 	    asn1data = rb_obj_alloc(klass);
 	}
 	args[0] = ary;
