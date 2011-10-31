@@ -1,8 +1,11 @@
 ruby1.9.1 (1.9.3.0-1) unstable; urgency=low
 
   * New upstream release: 1.9.3p0.
+  * Disable test suites on ia64 sparc kfreebsd-i386 kfreebsd-amd64.
+    Those architectures are known to be broken at the moment.
+    Details: http://lists.debian.org/debian-release/2011/10/msg00279.html
 
- -- Lucas Nussbaum <lucas@debian.org>  Sun, 30 Oct 2011 22:10:53 +0100
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 31 Oct 2011 08:44:23 +0100
 
 ruby1.9.1 (1.9.3~rc1-3) experimental; urgency=low
 
