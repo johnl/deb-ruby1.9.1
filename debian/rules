@@ -38,10 +38,6 @@ ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -g -O0
 else
 	CFLAGS += -g -O2
-# Workaround for #634260 (ruby1.8). Can be removed when #635126 is fixed.
-ifneq (,$(filter $(DEB_BUILD_ARCH),armel sparc))
-	CFLAGS += -fno-tree-sra
-endif
 endif
 
 # Renesas SH(sh4) needs -mieee option. #591785
