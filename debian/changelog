@@ -1,3 +1,12 @@
+ruby1.9.1 (1.9.3.0-2) unstable; urgency=low
+
+  * gcc's #635126 requiring -fno-tree-sra has been fixed.
+    Disable workaround in that package.
+  * add sparc-continuations.diff: fixes segfault during test suite on sparc.
+    Closes: #593138, #545345. Many thanks to Jurij Smakov.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 19 Dec 2011 21:33:37 +0100
+
 ruby1.9.1 (1.9.3.0-1) unstable; urgency=low
 
   * New upstream release: 1.9.3p0.
