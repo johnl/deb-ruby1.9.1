@@ -15,3 +15,4 @@
 110829-freebsd_assert_normal_exit.patch
 110829-hurd_dirent_usage.patch
 sparc-continuations.diff
+hurd-path-max.diff
