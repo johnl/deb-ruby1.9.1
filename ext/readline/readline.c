@@ -2,13 +2,13 @@
 
   readline.c - GNU Readline module
 
-  $Author: yugui $
+  $Author: drbrain $
   created at: Wed Jan 20 13:59:32 JST 1999
 
   Copyright (C) 1997-2008  Shugo Maeda
   Copyright (C) 2008-2009  TAKAO Kouji
 
-  $Id: readline.c 30569 2011-01-16 12:35:04Z yugui $
+  $Id: readline.c 32613 2011-07-22 04:54:09Z drbrain $
 
   Contact:
    - TAKAO Kouji <kouji at takao7 dot net> (current maintainer)
@@ -75,7 +75,7 @@ static char **readline_attempted_completion_function(const char *text,
 
 #define OutputStringValue(str) do {\
     SafeStringValue(str);\
-    str = rb_str_conv_enc(str, rb_enc_get(str), rb_locale_encoding());\
+    (str) = rb_str_conv_enc((str), rb_enc_get(str), rb_locale_encoding());\
 } while (0)\
 
 
@@ -118,6 +118,10 @@ static char **readline_attempted_completion_function(const char *text,
 static VALUE readline_instream;
 static ID id_getbyte;
 
+#ifndef HAVE_RL_GETC
+#define rl_getc(f) EOF
+#endif
+
 static int readline_getc(FILE *);
 static int
 readline_getc(FILE *input)
@@ -127,6 +131,34 @@ readline_getc(FILE *input)
     if (!readline_instream) return rl_getc(input);
     GetOpenFile(readline_instream, ifp);
     if (rl_instream != ifp->stdio_file) return rl_getc(input);
+#if defined(_WIN32)
+    {
+        INPUT_RECORD ir;
+        int n;
+        static int prior_key = '0';
+        for (;;) {
+            if (prior_key > 0xff) {
+                prior_key = rl_getc(ifp->stdio_file);
+                return prior_key;
+            }
+            if (PeekConsoleInput((HANDLE)_get_osfhandle(ifp->fd), &ir, 1, &n)) {
+                if (n == 1) {
+                    if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
+                        prior_key = rl_getc(ifp->stdio_file);
+                        return prior_key;
+                    } else {
+                        ReadConsoleInput((HANDLE)_get_osfhandle(ifp->fd), &ir, 1, &n);
+                    }
+                } else {
+                    HANDLE h = (HANDLE)_get_osfhandle(ifp->fd);
+                    rb_w32_wait_events(&h, 1, INFINITE);
+                }
+            } else {
+                break;
+            }
+        }
+    }
+#endif    
     c = rb_funcall(readline_instream, id_getbyte, 0, 0);
     if (NIL_P(c)) return EOF;
     return NUM2CHR(c);
@@ -141,11 +173,7 @@ readline_event(void)
 #if BUSY_WAIT
     rb_thread_schedule();
 #else
-    fd_set rset;
-
-    FD_ZERO(&rset);
-    FD_SET(fileno(rl_instream), &rset);
-    rb_thread_select(fileno(rl_instream) + 1, &rset, NULL, NULL, NULL);
+    rb_wait_for_single_fd(fileno(rl_instream), RB_WAITFD_IN, NULL);
     return 0;
 #endif
 }
@@ -350,7 +378,9 @@ readline_readline(int argc, VALUE *argv, VALUE self)
     if (status) {
 #if defined HAVE_RL_CLEANUP_AFTER_SIGNAL
         /* restore terminal mode and signal handler*/
+#if defined HAVE_RL_FREE_LINE_STATE
         rl_free_line_state();
+#endif
         rl_cleanup_after_signal();
 #elif defined HAVE_RL_DEPREP_TERM_FUNCTION
         /* restore terminal mode */
@@ -424,15 +454,71 @@ readline_s_set_output(VALUE self, VALUE output)
  * call-seq:
  *   Readline.completion_proc = proc
  *
- * Specifies a Proc object +proc+ to determine completion behavior. It
- * should take input-string, and return an array of completion
- * candidates.
+ * Specifies a Proc object +proc+ to determine completion behavior.  It
+ * should take input string and return an array of completion candidates.
  *
- * Set default if +proc+ is nil.
+ * The default completion is used if +proc+ is nil.
  *
- * Raises ArgumentError exception if +proc+ does not respond to call method.
+ * The String that is passed to the Proc depends on the
+ * Readline.completer_word_break_characters property.  By default the word
+ * under the cursor is passed to the Proc.  For example, if the input is "foo
+ * bar" then only "bar" would be passed to the completion Proc.
  *
- * Raises SecurityError exception if $SAFE is 4.
+ * Upon successful completion the Readline.completion_append_character will be
+ * appended to the input so the user can start working on their next argument.
+ *
+ * = Examples
+ *
+ * == Completion for a Static List
+ *
+ *   require 'readline'
+ *
+ *   LIST = [
+ *     'search', 'download', 'open',
+ *     'help', 'history', 'quit',
+ *     'url', 'next', 'clear',
+ *     'prev', 'past'
+ *   ].sort
+ *
+ *   comp = proc { |s| LIST.grep(/^#{Regexp.escape(s)}/) }
+ *
+ *   Readline.completion_append_character = " "
+ *   Readline.completion_proc = comp
+ *
+ *   while line = Readline.readline('> ', true)
+ *     p line
+ *   end
+ *
+ * == Completion For Directory Contents
+ *
+ *   require 'readline'
+ *
+ *   Readline.completion_append_character = " "
+ *   Readline.completion_proc = Proc.new do |str|
+ *     Dir[str+'*'].grep(/^#{Regexp.escape(str)}/)
+ *   end
+ *
+ *   while line = Readline.readline('> ', true)
+ *     p line
+ *   end
+ *
+ * = Autocomplete strategies
+ *
+ * When working with auto-complete there are some strategies that work well.
+ * To get some ideas you can take a look at the
+ * completion.rb[http://svn.ruby-lang.org/repos/ruby/trunk/lib/irb/completion.rb]
+ * file for irb.
+ *
+ * The common strategy is to take a list of possible completions and filter it
+ * down to those completions that start with the user input.  In the above
+ * examples Enumerator.grep is used.  The input is escaped to prevent Regexp
+ * special characters from interfering with the matching.
+ *
+ * It may also be helpful to use the Abbrev library to generate completions.
+ *
+ * Raises ArgumentError if +proc+ does not respond to the call method.
+ *
+ * Raises SecurityError if $SAFE is 4.
  */
 static VALUE
 readline_s_set_completion_proc(VALUE self, VALUE proc)

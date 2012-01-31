@@ -1,7 +1,7 @@
 #
 # kconv.rb - Kanji Converter.
 #
-# $Id: kconv.rb 30315 2010-12-23 12:45:17Z yugui $
+# $Id: kconv.rb 30112 2010-12-07 11:47:39Z naruse $
 #
 # ----
 #

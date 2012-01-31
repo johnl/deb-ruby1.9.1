@@ -2,19 +2,17 @@
 ## 090803_exclude_rdoc.dpatch by Daigo Moriwaki <daigo@debian.org>
 ##
 ## All lines beginning with `## DP:' are a description of the patch.
-## DP: No description.
+## DP: Exclude some files from rdoc.
 
 @DPATCH@
-Index: b/common.mk
-===================================================================
---- a/common.mk	2010-07-20 21:46:17.000000000 +0900
-+++ b/common.mk	2010-07-20 21:46:17.000000000 +0900
-@@ -323,7 +323,7 @@
+--- a/common.mk
++++ b/common.mk
+@@ -402,7 +402,7 @@ post-install-doc::
  
- rdoc: $(PROGRAM) PHONY
+ rdoc: PHONY main
  	@echo Generating RDoc documentation
--	$(RUNRUBY) "$(srcdir)/bin/rdoc" --all --ri --op "$(RDOCOUT)" "$(srcdir)"
-+	$(RUNRUBY) "$(srcdir)/bin/rdoc" --all --ri --op "$(RDOCOUT)" --exclude mkconfig.rb --exclude test_ --exclude bm_ --exclude "tool/make-snapshot" "$(srcdir)"
+-	$(Q) $(XRUBY) "$(srcdir)/bin/rdoc" --encoding=UTF-8 --no-force-update --all --ri --op "$(RDOCOUT)" $(RDOCFLAGS) "$(srcdir)"
++	$(Q) $(XRUBY) "$(srcdir)/bin/rdoc" --encoding=UTF-8 --no-force-update --all --ri --op "$(RDOCOUT)" $(RDOCFLAGS) --exclude mkconfig.rb --exclude test_ --exclude bm_ --exclude "tool/make-snapshot" "$(srcdir)"
  
- what-where-doc: no-install-doc
- no-install-doc: pre-no-install-doc dont-install-doc post-no-install-doc
+ rdoc-coverage: PHONY main
+ 	@echo Generating RDoc coverage report

@@ -1,4 +1,4 @@
-require_relative 'helper'
+require 'psych/helper'
 
 require 'stringio'
 require 'tempfile'
@@ -6,6 +6,41 @@ require 'tempfile'
 class TestPsych < Psych::TestCase
   def teardown
     Psych.domain_types.clear
+  end
+
+  def test_line_width
+    yml = Psych.dump('123456 7', { :line_width => 5 })
+    assert_match(/^\s*7/, yml)
+  end
+
+  def test_indent
+    yml = Psych.dump({:a => {'b' => 'c'}}, {:indentation => 5})
+    assert_match(/^[ ]{5}b/, yml)
+  end
+
+  def test_canonical
+    yml = Psych.dump({:a => {'b' => 'c'}}, {:canonical => true})
+    assert_match(/\? ! "b/, yml)
+  end
+
+  def test_header
+    yml = Psych.dump({:a => {'b' => 'c'}}, {:header => true})
+    assert_match(/YAML/, yml)
+  end
+
+  def test_version_array
+    yml = Psych.dump({:a => {'b' => 'c'}}, {:version => [1,1]})
+    assert_match(/1.1/, yml)
+  end
+
+  def test_version_string
+    yml = Psych.dump({:a => {'b' => 'c'}}, {:version => '1.1'})
+    assert_match(/1.1/, yml)
+  end
+
+  def test_version_bool
+    yml = Psych.dump({:a => {'b' => 'c'}}, {:version => true})
+    assert_match(/1.1/, yml)
   end
 
   def test_load_argument_error
@@ -64,7 +99,7 @@ class TestPsych < Psych::TestCase
 
   def test_add_builtin_type
     got = nil
-    Psych.add_builtin_type 'omap', do |type, val|
+    Psych.add_builtin_type 'omap' do |type, val|
       got = val
     end
     Psych.load('--- !!omap hello')

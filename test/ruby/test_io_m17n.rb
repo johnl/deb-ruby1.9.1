@@ -184,7 +184,7 @@ EOT
     }
   end
 
-  def test_open_r_encname_encname_in_opt
+  def test_open_r_externalencname_internalencname_in_opt
     with_tmpdir {
       generate_file('tmp', "")
       open("tmp", "r", external_encoding: "euc-jp", internal_encoding: "utf-8") {|f|
@@ -281,7 +281,7 @@ EOT
       fd = IO.sysopen("tmp")
       f = IO.new(fd, "r:sjis")
       begin
-        assert_equal(Encoding::Shift_JIS, f.read.encoding)
+        assert_equal(Encoding::Windows_31J, f.read.encoding)
       ensure
         f.close
       end
@@ -1207,6 +1207,16 @@ EOT
     }
   end
 
+  def test_open_pipe_r_enc2
+    open("|#{EnvUtil.rubybin} -e 'putc \"\\u3042\"'", "r:UTF-8") {|f|
+      assert_equal(Encoding::UTF_8, f.external_encoding)
+      assert_equal(nil, f.internal_encoding)
+      s = f.read
+      assert_equal(Encoding::UTF_8, s.encoding)
+      assert_equal("\u3042", s)
+    }
+  end
+
   def test_s_foreach_enc
     with_tmpdir {
       generate_file("t", "\xff")
@@ -1339,6 +1349,9 @@ EOT
       open("t.crlf", "rt:euc-jp:utf-8") {|f| assert_equal("a\nb\nc\n", f.read) }
       open("t.crlf", "rt") {|f| assert_equal("a\nb\nc\n", f.read) }
       open("t.crlf", "r", :textmode=>true) {|f| assert_equal("a\nb\nc\n", f.read) }
+      open("t.crlf", "r", textmode: true, universal_newline: false) {|f|
+        assert_equal("a\r\nb\r\nc\r\n", f.read)
+      }
 
       generate_file("t.cr", "a\rb\rc\r")
       assert_equal("a\nb\nc\n", File.read("t.cr", mode:"rt:euc-jp:utf-8"))
@@ -2046,6 +2059,15 @@ EOT
            assert_equal("", r.read, bug)
            r.close
          end)
+  end
+
+  def test_getc_ascii_only
+    bug4557 = '[ruby-core:35630]'
+    c = with_tmpdir {
+      open("a", "wb") {|f| f.puts "a"}
+      open("a", "rt") {|f| f.getc}
+    }
+    assert(c.ascii_only?, "should be ascii_only #{bug4557}")
   end
 end
 

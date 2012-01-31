@@ -1,7 +1,7 @@
 #
 #   irb/slex.rb - simple lex analyzer
 #   	$Release Version: 0.9.6$
-#   	$Revision: 25189 $
+#   	$Revision: 28619 $
 #   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
 #
 # --
@@ -14,7 +14,7 @@ require "irb/notifier"
 
 module IRB
   class SLex
-    @RCS_ID='-$Id: slex.rb 25189 2009-10-02 12:04:37Z akr $-'
+    @RCS_ID='-$Id: slex.rb 28619 2010-07-11 16:59:10Z marcandre $-'
 
     extend Exception2MessageMapper
     def_exception :ErrNodeNothing, "node nothing"
@@ -35,7 +35,7 @@ module IRB
       D_DETAIL.pp token
 
       postproc = block if block_given?
-      node = create(token, preproc, postproc)
+      create(token, preproc, postproc)
     end
 
     def def_rules(*tokens, &block)

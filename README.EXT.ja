@@ -106,9 +106,9 @@ FIXNUMとNILに関してはより高速な判別マクロが用意されています．
 になります. FIXNUM を C の整数に変換するためにはマクロ
 「FIX2INT()」または「FIX2LONG()」を使います．これらのマクロ
 を使用する際には事前にデータタイプがFIXNUMであることを確認す
-る必要がありますが、比較的高速に変換を行うことができます．ま
-た、「FIX2LONG()」は例外を発生しませんが、「FIX2INT()」は変
-換結果がintのサイズに収まらない場合には例外を発生します。
+る必要がありますが，比較的高速に変換を行うことができます．ま
+た，「FIX2LONG()」は例外を発生しませんが，「FIX2INT()」は変
+換結果がintのサイズに収まらない場合には例外を発生します．
 それから，FIXNUMに限らずRubyのデータを整数に変換する
 「NUM2INT()」および「NUM2LONG()」というマクロがあります．こ
 れらのマクロはマクロはデータタイプのチェック無しで使えます
@@ -208,13 +208,13 @@ Rubyが用意している関数を用いてください．
     rb_str_new(ptr, strlen(ptr))と同等である．
 
   rb_tainted_str_new(const char *ptr, long len)
-  rb_tainted_str_new_cstr(const char *ptr)
 
     汚染マークが付加された新しいRubyの文字列を生成する．外部
     からのデータに基づく文字列には汚染マークが付加されるべき
     である．
 
   rb_tainted_str_new2(const char *ptr)
+  rb_tainted_str_new_cstr(const char *ptr)
 
     Cの文字列から汚染マークが付加されたRubyの文字列を生成する．
 
@@ -249,6 +249,22 @@ Rubyが用意している関数を用いてください．
   rb_usascii_str_new_cstr(const char *ptr)
 
     エンコーディングがUS-ASCIIのRubyの文字列を生成する.
+
+  rb_str_resize(VALUE str, long len)
+
+    Rubyの文字列のサイズをlenバイトに変更する．strの長さは前
+    以てセットされていなければならない．lenが元の長さよりも短
+    い時は，lenバイトを越えた部分の内容は捨てられる．lenが元
+    の長さよりも長い時は，元の長さを越えた部分の内容は保存さ
+    れないでゴミになるだろう．この関数の呼び出しによって
+    RSTRING_PTR(str)が変更されるかもしれないことに注意．
+
+  rb_str_set_len(VALUE str, long len)
+
+    Rubyの文字列のサイズをlenバイトにセットする．strが変更可
+    能でなければ例外が発生する．RSTRING_LEN(str)とは無関係に，
+    lenバイトまでの内容は保存される．lenはstrの容量を越えてい
+    てはならない．
 
 
  配列に対する関数
@@ -374,7 +390,7 @@ private/protectedなメソッドを定義するふたつの関数があります.
 privateメソッドとは関数形式でしか呼び出すことの出来ないメソッ
 ドです．
 
-最後に、 rb_define_module関数はモジュール関数を定義します。
+最後に， rb_define_module関数はモジュール関数を定義します．
 モジュール関数とはモジュールの特異メソッドであり，同時に
 privateメソッドでもあるものです．例をあげるとMathモジュール
 のsqrt()などがあげられます．このメソッドは
@@ -454,8 +470,8 @@ CからRubyの機能を呼び出すもっとも簡単な方法として，文字列で
 
   VALUE rb_eval_string_protect(const char *str, int *state)
 
-この関数はエラーが発生するとnilを返します。そして、成功時には
-*stateはゼロに、さもなくば非ゼロになります。
+この関数はエラーが発生するとnilを返します．そして，成功時には
+*stateはゼロに，さもなくば非ゼロになります．
 
 
 2.2.2 IDまたはシンボル
@@ -562,7 +578,7 @@ CとRubyで大域変数を使って情報を共有できます．共有できる大域
 setterに0を指定します．
 # getterもsetterも0ならばrb_define_variable()と同じになる．
 
-getterとsetterの仕様は次の通りです。
+getterとsetterの仕様は次の通りです．
 
   VALUE (*getter)(ID id, VALUE *var);
   void (*setter)(VALUE val, ID id, VALUE *var);
@@ -664,7 +680,10 @@ Ruby 1.1からは任意のディレクトリでダイナミックライブラリを作
 言語のソースが複数の場合には逆に「ライブラリ名.c」というファ
 イル名は避ける必要があります．オブジェクトファイルとモジュー
 ル生成時に中間的に生成される「ライブラリ名.o」というファイル
-とが衝突するからです．
+とが衝突するからです．また，後述する mkmf ライブラリのいくつ
+かの関数がコンパイルを要するテストのために「conftest.c」とい
+うファイル名を使用することに注意してください．ソースファイル
+名として「conftest.c」を使用してはなりません．
 
 Rubyは拡張ライブラリをロードする時に「Init_ライブラリ名」と
 いう関数を自動的に実行します．dbmライブラリの場合「Init_dbm」
@@ -991,7 +1010,7 @@ Rubyコマンドの実装
   struct.c      : Struct
   time.c        : Time
 
-  defs/knwon_errors.def  : 例外クラス Errno::*
+  defs/known_errors.def  : 例外クラス Errno::*
     -> known_errors.inc  : 自動生成
 
 多言語化
@@ -1182,12 +1201,13 @@ rb_scan_args(int argc, VALUE *argv, const char *fmt, ...)
   トは，ABNFで記述すると以下の通りです．
 
 --
-scan-arg-spec  := param-arg-spec [block-arg-spec]
+scan-arg-spec  := param-arg-spec [option-hash-arg-spec] [block-arg-spec]
 
 param-arg-spec := pre-arg-spec [post-arg-spec] / post-arg-spec / pre-opt-post-arg-spec
 pre-arg-spec   := num-of-leading-mandatory-args [num-of-optional-args]
 post-arg-spec  := sym-for-variable-length-args [num-of-trailing-mandatory-args]
 pre-opt-post-arg-spec := num-of-leading-mandatory-args num-of-optional-args num-of-trailing-mandatory-args
+option-hash-arg-spec := sym-for-option-hash-arg
 block-arg-spec := sym-for-block-arg
 
 num-of-leading-mandatory-args  := DIGIT ; 先頭に置かれる省略不能な引数の数
@@ -1195,6 +1215,15 @@ num-of-optional-args           := DIGIT ; 続いて置かれる省略可能な引数の数
 sym-for-variable-length-args   := "*"   ; 続いて置かれる可変長引数を
                                         ; Rubyの配列で取得するための指定
 num-of-trailing-mandatory-args := DIGIT ; 終端に置かれる省略不能な引数の数
+sym-for-option-hash-arg        := ":"   ; オプションハッシュを取得する
+                                        ; ための指定; 省略不能な引数の
+                                        ; 数よりも多くの引数が指定され，
+                                        ; 最後の引数がハッシュ（または
+                                        ; #to_hashで変換可能）の場合に
+                                        ; 取得される．最後の引数がnilの
+                                        ; 場合，可変長引数指定がなく，
+                                        ; 省略不能引数の数よりも多くの
+                                        ; 引数が指定された場合に取得される
 sym-for-block-arg              := "&"   ; イテレータブロックを取得するための
                                         ; 指定
 --
@@ -1203,12 +1232,12 @@ sym-for-block-arg              := "&"   ; イテレータブロックを取得するための
   れるという意味になります．従って，フォーマット文字列に続い
   て3つのVALUEへの参照を置く必要があります．それらには取得した
   変数がセットされます．変数への参照の代わりにNULLを指定する
-  こともでき，その場合は取得した引数の値は捨てられます．なお、
+  こともでき，その場合は取得した引数の値は捨てられます．なお，
   省略可能引数が省略された時の変数の値はnil(C言語のレベルでは
   Qnil)になります．
 
-  返り値は与えられた引数の数です．イテレータブロックは数えま
-  せん．
+  返り値は与えられた引数の数です．オプションハッシュおよびイ
+  テレータブロックは数えません．
 
 ** Rubyメソッド呼び出し
 
@@ -1288,7 +1317,7 @@ VALUE rb_rescue(VALUE (*func1)(), VALUE arg1, VALUE (*func2)(), VALUE arg2)
   しなかった時はfunc1の戻り値, 例外が発生した時にはfunc2の戻
   り値である．
 
-VALUE rb_ensure(VALUE (*func1)(), VALUE arg1, void (*func2)(), VALUE arg2)
+VALUE rb_ensure(VALUE (*func1)(), VALUE arg1, VALUE (*func2)(), VALUE arg2)
 
   関数func1をarg1を引数として実行し, 実行終了後(たとえ例外が
   発生しても) func2をarg2を引数として実行する．戻り値はfunc1
@@ -1395,7 +1424,7 @@ NORETURN_STYLE_NEW
 
 HAVE_RB_DEFINE_ALLOC_FUNC
 
-  rb_define_alloc_func() 関数が提供されていること、つまり
+  rb_define_alloc_func() 関数が提供されていること，つまり
   allocation framework が使われることを意味する．
   have_func("rb_define_alloc_func", "ruby.h")
   の結果と同じ．

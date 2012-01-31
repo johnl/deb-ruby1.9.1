@@ -2,7 +2,7 @@
 
   bignum.c -
 
-  $Author: yugui $
+  $Author: mrkn $
   created at: Fri Jun 10 00:48:55 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -11,6 +11,7 @@
 
 #include "ruby/ruby.h"
 #include "ruby/util.h"
+#include "internal.h"
 
 #include <math.h>
 #include <float.h>
@@ -22,6 +23,8 @@
 
 VALUE rb_cBignum;
 
+static VALUE big_three = Qnil;
+
 #if defined __MINGW32__
 #define USHORT _USHORT
 #endif
@@ -29,18 +32,44 @@ VALUE rb_cBignum;
 #define BDIGITS(x) (RBIGNUM_DIGITS(x))
 #define BITSPERDIG (SIZEOF_BDIGITS*CHAR_BIT)
 #define BIGRAD ((BDIGIT_DBL)1 << BITSPERDIG)
+#define BIGRAD_HALF ((BDIGIT)(BIGRAD >> 1))
 #define DIGSPERLONG (SIZEOF_LONG/SIZEOF_BDIGITS)
 #if HAVE_LONG_LONG
 # define DIGSPERLL (SIZEOF_LONG_LONG/SIZEOF_BDIGITS)
 #endif
 #define BIGUP(x) ((BDIGIT_DBL)(x) << BITSPERDIG)
-#define BIGDN(x) RSHIFT(x,BITSPERDIG)
+#define BIGDN(x) RSHIFT((x),BITSPERDIG)
 #define BIGLO(x) ((BDIGIT)((x) & (BIGRAD-1)))
 #define BDIGMAX ((BDIGIT)-1)
 
 #define BIGZEROP(x) (RBIGNUM_LEN(x) == 0 || \
 		     (BDIGITS(x)[0] == 0 && \
 		      (RBIGNUM_LEN(x) == 1 || bigzero_p(x))))
+
+#define BIGNUM_DEBUG 0
+#if BIGNUM_DEBUG
+#define ON_DEBUG(x) do { x; } while (0)
+static void
+dump_bignum(VALUE x)
+{
+    long i;
+    printf("%c0x0", RBIGNUM_SIGN(x) ? '+' : '-');
+    for (i = RBIGNUM_LEN(x); i--; ) {
+	printf("_%08"PRIxBDIGIT, BDIGITS(x)[i]);
+    }
+    printf(", len=%lu", RBIGNUM_LEN(x));
+    puts("");
+}
+
+static VALUE
+rb_big_dump(VALUE x)
+{
+    dump_bignum(x);
+    return x;
+}
+#else
+#define ON_DEBUG(x)
+#endif
 
 static int
 bigzero_p(VALUE x)
@@ -148,7 +177,7 @@ bignew_1(VALUE klass, long len, int sign)
     return (VALUE)big;
 }
 
-#define bignew(len,sign) bignew_1(rb_cBignum,len,sign)
+#define bignew(len,sign) bignew_1(rb_cBignum,(len),(sign))
 
 VALUE
 rb_big_new(long len, int sign)
@@ -511,7 +540,7 @@ rb_quad_pack(char *buf, VALUE val)
     }
 }
 
-#define BNEG(b) (RSHIFT(((BDIGIT*)b)[QUAD_SIZE/SIZEOF_BDIGITS-1],BITSPERDIG-1) != 0)
+#define BNEG(b) (RSHIFT(((BDIGIT*)(b))[QUAD_SIZE/SIZEOF_BDIGITS-1],BITSPERDIG-1) != 0)
 
 VALUE
 rb_quad_unpack(const char *buf, int sign)
@@ -734,6 +763,8 @@ rb_str_to_inum(VALUE str, int base, int badcheck)
 {
     char *s;
     long len;
+    VALUE v = 0;
+    VALUE ret;
 
     StringValue(str);
     if (badcheck) {
@@ -745,14 +776,17 @@ rb_str_to_inum(VALUE str, int base, int badcheck)
     if (s) {
 	len = RSTRING_LEN(str);
 	if (s[len]) {		/* no sentinel somehow */
-	    char *p = ALLOCA_N(char, len+1);
+	    char *p = ALLOCV(v, len+1);
 
 	    MEMCPY(p, s, char, len);
 	    p[len] = '\0';
 	    s = p;
 	}
     }
-    return rb_cstr_to_inum(s, base, badcheck);
+    ret = rb_cstr_to_inum(s, base, badcheck);
+    if (v)
+	ALLOCV_END(v);
+    return ret;
 }
 
 #if HAVE_LONG_LONG
@@ -1176,7 +1210,7 @@ rb_big2ulong(VALUE x)
     VALUE num = big2ulong(x, "unsigned long", TRUE);
 
     if (!RBIGNUM_SIGN(x)) {
-	if ((SIGNED_VALUE)num < 0) {
+	if ((long)num < 0) {
 	    rb_raise(rb_eRangeError, "bignum out of range of unsigned long");
 	}
 	return (VALUE)(-(SIGNED_VALUE)num);
@@ -1189,8 +1223,8 @@ rb_big2long(VALUE x)
 {
     VALUE num = big2ulong(x, "long", TRUE);
 
-    if ((SIGNED_VALUE)num < 0 &&
-	(RBIGNUM_SIGN(x) || (SIGNED_VALUE)num != LONG_MIN)) {
+    if ((long)num < 0 &&
+	(RBIGNUM_SIGN(x) || (long)num != LONG_MIN)) {
 	rb_raise(rb_eRangeError, "bignum too big to convert into `long'");
     }
     if (!RBIGNUM_SIGN(x)) return -(SIGNED_VALUE)num;
@@ -1567,7 +1601,7 @@ rb_big_eq(VALUE x, VALUE y)
 	    volatile double a, b;
 
 	    a = RFLOAT_VALUE(y);
-	    if (isnan(a)) return Qfalse;
+	    if (isnan(a) || isinf(a)) return Qfalse;
 	    b = rb_big2dbl(x);
 	    return (a == b)?Qtrue:Qfalse;
 	}
@@ -1608,7 +1642,7 @@ rb_big_eql(VALUE x, VALUE y)
  * Unary minus (returns an integer whose value is 0-big)
  */
 
-static VALUE
+VALUE
 rb_big_uminus(VALUE x)
 {
     VALUE z = rb_big_clone(x);
@@ -1683,7 +1717,7 @@ bigsub(VALUE x, VALUE y)
     long i = RBIGNUM_LEN(x);
     BDIGIT *xds, *yds;
 
-    /* if x is larger than y, swap */
+    /* if x is smaller than y, swap */
     if (RBIGNUM_LEN(x) < RBIGNUM_LEN(y)) {
 	z = x; x = y; y = z;	/* swap x y */
     }
@@ -1733,6 +1767,7 @@ bigsub_int(VALUE x, long y0)
     if (xn == 1 && num < 0) {
 	RBIGNUM_SET_SIGN(z, !RBIGNUM_SIGN(x));
 	zds[0] = (BDIGIT)-num;
+	RB_GC_GUARD(x);
 	return bignorm(z);
     }
     zds[0] = BIGLO(num);
@@ -1759,6 +1794,7 @@ bigsub_int(VALUE x, long y0)
     if (num < 0) {
 	z = bigsub(x, rb_int2big(y0));
     }
+    RB_GC_GUARD(x);
     return bignorm(z);
 }
 
@@ -1811,6 +1847,7 @@ bigadd_int(VALUE x, long y)
     while (i < zn) {
 	zds[i++] = 0;
     }
+    RB_GC_GUARD(x);
     return bignorm(z);
 }
 
@@ -2019,7 +2056,7 @@ bigmul1_balance(VALUE x, VALUE y)
 
     xn = RBIGNUM_LEN(x);
     yn = RBIGNUM_LEN(y);
-    assert(2 * xn <= yn);
+    assert(2 * xn <= yn || 3 * xn <= 2*(yn+2));
 
     z = bignew(xn + yn, RBIGNUM_SIGN(x)==RBIGNUM_SIGN(y));
     t1 = bignew(xn, 1);
@@ -2059,10 +2096,15 @@ big_split(VALUE v, long n, volatile VALUE *ph, volatile VALUE *pl)
 	ln = n;
     }
 
-    while (--hn && !vds[hn + ln]);
-    h = bignew(hn += 2, 1);
-    MEMCPY(BDIGITS(h), vds + ln, BDIGIT, hn - 1);
-    BDIGITS(h)[hn - 1] = 0; /* margin for carry */
+    if (!hn) {
+	h = rb_uint2big(0);
+    }
+    else {
+	while (--hn && !vds[hn + ln]);
+	h = bignew(hn += 2, 1);
+	MEMCPY(BDIGITS(h), vds + ln, BDIGIT, hn - 1);
+	BDIGITS(h)[hn - 1] = 0; /* margin for carry */
+    }
 
     while (--ln && !vds[ln]);
     l = bignew(ln += 2, 1);
@@ -2169,6 +2211,241 @@ bigmul1_karatsuba(VALUE x, VALUE y)
     return z;
 }
 
+static void
+biglsh_bang(BDIGIT *xds, long xn, unsigned long shift)
+{
+    long const s1 = shift/BITSPERDIG;
+    int const s2 = (int)(shift%BITSPERDIG);
+    int const s3 = BITSPERDIG-s2;
+    BDIGIT* zds;
+    BDIGIT num;
+    long i;
+    if (s1 >= xn) {
+	MEMZERO(xds, BDIGIT, xn);
+	return;
+    }
+    zds = xds + xn - 1;
+    xn -= s1 + 1;
+    num = xds[xn]<<s2;
+    do {
+	*zds-- = num | xds[--xn]>>s3;
+	num = xds[xn]<<s2;
+    }
+    while (xn > 0);
+    *zds = num;
+    for (i = s1; i > 0; --i)
+	*zds-- = 0;
+}
+
+static void
+bigrsh_bang(BDIGIT* xds, long xn, unsigned long shift)
+{
+    long s1 = shift/BITSPERDIG;
+    int s2 = (int)(shift%BITSPERDIG);
+    int s3 = BITSPERDIG - s2;
+    int i;
+    BDIGIT num;
+    BDIGIT* zds;
+    if (s1 >= xn) {
+	MEMZERO(xds, BDIGIT, xn);
+	return;
+    }
+
+    i = 0;
+    zds = xds + s1;
+    num = *zds++>>s2;
+    do {
+	xds[i++] = (BDIGIT)(*zds<<s3) | num;
+	num = *zds++>>s2;
+    }
+    while (i < xn - s1 - 1);
+    xds[i] = num;
+    MEMZERO(xds + xn - s1, BDIGIT, s1);
+}
+
+static void
+big_split3(VALUE v, long n, volatile VALUE* p0, volatile VALUE* p1, volatile VALUE* p2)
+{
+    VALUE v0, v12, v1, v2;
+
+    big_split(v, n, &v12, &v0);
+    big_split(v12, n, &v2, &v1);
+
+    *p0 = bigtrunc(v0);
+    *p1 = bigtrunc(v1);
+    *p2 = bigtrunc(v2);
+}
+
+static VALUE big_lshift(VALUE, unsigned long);
+static VALUE big_rshift(VALUE, unsigned long);
+static VALUE bigdivrem(VALUE, VALUE, volatile VALUE*, volatile VALUE*);
+
+static VALUE
+bigmul1_toom3(VALUE x, VALUE y)
+{
+    long n, xn, yn, zn;
+    VALUE x0, x1, x2, y0, y1, y2;
+    VALUE u0, u1, u2, u3, u4, v1, v2, v3;
+    VALUE z0, z1, z2, z3, z4, z, t;
+    BDIGIT* zds;
+
+    xn = RBIGNUM_LEN(x);
+    yn = RBIGNUM_LEN(y);
+    assert(xn <= yn);  /* assume y >= x */
+
+    n = (yn + 2) / 3;
+    big_split3(x, n, &x0, &x1, &x2);
+    if (x == y) {
+	y0 = x0; y1 = x1; y2 = x2;
+    }
+    else big_split3(y, n, &y0, &y1, &y2);
+
+    /*
+     * ref. http://en.wikipedia.org/wiki/Toom%E2%80%93Cook_multiplication
+     *
+     * x(b) = x0 * b^0 + x1 * b^1 + x2 * b^2
+     * y(b) = y0 * b^0 + y1 * b^1 + y2 * b^2
+     *
+     * z(b) = x(b) * y(b)
+     * z(b) = z0 * b^0 + z1 * b^1 + z2 * b^2 + z3 * b^3 + z4 * b^4
+     * where:
+     *   z0 = x0 * y0
+     *   z1 = x0 * y1 + x1 * y0
+     *   z2 = x0 * y2 + x1 * y1 + x2 * y0
+     *   z3 = x1 * y2 + x2 * y1
+     *   z4 = x2 * y2
+     *
+     * Toom3 method (a.k.a. Toom-Cook method):
+     * (Step1) calculating 5 points z(b0), z(b1), z(b2), z(b3), z(b4),
+     * where:
+     *   b0 = 0, b1 = 1, b2 = -1, b3 = -2, b4 = inf,
+     *   z(0)   = x(0)   * y(0)   = x0 * y0
+     *   z(1)   = x(1)   * y(1)   = (x0 + x1 + x2) * (y0 + y1 + y2)
+     *   z(-1)  = x(-1)  * y(-1)  = (x0 - x1 + x2) * (y0 - y1 + y2)
+     *   z(-2)  = x(-2)  * y(-2)  = (x0 - 2 * (x1 - 2 * x2)) * (y0 - 2 * (y1 - 2 * y2))
+     *   z(inf) = x(inf) * y(inf) = x2 * y2
+     *
+     * (Step2) interpolating z0, z1, z2, z3, z4, and z5.
+     *
+     * (Step3) Substituting base value into b of the polynomial z(b),
+     */
+
+    /*
+     * [Step1] calculating 5 points z(b0), z(b1), z(b2), z(b3), z(b4)
+     */
+
+    /* u1 <- x0 + x2 */
+    u1 = bigtrunc(bigadd(x0, x2, 1));
+
+    /* x(-1) : u2 <- u1 - x1 = x0 - x1 + x2 */
+    u2 = bigtrunc(bigsub(u1, x1));
+
+    /* x(1) : u1 <- u1 + x1 = x0 + x1 + x2 */
+    u1 = bigtrunc(bigadd(u1, x1, 1));
+
+    /* x(-2) : u3 <- 2 * (u2 + x2) - x0 = x0 - 2 * (x1 - 2 * x2) */
+    u3 = bigadd(u2, x2, 1);
+    if (BDIGITS(u3)[RBIGNUM_LEN(u3)-1] & BIGRAD_HALF) {
+	rb_big_resize(u3, RBIGNUM_LEN(u3) + 1);
+	BDIGITS(u3)[RBIGNUM_LEN(u3)-1] = 0;
+    }
+    biglsh_bang(BDIGITS(u3), RBIGNUM_LEN(u3), 1);
+    u3 = bigtrunc(bigadd(bigtrunc(u3), x0, 0));
+
+    if (x == y) {
+	v1 = u1; v2 = u2; v3 = u3;
+    }
+    else {
+	/* v1 <- y0 + y2 */
+	v1 = bigtrunc(bigadd(y0, y2, 1));
+
+	/* y(-1) : v2 <- v1 - y1 = y0 - y1 + y2 */
+	v2 = bigtrunc(bigsub(v1, y1));
+
+	/* y(1) : v1 <- v1 + y1 = y0 + y1 + y2 */
+	v1 = bigtrunc(bigadd(v1, y1, 1));
+
+	/* y(-2) : v3 <- 2 * (v2 + y2) - y0 = y0 - 2 * (y1 - 2 * y2) */
+	v3 = bigadd(v2, y2, 1);
+	if (BDIGITS(v3)[RBIGNUM_LEN(v3)-1] & BIGRAD_HALF) {
+	    rb_big_resize(v3, RBIGNUM_LEN(v3) + 1);
+	    BDIGITS(v3)[RBIGNUM_LEN(v3)-1] = 0;
+	}
+	biglsh_bang(BDIGITS(v3), RBIGNUM_LEN(v3), 1);
+	v3 = bigtrunc(bigadd(bigtrunc(v3), y0, 0));
+    }
+
+    /* z(0) : u0 <- x0 * y0 */
+    u0 = bigtrunc(bigmul0(x0, y0));
+
+    /* z(1) : u1 <- u1 * v1 */
+    u1 = bigtrunc(bigmul0(u1, v1));
+
+    /* z(-1) : u2 <- u2 * v2 */
+    u2 = bigtrunc(bigmul0(u2, v2));
+
+    /* z(-2) : u3 <- u3 * v3 */
+    u3 = bigtrunc(bigmul0(u3, v3));
+
+    /* z(inf) : u4 <- x2 * y2 */
+    u4 = bigtrunc(bigmul0(x2, y2));
+
+    /* for GC */
+    v1 = v2 = v3 = Qnil;
+
+    /*
+     * [Step2] interpolating z0, z1, z2, z3, z4, and z5.
+     */
+
+    /* z0 <- z(0) == u0 */
+    z0 = u0;
+
+    /* z4 <- z(inf) == u4 */
+    z4 = u4;
+
+    /* z3 <- (z(-2) - z(1)) / 3 == (u3 - u1) / 3 */
+    z3 = bigadd(u3, u1, 0);
+    bigdivrem(z3, big_three, &z3, NULL); /* TODO: optimize */
+    bigtrunc(z3);
+
+    /* z1 <- (z(1) - z(-1)) / 2 == (u1 - u2) / 2 */
+    z1 = bigtrunc(bigadd(u1, u2, 0));
+    bigrsh_bang(BDIGITS(z1), RBIGNUM_LEN(z1), 1);
+
+    /* z2 <- z(-1) - z(0) == u2 - u0 */
+    z2 = bigtrunc(bigadd(u2, u0, 0));
+
+    /* z3 <- (z2 - z3) / 2 + 2 * z(inf) == (z2 - z3) / 2 + 2 * u4 */
+    z3 = bigadd(z2, z3, 0);
+    bigrsh_bang(BDIGITS(z3), RBIGNUM_LEN(z3), 1);
+    t = big_lshift(u4, 1); /* TODO: combining with next addition */
+    z3 = bigtrunc(bigadd(z3, t, 1));
+
+    /* z2 <- z2 + z1 - z(inf) == z2 + z1 - u4 */
+    z2 = bigtrunc(bigadd(z2, z1, 1));
+    z2 = bigtrunc(bigadd(z2, u4, 0));
+
+    /* z1 <- z1 - z3 */
+    z1 = bigtrunc(bigadd(z1, z3, 0));
+
+    /*
+     * [Step3] Substituting base value into b of the polynomial z(b),
+     */
+
+    zn = 6*n + 1;
+    z = bignew(zn, RBIGNUM_SIGN(x)==RBIGNUM_SIGN(y));
+    zds = BDIGITS(z);
+    MEMCPY(zds, BDIGITS(z0), BDIGIT, RBIGNUM_LEN(z0));
+    MEMZERO(zds + RBIGNUM_LEN(z0), BDIGIT, zn - RBIGNUM_LEN(z0));
+    bigadd_core(zds +   n, zn -   n, BDIGITS(z1), big_real_len(z1), zds +   n, zn -   n);
+    bigadd_core(zds + 2*n, zn - 2*n, BDIGITS(z2), big_real_len(z2), zds + 2*n, zn - 2*n);
+    bigadd_core(zds + 3*n, zn - 3*n, BDIGITS(z3), big_real_len(z3), zds + 3*n, zn - 3*n);
+    bigadd_core(zds + 4*n, zn - 4*n, BDIGITS(z4), big_real_len(z4), zds + 4*n, zn - 4*n);
+    z = bignorm(z);
+
+    return bignorm(z);
+}
+
 /* efficient squaring (2 times faster than normal multiplication)
  * ref: Handbook of Applied Cryptography, Algorithm 14.16
  *      http://www.cacr.math.uwaterloo.ca/hac/about/chap14.pdf
@@ -2207,6 +2484,7 @@ bigsqr_fast(VALUE x)
 }
 
 #define KARATSUBA_MUL_DIGITS 70
+#define TOOM3_MUL_DIGITS 150
 
 
 /* determine whether a bignum is sparse or not by random sampling */
@@ -2214,27 +2492,13 @@ static inline VALUE
 big_sparse_p(VALUE x)
 {
     long c = 0, n = RBIGNUM_LEN(x);
-    unsigned long rb_rand_internal(unsigned long i);
 
-    if (          BDIGITS(x)[rb_rand_internal(n / 2) + n / 4]) c++;
-    if (c <= 1 && BDIGITS(x)[rb_rand_internal(n / 2) + n / 4]) c++;
-    if (c <= 1 && BDIGITS(x)[rb_rand_internal(n / 2) + n / 4]) c++;
+    if (          BDIGITS(x)[rb_genrand_ulong_limited(n / 2) + n / 4]) c++;
+    if (c <= 1 && BDIGITS(x)[rb_genrand_ulong_limited(n / 2) + n / 4]) c++;
+    if (c <= 1 && BDIGITS(x)[rb_genrand_ulong_limited(n / 2) + n / 4]) c++;
 
     return (c <= 1) ? Qtrue : Qfalse;
 }
-
-#if 0
-static void
-dump_bignum(VALUE x)
-{
-    long i;
-    printf("0x0");
-    for (i = RBIGNUM_LEN(x); i--; ) {
-	printf("_%08x", BDIGITS(x)[i]);
-    }
-    puts("");
-}
-#endif
 
 static VALUE
 bigmul0(VALUE x, VALUE y)
@@ -2268,8 +2532,13 @@ bigmul0(VALUE x, VALUE y)
     /* balance multiplication by slicing y when x is much smaller than y */
     if (2 * xn <= yn) return bigmul1_balance(x, y);
 
-    /* multiplication by karatsuba method */
-    return bigmul1_karatsuba(x, y);
+    if (xn < TOOM3_MUL_DIGITS) {
+	/* multiplication by karatsuba method */
+	return bigmul1_karatsuba(x, y);
+    }
+    else if (3*xn <= 2*(yn + 2))
+	return bigmul1_balance(x, y);
+    return bigmul1_toom3(x, y);
 }
 
 /*
@@ -2395,6 +2664,7 @@ bigdivrem(VALUE x, VALUE y, volatile VALUE *divp, volatile VALUE *modp)
 	if (divp) *divp = z;
 	return Qnil;
     }
+
     z = bignew(nx==ny?nx+2:nx+1, RBIGNUM_SIGN(x)==RBIGNUM_SIGN(y));
     zds = BDIGITS(z);
     if (nx==ny) zds[nx+1] = 0;
@@ -3518,4 +3788,7 @@ Init_Bignum(void)
     rb_define_method(rb_cBignum, "even?", rb_big_even_p, 0);
 
     power_cache_init();
+
+    big_three = rb_uint2big(3);
+    rb_gc_register_mark_object(big_three);
 }

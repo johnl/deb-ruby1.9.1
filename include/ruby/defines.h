@@ -2,7 +2,7 @@
 
   defines.h -
 
-  $Author: naruse $
+  $Author: usa $
   created at: Wed May 18 00:21:44 JST 1994
 
 ************************************************/
@@ -17,9 +17,17 @@ extern "C" {
 #endif
 #endif
 
+#include "ruby/config.h"
+#ifdef RUBY_EXTCONF_H
+#include RUBY_EXTCONF_H
+#endif
+
 #define RUBY
 
-#include <stdlib.h>
+# include <stddef.h>
+#ifdef HAVE_STDLIB_H
+# include <stdlib.h>
+#endif
 #ifdef __cplusplus
 # ifndef  HAVE_PROTOTYPES
 #  define HAVE_PROTOTYPES 1
@@ -47,6 +55,10 @@ extern "C" {
 #define ANYARGS ...
 #else
 #define ANYARGS
+#endif
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility push(default)
 #endif
 
 #define xmalloc ruby_xmalloc
@@ -82,38 +94,44 @@ void xfree(void*);
 # define SIZEOF_BDIGITS SIZEOF_INT
 # define BDIGIT_DBL unsigned LONG_LONG
 # define BDIGIT_DBL_SIGNED LONG_LONG
+# define PRI_BDIGIT_PREFIX ""
+# define PRI_BDIGIT_DBL_PREFIX PRI_LL_PREFIX
 #elif SIZEOF_INT*2 <= SIZEOF_LONG
 # define BDIGIT unsigned int
 # define SIZEOF_BDIGITS SIZEOF_INT
 # define BDIGIT_DBL unsigned long
 # define BDIGIT_DBL_SIGNED long
+# define PRI_BDIGIT_PREFIX ""
+# define PRI_BDIGIT_DBL_PREFIX "l"
 #elif SIZEOF_SHORT*2 <= SIZEOF_LONG
 # define BDIGIT unsigned short
 # define SIZEOF_BDIGITS SIZEOF_SHORT
 # define BDIGIT_DBL unsigned long
 # define BDIGIT_DBL_SIGNED long
+# define PRI_BDIGIT_PREFIX "h"
+# define PRI_BDIGIT_DBL_PREFIX "l"
 #else
 # define BDIGIT unsigned short
 # define SIZEOF_BDIGITS (SIZEOF_LONG/2)
 # define BDIGIT_DBL unsigned long
 # define BDIGIT_DBL_SIGNED long
+# define PRI_BDIGIT_PREFIX "h"
+# define PRI_BDIGIT_DBL_PREFIX "l"
 #endif
 
-#ifdef INFINITY
-# define HAVE_INFINITY
-#else
-/** @internal */
-extern const unsigned char rb_infinity[];
-# define INFINITY (*(float *)rb_infinity)
-#endif
+#define PRIdBDIGIT PRI_BDIGIT_PREFIX"d"
+#define PRIiBDIGIT PRI_BDIGIT_PREFIX"i"
+#define PRIoBDIGIT PRI_BDIGIT_PREFIX"o"
+#define PRIuBDIGIT PRI_BDIGIT_PREFIX"u"
+#define PRIxBDIGIT PRI_BDIGIT_PREFIX"x"
+#define PRIXBDIGIT PRI_BDIGIT_PREFIX"X"
 
-#ifdef NAN
-# define HAVE_NAN
-#else
-/** @internal */
-extern const unsigned char rb_nan[];
-# define NAN (*(float *)rb_nan)
-#endif
+#define PRIdBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"d"
+#define PRIiBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"i"
+#define PRIoBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"o"
+#define PRIuBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"u"
+#define PRIxBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"x"
+#define PRIXBDIGIT_DBL PRI_BDIGIT_DBL_PREFIX"X"
 
 #ifdef __CYGWIN__
 #undef _WIN32
@@ -232,6 +250,10 @@ extern const unsigned char rb_nan[];
 
 #endif
 
+#ifndef RUBY_FUNC_EXPORTED
+#define RUBY_FUNC_EXPORTED
+#endif
+
 #ifndef RUBY_EXTERN
 #define RUBY_EXTERN extern
 #endif
@@ -309,6 +331,10 @@ void rb_ia64_flushrs(void);
 #ifndef RUBY_ALIAS_FUNCTION
 #define RUBY_ALIAS_FUNCTION(prot, name, args) \
     RUBY_ALIAS_FUNCTION_TYPE(VALUE, prot, name, args)
+#endif
+
+#if defined __GNUC__ && __GNUC__ >= 4
+#pragma GCC visibility pop
 #endif
 
 #if defined(__cplusplus)

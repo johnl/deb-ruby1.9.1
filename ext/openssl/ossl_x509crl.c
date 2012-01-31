@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_x509crl.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_x509crl.c 32199 2011-06-22 08:41:08Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002 Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -11,20 +11,20 @@
 #include "ossl.h"
 
 #define WrapX509CRL(klass, obj, crl) do { \
-    if (!crl) { \
+    if (!(crl)) { \
 	ossl_raise(rb_eRuntimeError, "CRL wasn't initialized!"); \
     } \
-    obj = Data_Wrap_Struct(klass, 0, X509_CRL_free, crl); \
+    (obj) = Data_Wrap_Struct((klass), 0, X509_CRL_free, (crl)); \
 } while (0)
 #define GetX509CRL(obj, crl) do { \
-    Data_Get_Struct(obj, X509_CRL, crl); \
-    if (!crl) { \
+    Data_Get_Struct((obj), X509_CRL, (crl)); \
+    if (!(crl)) { \
 	ossl_raise(rb_eRuntimeError, "CRL wasn't initialized!"); \
     } \
 } while (0)
 #define SafeGetX509CRL(obj, crl) do { \
-    OSSL_Check_Kind(obj, cX509CRL); \
-    GetX509CRL(obj, crl); \
+    OSSL_Check_Kind((obj), cX509CRL); \
+    GetX509CRL((obj), (crl)); \
 } while (0)
 
 /*
@@ -102,7 +102,7 @@ ossl_x509crl_initialize(int argc, VALUE *argv, VALUE self)
     crl = PEM_read_bio_X509_CRL(in, &x, NULL, NULL);
     DATA_PTR(self) = x;
     if (!crl) {
-	(void)BIO_reset(in);
+	OSSL_BIO_reset(in);
 	crl = d2i_X509_CRL_bio(in, &x);
 	DATA_PTR(self) = x;
     }

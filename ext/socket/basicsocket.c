@@ -559,7 +559,7 @@ rsock_bsock_send(int argc, VALUE *argv, VALUE sock)
     arg.fd = fptr->fd;
     arg.flags = NUM2INT(flags);
     while (rb_thread_fd_writable(arg.fd),
-	   (n = (int)BLOCKING_REGION(func, &arg)) < 0) {
+	   (n = (int)BLOCKING_REGION_FD(func, &arg)) < 0) {
 	if (rb_io_wait_writable(arg.fd)) {
 	    continue;
 	}
@@ -732,12 +732,14 @@ bsock_do_not_rev_lookup_set(VALUE self, VALUE val)
     return val;
 }
 
-/*
- * BasicSocket is the super class for the all socket classes.
- */
 void
 rsock_init_basicsocket(void)
 {
+    /*
+     * Document-class: BasicSocket < IO
+     *
+     * BasicSocket is the super class for all the Socket classes.
+     */
     rb_cBasicSocket = rb_define_class("BasicSocket", rb_cIO);
     rb_undef_method(rb_cBasicSocket, "initialize");
 

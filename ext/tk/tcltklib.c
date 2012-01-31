@@ -4,7 +4,8 @@
  *              Oct. 24, 1997   Y. Matsumoto
  */
 
-#define TCLTKLIB_RELEASE_DATE "2010-03-26"
+#define TCLTKLIB_RELEASE_DATE "2010-08-25"
+/* #define CREATE_RUBYTK_KIT */
 
 #include "ruby.h"
 
@@ -56,6 +57,20 @@ extern VALUE rb_proc_new _((VALUE (*)(ANYARGS/* VALUE yieldarg[, VALUE procarg] 
 #define va_init_list(a,b) va_start(a)
 #endif
 #include <string.h>
+
+#if !defined HAVE_VSNPRINTF && !defined vsnprintf
+#  ifdef WIN32
+     /* In Win32, vsnprintf is available as the "non-ANSI" _vsnprintf. */
+#    define vsnprintf _vsnprintf
+#  else
+#    ifdef HAVE_RUBY_RUBY_H
+#      include "ruby/missing.h"
+#    else
+#      include "missing.h"
+#    endif
+#  endif
+#endif
+
 #include <tcl.h>
 #include <tk.h>
 
@@ -68,9 +83,14 @@ extern VALUE rb_proc_new _((VALUE (*)(ANYARGS/* VALUE yieldarg[, VALUE procarg] 
 
 #ifndef HAVE_RB_ERRINFO
 #define rb_errinfo() (ruby_errinfo+0) /* cannot be l-value */
+#else
+VALUE rb_errinfo(void);
 #endif
 #ifndef HAVE_RB_SAFE_LEVEL
-#define rb_safe_level() (ruby_safe_level+0) /* cannot be l-value */
+#define rb_safe_level() (ruby_safe_level+0)
+#endif
+#ifndef HAVE_RB_SOURCEFILE
+#define rb_sourcefile() (ruby_sourcefile+0)
 #endif
 
 #include "stubs.h"
@@ -485,7 +505,7 @@ static int have_rb_thread_waiting_for_value = 0;
 #ifdef RUBY_USE_NATIVE_THREAD
 #define DEFAULT_EVENT_LOOP_MAX        800/*counts*/
 #define DEFAULT_NO_EVENT_TICK          10/*counts*/
-#define DEFAULT_NO_EVENT_WAIT           1/*milliseconds ( 1 -- 999 ) */
+#define DEFAULT_NO_EVENT_WAIT           5/*milliseconds ( 1 -- 999 ) */
 #define WATCHDOG_INTERVAL              10/*milliseconds ( 1 -- 999 ) */
 #define DEFAULT_TIMER_TICK              0/*milliseconds ( 0 -- 999 ) */
 #define NO_THREAD_INTERRUPT_TIME      100/*milliseconds ( 1 -- 999 ) */
@@ -528,7 +548,6 @@ struct cmd_body_arg {
     ID    method;
     VALUE args;
 };
-
 
 /*----------------------------*/
 /* use Tcl internal functions */
@@ -838,6 +857,420 @@ create_ip_exc(interp, exc, fmt, va_alist)
 }
 
 
+/*####################################################################*/
+#if defined CREATE_RUBYTK_KIT || defined CREATE_RUBYKIT
+
+/*--------------------------------------------------------*/
+
+#if 10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION < 84
+#error Ruby/Tk-Kit requires Tcl/Tk8.4 or later.
+#endif
+
+/*--------------------------------------------------------*/
+
+/* Many part of code to support Ruby/Tk-Kit is quoted from Tclkit.       */
+/* But, never ask Tclkit community about Ruby/Tk-Kit.                    */
+/* Please ask Ruby (Ruby/Tk) community (e.g. "ruby-dev" mailing list).   */
+/*
+----<< license terms of TclKit (from kitgen's "README" file) >>---------------
+The Tclkit-specific sources are license free, they just have a copyright. Hold
+the author(s) harmless and any lawful use is permitted.
+
+This does *not* apply to any of the sources of the other major Open Source
+Software used in Tclkit, which each have very liberal BSD/MIT-like licenses:
+
+  * Tcl/Tk, TclVFS, Thread, Vlerq, Zlib
+------------------------------------------------------------------------------
+ */
+/* Tcl/Tk stubs may work, but probably it is meaningless. */
+#if defined USE_TCL_STUBS || defined USE_TK_STUBS
+#  error Not support Tcl/Tk stubs with Ruby/Tk-Kit or Rubykit.
+#endif
+
+#ifndef KIT_INCLUDES_ZLIB
+#if 10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION < 86
+#define KIT_INCLUDES_ZLIB 1
+#else
+#define KIT_INCLUDES_ZLIB 0
+#endif
+#endif
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#undef WIN32_LEAN_AND_MEAN
+#endif
+
+#if 10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION < 86
+EXTERN Tcl_Obj* TclGetStartupScriptPath();
+EXTERN void TclSetStartupScriptPath _((Tcl_Obj*));
+#define Tcl_GetStartupScript(encPtr) TclGetStartupScriptPath()
+#define Tcl_SetStartupScript(path,enc) TclSetStartupScriptPath(path)
+#endif
+#if !defined(TclSetPreInitScript) && !defined(TclSetPreInitScript_TCL_DECLARED)
+EXTERN char* TclSetPreInitScript _((char *));
+#endif
+
+#ifndef KIT_INCLUDES_TK
+#  define KIT_INCLUDES_TK  1
+#endif
+/* #define KIT_INCLUDES_ITCL 1 */
+/* #define KIT_INCLUDES_THREAD  1 */
+
+Tcl_AppInitProc Vfs_Init, Rechan_Init;
+#if 10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION < 85
+Tcl_AppInitProc Pwb_Init;
+#endif
+
+#ifdef KIT_LITE
+Tcl_AppInitProc Vlerq_Init, Vlerq_SafeInit;
+#else
+Tcl_AppInitProc Mk4tcl_Init;
+#endif
+
+#if defined TCL_THREADS && defined KIT_INCLUDES_THREAD
+Tcl_AppInitProc Thread_Init;
+#endif
+
+#if KIT_INCLUDES_ZLIB
+Tcl_AppInitProc Zlib_Init;
+#endif
+
+#ifdef KIT_INCLUDES_ITCL
+Tcl_AppInitProc Itcl_Init;
+#endif
+
+#ifdef _WIN32
+Tcl_AppInitProc Dde_Init, Dde_SafeInit, Registry_Init;
+#endif
+
+/*--------------------------------------------------------*/
+
+#define RUBYTK_KITPATH_CONST_NAME "RUBYTK_KITPATH"
+
+static char *rubytk_kitpath = NULL;
+
+static char rubytkkit_preInitCmd[] =
+"proc tclKitPreInit {} {\n"
+    "rename tclKitPreInit {}\n"
+    "load {} rubytk_kitpath\n"
+#if KIT_INCLUDES_ZLIB
+    "catch {load {} zlib}\n"
+#endif
+#ifdef KIT_LITE
+    "load {} vlerq\n"
+    "namespace eval ::vlerq {}\n"
+    "if {[catch { vlerq open $::tcl::kitpath } ::vlerq::starkit_root]} {\n"
+      "set n -1\n"
+    "} else {\n"
+      "set files [vlerq get $::vlerq::starkit_root 0 dirs 0 files]\n"
+      "set n [lsearch [vlerq get $files * name] boot.tcl]\n"
+    "}\n"
+    "if {$n >= 0} {\n"
+        "array set a [vlerq get $files $n]\n"
+#else
+    "load {} Mk4tcl\n"
+#if defined KIT_VFS_WRITABLE && !defined CREATE_RUBYKIT
+    /* running command cannot open itself for writing */
+    "mk::file open exe $::tcl::kitpath\n"
+#else
+    "mk::file open exe $::tcl::kitpath -readonly\n"
+#endif
+    "set n [mk::select exe.dirs!0.files name boot.tcl]\n"
+    "if {[llength $n] == 1} {\n"
+        "array set a [mk::get exe.dirs!0.files!$n]\n"
+#endif
+        "if {![info exists a(contents)]} { error {no boot.tcl file} }\n"
+        "if {$a(size) != [string length $a(contents)]} {\n"
+                "set a(contents) [zlib decompress $a(contents)]\n"
+        "}\n"
+        "if {$a(contents) eq \"\"} { error {empty boot.tcl} }\n"
+        "uplevel #0 $a(contents)\n"
+#if 0
+    "} elseif {[lindex $::argv 0] eq \"-init-\"} {\n"
+        "uplevel #0 { source [lindex $::argv 1] }\n"
+        "exit\n"
+#endif
+    "} else {\n"
+        /* When cannot find VFS data, try to use a real directory */
+        "set vfsdir \"[file rootname $::tcl::kitpath].vfs\"\n"
+        "if {[file isdirectory $vfsdir]} {\n"
+           "set ::tcl_library [file join $vfsdir lib tcl$::tcl_version]\n"
+           "set ::tcl_libPath [list $::tcl_library [file join $vfsdir lib]]\n"
+           "catch {uplevel #0 [list source [file join $vfsdir config.tcl]]}\n"
+           "uplevel #0 [list source [file join $::tcl_library init.tcl]]\n"
+           "set ::auto_path $::tcl_libPath\n"
+        "} else {\n"
+           "error \"\n  $::tcl::kitpath has no VFS data to start up\"\n"
+        "}\n"
+    "}\n"
+"}\n"
+"tclKitPreInit"
+;
+
+#if 0
+/* Not use this script.
+   It's a memo to support an initScript for Tcl interpreters in the future. */
+static const char initScript[] =
+"if {[file isfile [file join $::tcl::kitpath main.tcl]]} {\n"
+    "if {[info commands console] != {}} { console hide }\n"
+    "set tcl_interactive 0\n"
+    "incr argc\n"
+    "set argv [linsert $argv 0 $argv0]\n"
+    "set argv0 [file join $::tcl::kitpath main.tcl]\n"
+"} else continue\n"
+;
+#endif
+
+/*--------------------------------------------------------*/
+
+static char*
+set_rubytk_kitpath(const char *kitpath)
+{
+  if (kitpath) {
+    int len = (int)strlen(kitpath);
+    if (rubytk_kitpath) {
+      ckfree(rubytk_kitpath);
+    }
+
+    rubytk_kitpath = (char *)ckalloc(len + 1);
+    memcpy(rubytk_kitpath, kitpath, len);
+    rubytk_kitpath[len] = '\0';
+  }
+  return rubytk_kitpath;
+}
+
+/*--------------------------------------------------------*/
+
+#ifdef WIN32
+#define DEV_NULL "NUL"
+#else
+#define DEV_NULL "/dev/null"
+#endif
+
+static void
+check_tclkit_std_channels()
+{
+    Tcl_Channel chan;
+
+    /*
+     * We need to verify if we have the standard channels and create them if
+     * not.  Otherwise internals channels may get used as standard channels
+     * (like for encodings) and panic.
+     */
+    chan = Tcl_GetStdChannel(TCL_STDIN);
+    if (chan == NULL) {
+      	chan = Tcl_OpenFileChannel(NULL, DEV_NULL, "r", 0);
+      	if (chan != NULL) {
+      	    Tcl_SetChannelOption(NULL, chan, "-encoding", "utf-8");
+      	}
+      	Tcl_SetStdChannel(chan, TCL_STDIN);
+    }
+    chan = Tcl_GetStdChannel(TCL_STDOUT);
+    if (chan == NULL) {
+      	chan = Tcl_OpenFileChannel(NULL, DEV_NULL, "w", 0);
+      	if (chan != NULL) {
+      	    Tcl_SetChannelOption(NULL, chan, "-encoding", "utf-8");
+      	}
+      	Tcl_SetStdChannel(chan, TCL_STDOUT);
+    }
+    chan = Tcl_GetStdChannel(TCL_STDERR);
+    if (chan == NULL) {
+      	chan = Tcl_OpenFileChannel(NULL, DEV_NULL, "w", 0);
+      	if (chan != NULL) {
+      	    Tcl_SetChannelOption(NULL, chan, "-encoding", "utf-8");
+      	}
+      	Tcl_SetStdChannel(chan, TCL_STDERR);
+    }
+}
+
+/*--------------------------------------------------------*/
+
+static int
+rubytk_kitpathObjCmd(ClientData dummy, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
+{
+    const char* str;
+    if (objc == 2) {
+	set_rubytk_kitpath(Tcl_GetString(objv[1]));
+    } else if (objc > 2) {
+	Tcl_WrongNumArgs(interp, 1, objv, "?path?");
+    }
+    str = rubytk_kitpath ? rubytk_kitpath : Tcl_GetNameOfExecutable();
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(str, -1));
+    return TCL_OK;
+}
+
+/*
+ * Public entry point for ::tcl::kitpath.
+ * Creates both link variable name and Tcl command ::tcl::kitpath.
+ */
+static int
+rubytk_kitpath_init(Tcl_Interp *interp)
+{
+    Tcl_CreateObjCommand(interp, "::tcl::kitpath", rubytk_kitpathObjCmd, 0, 0);
+    if (Tcl_LinkVar(interp, "::tcl::kitpath", (char *) &rubytk_kitpath,
+		TCL_LINK_STRING | TCL_LINK_READ_ONLY) != TCL_OK) {
+	Tcl_ResetResult(interp);
+    }
+
+    Tcl_CreateObjCommand(interp, "::tcl::rubytk_kitpath", rubytk_kitpathObjCmd, 0, 0);
+    if (Tcl_LinkVar(interp, "::tcl::rubytk_kitpath", (char *) &rubytk_kitpath,
+		TCL_LINK_STRING | TCL_LINK_READ_ONLY) != TCL_OK) {
+	Tcl_ResetResult(interp);
+    }
+
+    if (rubytk_kitpath == NULL) {
+	/*
+	 * XXX: We may want to avoid doing this to allow tcl::kitpath calls
+	 * XXX: to obtain changes in nameofexe, if they occur.
+	 */
+	set_rubytk_kitpath(Tcl_GetNameOfExecutable());
+    }
+
+    return Tcl_PkgProvide(interp, "rubytk_kitpath", "1.0");
+}
+
+/*--------------------------------------------------------*/
+
+static void
+init_static_tcltk_packages()
+{
+    /*
+     * Ensure that std channels exist (creating them if necessary)
+     */
+    check_tclkit_std_channels();
+
+#ifdef KIT_INCLUDES_ITCL
+    Tcl_StaticPackage(0, "Itcl", Itcl_Init, NULL);
+#endif
+#ifdef KIT_LITE
+    Tcl_StaticPackage(0, "Vlerq", Vlerq_Init, Vlerq_SafeInit);
+#else
+    Tcl_StaticPackage(0, "Mk4tcl", Mk4tcl_Init, NULL);
+#endif
+#if 10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION < 85
+    Tcl_StaticPackage(0, "pwb", Pwb_Init, NULL);
+#endif
+    Tcl_StaticPackage(0, "rubytk_kitpath", rubytk_kitpath_init, NULL);
+    Tcl_StaticPackage(0, "rechan", Rechan_Init, NULL);
+    Tcl_StaticPackage(0, "vfs", Vfs_Init, NULL);
+#if KIT_INCLUDES_ZLIB
+    Tcl_StaticPackage(0, "zlib", Zlib_Init, NULL);
+#endif
+#if defined TCL_THREADS && defined KIT_INCLUDES_THREAD
+    Tcl_StaticPackage(0, "Thread", Thread_Init, Thread_SafeInit);
+#endif
+#ifdef _WIN32
+#if 10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION > 84
+    Tcl_StaticPackage(0, "dde", Dde_Init, Dde_SafeInit);
+#else
+    Tcl_StaticPackage(0, "dde", Dde_Init, NULL);
+#endif
+    Tcl_StaticPackage(0, "registry", Registry_Init, NULL);
+#endif
+#ifdef KIT_INCLUDES_TK
+    Tcl_StaticPackage(0, "Tk", Tk_Init, Tk_SafeInit);
+#endif
+}
+
+/*--------------------------------------------------------*/
+
+static int
+call_tclkit_init_script(Tcl_Interp  *interp)
+{
+#if 0
+  /* Currently, do nothing in this function.
+     It's a memo (quoted from kitInit.c of Tclkit)
+     to support an initScript for Tcl interpreters in the future. */
+  if (Tcl_EvalEx(interp, initScript, -1, TCL_EVAL_GLOBAL) == TCL_OK) {
+    const char *encoding = NULL;
+    Tcl_Obj* path = Tcl_GetStartupScript(&encoding);
+    Tcl_SetStartupScript(Tcl_GetObjResult(interp), encoding);
+    if (path == NULL) {
+      Tcl_Eval(interp, "incr argc -1; set argv [lrange $argv 1 end]");
+    }
+  }
+#endif
+
+  return 1;
+}
+
+/*--------------------------------------------------------*/
+
+#ifdef __WIN32__
+/* #include <tkWinInt.h> *//* conflict definition of struct timezone */
+/* #include <tkIntPlatDecls.h> */
+/* #include <windows.h> */
+EXTERN void TkWinSetHINSTANCE(HINSTANCE hInstance);
+void rbtk_win32_SetHINSTANCE(const char *module_name)
+{
+  /* TCHAR szBuf[256]; */
+  HINSTANCE hInst;
+
+  /* hInst = GetModuleHandle(NULL); */
+  /* hInst = GetModuleHandle("tcltklib.so"); */
+  hInst = GetModuleHandle(module_name);
+  TkWinSetHINSTANCE(hInst);
+
+  /* GetModuleFileName(hInst, szBuf, sizeof(szBuf) / sizeof(TCHAR)); */
+  /* MessageBox(NULL, szBuf, TEXT("OK"), MB_OK); */
+}
+#endif
+
+/*--------------------------------------------------------*/
+
+static void
+setup_rubytkkit()
+{
+  init_static_tcltk_packages();
+
+  {
+    ID const_id;
+    const_id = rb_intern(RUBYTK_KITPATH_CONST_NAME);
+
+    if (rb_const_defined(rb_cObject, const_id)) {
+      volatile VALUE pathobj;
+      pathobj = rb_const_get(rb_cObject, const_id);
+
+      if (rb_obj_is_kind_of(pathobj, rb_cString)) {
+#ifdef HAVE_RUBY_ENCODING_H
+	pathobj = rb_str_export_to_enc(pathobj, rb_utf8_encoding());
+#endif
+	set_rubytk_kitpath(RSTRING_PTR(pathobj));
+      }
+    }
+  }
+
+#ifdef CREATE_RUBYTK_KIT
+  if (rubytk_kitpath == NULL) {
+#ifdef __WIN32__
+    /* rbtk_win32_SetHINSTANCE("tcltklib.so"); */
+    {
+      volatile VALUE basename;
+      basename = rb_funcall(rb_cFile, rb_intern("basename"), 1,
+			    rb_str_new2(rb_sourcefile()));
+      rbtk_win32_SetHINSTANCE(RSTRING_PTR(basename));
+    }
+#endif
+    set_rubytk_kitpath(rb_sourcefile());
+  }
+#endif
+
+  if (rubytk_kitpath == NULL) {
+    set_rubytk_kitpath(Tcl_GetNameOfExecutable());
+  }
+
+  TclSetPreInitScript(rubytkkit_preInitCmd);
+}
+
+/*--------------------------------------------------------*/
+
+#endif /* defined CREATE_RUBYTK_KIT || defined CREATE_RUBYKIT */
+/*####################################################################*/
+
+
+/**********************************************************************/
+
 /* stub status */
 static void
 tcl_stubs_check()
@@ -1093,7 +1526,7 @@ call_original_exit(ptr, state)
 	Tcl_Preserve((ClientData)argv); /* XXXXXXXX */
 #endif
 #endif
-        argv[0] = "exit";
+        argv[0] = (char *)"exit";
         /* argv[1] = Tcl_GetString(state_obj); */
         argv[1] = Tcl_GetStringFromObj(state_obj, (int*)NULL);
         argv[2] = (char *)NULL;
@@ -1547,6 +1980,21 @@ lib_num_of_mainwindows(self)
 #endif
 }
 
+void
+rbtk_EventSetupProc(ClientData clientData, int flag)
+{
+    Tcl_Time tcl_time;
+    tcl_time.sec  = 0;
+    tcl_time.usec = 1000L * (long)no_event_tick;
+    Tcl_SetMaxBlockTime(&tcl_time);
+}
+
+void
+rbtk_EventCheckProc(ClientData clientData, int flag)
+{
+    rb_thread_schedule();
+}
+
 
 #ifdef RUBY_USE_NATIVE_THREAD  /* Ruby 1.9+ !!! */
 static VALUE
@@ -1745,7 +2193,7 @@ lib_eventloop_core(check_root, update_flag, check_var, interp)
     if (update_flag) DUMP1("update loop start!!");
 
     t.tv_sec = 0;
-    t.tv_usec = (long)(no_event_wait*1000.0);
+    t.tv_usec = 1000 * (long)no_event_wait;
 
     Tcl_DeleteTimerHandler(timer_token);
     run_timer_flag = 0;
@@ -1776,7 +2224,8 @@ lib_eventloop_core(check_root, update_flag, check_var, interp)
             event_loop_wait_event = 0;
 
             if (update_flag) {
-                event_flag = update_flag | TCL_DONT_WAIT; /* for safety */
+                event_flag = update_flag;
+                /* event_flag = update_flag | TCL_DONT_WAIT; */ /* for safety */
             } else {
 	        event_flag = TCL_ALL_EVENTS;
 	        /* event_flag = TCL_ALL_EVENTS | TCL_DONT_WAIT; */
@@ -1882,9 +2331,11 @@ lib_eventloop_core(check_root, update_flag, check_var, interp)
             found_event = 1;
 
             if (update_flag) {
-                event_flag = update_flag | TCL_DONT_WAIT; /* for safety */
+                event_flag = update_flag; /* for safety */
+                /* event_flag = update_flag | TCL_DONT_WAIT; */ /* for safety */
             } else {
-                event_flag = TCL_ALL_EVENTS | TCL_DONT_WAIT;
+                event_flag = TCL_ALL_EVENTS;
+                /* event_flag = TCL_ALL_EVENTS | TCL_DONT_WAIT; */
             }
 
             timer_tick = req_timer_tick;
@@ -1904,6 +2355,7 @@ lib_eventloop_core(check_root, update_flag, check_var, interp)
                 if (NIL_P(eventloop_thread) || current == eventloop_thread) {
                     int st;
                     int status;
+
 #ifdef RUBY_USE_NATIVE_THREAD
 		    if (update_flag) {
 		      st = RTEST(rb_protect(call_DoOneEvent,
@@ -1997,8 +2449,8 @@ lib_eventloop_core(check_root, update_flag, check_var, interp)
 
                         tick_counter += no_event_tick;
 
+#if 0
                         /* rb_thread_wait_for(t); */
-
                         rb_protect(eventloop_sleep, Qnil, &status);
 
                         if (status) {
@@ -2032,6 +2484,7 @@ lib_eventloop_core(check_root, update_flag, check_var, interp)
                                 }
                             }
                         }
+#endif
                     }
 
                 } else {
@@ -2073,9 +2526,9 @@ lib_eventloop_core(check_root, update_flag, check_var, interp)
             rb_thread_schedule();
         }
 
-        DUMP1("trap check & thread scheduling");
-#ifdef RUBY_USE_NATIVE_THREAD
-        /* if (update_flag == 0) CHECK_INTS; */ /*XXXXXXXXXXXXX  TODO !!!! */
+        DUMP1("check interrupts");
+#if defined(RUBY_USE_NATIVE_THREAD) || defined(RUBY_VM)
+	if (update_flag == 0) rb_thread_check_ints();
 #else
         if (update_flag == 0) CHECK_INTS;
 #endif
@@ -2100,6 +2553,8 @@ lib_eventloop_main_core(args)
     struct evloop_params *params = (struct evloop_params *)args;
 
     check_rootwidget_flag = params->check_root;
+
+    Tcl_CreateEventSource(rbtk_EventSetupProc, rbtk_EventCheckProc, (ClientData)args);
 
     if (lib_eventloop_core(params->check_root,
                            params->update_flag,
@@ -2152,6 +2607,8 @@ lib_eventloop_ensure(args)
 {
     struct evloop_params *ptr = (struct evloop_params *)args;
     volatile VALUE current_evloop = rb_thread_current();
+
+    Tcl_DeleteEventSource(rbtk_EventSetupProc, rbtk_EventCheckProc, (ClientData)args);
 
     DUMP2("eventloop_ensure: current-thread : %lx", current_evloop);
     DUMP2("eventloop_ensure: eventloop-thread : %lx", eventloop_thread);
@@ -5668,6 +6125,8 @@ ip_CallWhenDeleted(clientData, ip)
     rb_thread_critical = thr_crit_bup;
 }
 
+/*--------------------------------------------------------*/
+
 /* initialize interpreter */
 static VALUE
 ip_init(argc, argv, self)
@@ -5742,13 +6201,26 @@ ip_init(argc, argv, self)
     ptr->has_orig_exit
         = Tcl_GetCommandInfo(ptr->ip, "exit", &(ptr->orig_exit_info));
 
-    /* from Tcl_AppInit() */
-    DUMP1("Tcl_Init");
-    if (Tcl_Init(ptr->ip) == TCL_ERROR) {
-        rb_raise(rb_eRuntimeError, "%s", Tcl_GetStringResult(ptr->ip));
+#if defined CREATE_RUBYTK_KIT || defined CREATE_RUBYKIT
+    call_tclkit_init_script(current_interp);
+
+# if 10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION > 84
+    {
+      Tcl_DString encodingName;
+      Tcl_GetEncodingNameFromEnvironment(&encodingName);
+      if (strcmp(Tcl_DStringValue(&encodingName), Tcl_GetEncodingName(NULL))) {
+	/* fails, so we set a variable and do it in the boot.tcl script */
+	Tcl_SetSystemEncoding(NULL, Tcl_DStringValue(&encodingName));
+      }
+      Tcl_SetVar(current_interp, "tclkit_system_encoding", Tcl_DStringValue(&encodingName), 0);
+      Tcl_DStringFree(&encodingName);
     }
+# endif
+#endif
 
     /* set variables */
+    Tcl_Eval(ptr->ip, "set argc 0; set argv {}; set argv0 tcltklib.so");
+
     cnt = rb_scan_args(argc, argv, "02", &argv0, &opts);
     switch(cnt) {
     case 2:
@@ -5759,6 +6231,7 @@ ip_init(argc, argv, self)
         } else {
             /* Tcl_SetVar(ptr->ip, "argv", StringValuePtr(opts), 0); */
             Tcl_SetVar(ptr->ip, "argv", StringValuePtr(opts), TCL_GLOBAL_ONLY);
+	    Tcl_Eval(ptr->ip, "set argc [llength $argv]");
         }
     case 1:
         /* argv0 */
@@ -5776,6 +6249,26 @@ ip_init(argc, argv, self)
         /* no args */
         ;
     }
+
+    /* from Tcl_AppInit() */
+    DUMP1("Tcl_Init");
+#if (defined CREATE_RUBYTK_KIT || defined CREATE_RUBYKIT) && (!defined KIT_LITE) && (10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION == 85)
+    /*************************************************************************/
+    /*  FIX ME (2010/06/28)                                                  */
+    /*    Don't use ::chan command for Mk4tcl + tclvfs-1.4 on Tcl8.5.        */
+    /*    It fails to access VFS files because of vfs::zstream.              */
+    /*    So, force to use ::rechan by temporaly hiding ::chan.              */
+    /*************************************************************************/
+    Tcl_Eval(ptr->ip, "catch {rename ::chan ::_tmp_chan}");
+    if (Tcl_Init(ptr->ip) == TCL_ERROR) {
+        rb_raise(rb_eRuntimeError, "%s", Tcl_GetStringResult(ptr->ip));
+    }
+    Tcl_Eval(ptr->ip, "catch {rename ::_tmp_chan ::chan}");
+#else
+    if (Tcl_Init(ptr->ip) == TCL_ERROR) {
+        rb_raise(rb_eRuntimeError, "%s", Tcl_GetStringResult(ptr->ip));
+    }
+#endif
 
     st = ruby_tcl_stubs_init();
     /* from Tcl_AppInit() */
@@ -10315,17 +10808,17 @@ Init_tcltklib()
    /* --------------------------------------------------------------- */
 
 #ifdef __WIN32__
-#define TK_WINDOWING_SYSTEM "win32"
+#  define TK_WINDOWING_SYSTEM "win32"
 #else
-#ifdef MAC_TCL
-#define TK_WINDOWING_SYSTEM "classic"
-#else
-#ifdef MAC_OSX_TK
-#define TK_WINDOWING_SYSTEM "aqua"
-#else
-#define TK_WINDOWING_SYSTEM "x11"
-#endif
-#endif
+#  ifdef MAC_TCL
+#    define TK_WINDOWING_SYSTEM "classic"
+#  else
+#    ifdef MAC_OSX_TK
+#      define TK_WINDOWING_SYSTEM "aqua"
+#    else
+#      define TK_WINDOWING_SYSTEM "x11"
+#    endif
+#  endif
 #endif
     rb_define_const(lib, "WINDOWING_SYSTEM",
                     rb_obj_freeze(rb_str_new2(TK_WINDOWING_SYSTEM)));
@@ -10578,6 +11071,12 @@ Init_tcltklib()
     default:
         rb_raise(rb_eLoadError, "tcltklib: unknown error(%d) on ruby_open_tcl_dll", ret);
     }
+
+    /* --------------------------------------------------------------- */
+
+#if defined CREATE_RUBYTK_KIT || defined CREATE_RUBYKIT
+    setup_rubytkkit();
+#endif
 
     /* --------------------------------------------------------------- */
 

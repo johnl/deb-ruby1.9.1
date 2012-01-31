@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: ssl-internal.rb 25189 2009-10-02 12:04:37Z akr $
+  $Id: ssl-internal.rb 29189 2010-09-06 01:53:00Z nahi $
 =end
 
 require "openssl/buffering"
@@ -118,7 +118,7 @@ module OpenSSL
 
       def post_connection_check(hostname)
         unless OpenSSL::SSL.verify_certificate_identity(peer_cert, hostname)
-          raise SSLError, "hostname was not match with the server certificate"
+          raise SSLError, "hostname does not match the server certificate"
         end
         return true
       end

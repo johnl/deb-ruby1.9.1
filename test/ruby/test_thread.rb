@@ -243,7 +243,7 @@ class TestThread < Test::Unit::TestCase
     end
     t1.kill
     t2.kill
-    # assert_operator(c1, :>, c2, "[ruby-dev:33124]") # not guaranteed
+    assert_operator(c1, :>, c2, "[ruby-dev:33124]") # not guaranteed
   end
 
   def test_new
@@ -300,6 +300,24 @@ class TestThread < Test::Unit::TestCase
     INPUT
   end
 
+  def test_kill_wrong_argument
+    bug4367 = '[ruby-core:35086]'
+    assert_raise(TypeError, bug4367) {
+      Thread.kill(nil)
+    }
+    o = Object.new
+    assert_raise(TypeError, bug4367) {
+      Thread.kill(o)
+    }
+  end
+
+  def test_kill_thread_subclass
+    c = Class.new(Thread)
+    t = c.new { sleep 10 }
+    assert_nothing_raised { Thread.kill(t) }
+    assert_equal(nil, t.value)
+  end
+
   def test_exit
     s = 0
     Thread.new do
@@ -344,7 +362,7 @@ class TestThread < Test::Unit::TestCase
       t1 = Thread.new { sleep }
       Thread.pass
       t2 = Thread.new { loop { } }
-      t3 = Thread.new { }.join
+      Thread.new { }.join
       p [Thread.current, t1, t2].map{|t| t.object_id }.sort
       p Thread.list.map{|t| t.object_id }.sort
     INPUT
@@ -384,7 +402,7 @@ class TestThread < Test::Unit::TestCase
       end
     INPUT
 
-    assert_in_out_err(%w(-d), <<-INPUT, %w(false 2), /.+/)
+    assert_in_out_err(%w(--disable-gems -d), <<-INPUT, %w(false 2), %r".+")
       p Thread.abort_on_exception
       begin
         Thread.new { raise }
@@ -576,6 +594,28 @@ class TestThread < Test::Unit::TestCase
     end
     assert_nothing_raised {arr.hash}
     assert(obj[:visited])
+  end
+
+  def test_thread_instance_variable
+    bug4389 = '[ruby-core:35192]'
+    assert_in_out_err([], <<-INPUT, %w(), [], bug4389)
+      class << Thread.current
+        @data = :data
+      end
+    INPUT
+  end
+
+  def test_no_valid_cfp
+    skip 'with win32ole, cannot run this testcase because win32ole redefines Thread#intialize' if defined?(WIN32OLE)
+    bug5083 = '[ruby-dev:44208]'
+    error = assert_raise(RuntimeError) do
+      Thread.new(&Module.method(:nesting)).join
+    end
+    assert_equal("Can't call on top of Fiber or Thread", error.message, bug5083)
+    error = assert_raise(RuntimeError) do
+      Thread.new(:to_s, &Module.method(:undef_method)).join
+    end
+    assert_equal("Can't call on top of Fiber or Thread", error.message, bug5083)
   end
 end
 

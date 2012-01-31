@@ -2,8 +2,8 @@ Source: ruby1.9.1
 Section: ruby
 Priority: optional
 Maintainer: akira yamada <akira@debian.org>
-Uploaders: Daigo Moriwaki <daigo@debian.org>, Lucas Nussbaum <lucas@lucas-nussbaum.net>
-Build-Depends: debhelper (>= 5), cdbs, quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline-gplv2-dev | libreadline5-dev, tcl8.4-dev, tk8.4-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev
+Uploaders: Daigo Moriwaki <daigo@debian.org>, Lucas Nussbaum <lucas@debian.org>
+Build-Depends: debhelper (>= 5), cdbs, quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline-gplv2-dev | libreadline5-dev, tcl-dev, tk-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev, openssl
 Standards-Version: 3.9.2
 Homepage: http://www.ruby-lang.org/
 Vcs-Git: git://git.debian.org/collab-maint/ruby1.9.1.git
@@ -15,15 +15,15 @@ Depends: libruby1.9.1 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev
 Conflicts: rdoc1.9.1 (<< 1.9.1.378-2~), irb1.9.1 (<< 1.9.1.378-2~), rubygems1.9.1, ri1.9.1 (<< 1.9.2.180-3~), ruby (<= 4.5), ri (<= 4.5)
 Replaces: rdoc1.9.1, irb1.9.1, rubygems1.9.1
-Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby1.9.2, ruby-interpreter
-Description: Interpreter of object-oriented scripting language Ruby 1.9.2
+Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby-interpreter
+Description: Interpreter of object-oriented scripting language Ruby
  Ruby is the interpreted scripting language for quick and easy
  object-oriented programming.  It has many features to process text
  files and to do system management tasks (as in perl).  It is simple,
  straight-forward, and extensible.
  .
  In the name of this package, `1.9.1' indicates the Ruby library
- compatibility version. This package currently provides the `1.9.2'
+ compatibility version. This package currently provides the `1.9.3'
  branch of Ruby, which is compatible with the `1.9.1' branch.
 
 Package: libruby1.9.1
@@ -105,7 +105,6 @@ Package: ruby1.9.1-full
 Architecture: all
 Depends: ruby1.9.1 (>= ${source:Version}), libruby1.9.1-dbg (>= ${source:Version}), ruby1.9.1-dev (>= ${source:Version}), ruby1.9.1-examples (>= ${source:Version}), ri1.9.1 (>= ${source:Version}), ${misc:Depends}
 Recommends: libtcltk-ruby1.9.1 (>= ${source:Version})
-Provides: ruby1.9.2-full
 Description: Ruby 1.9.1 full installation
  For many good reasons, the Ruby programming language is split in many
  small different packages. Installing this package will make sure you have
@@ -113,4 +112,22 @@ Description: Ruby 1.9.1 full installation
  of the Tcl/Tk bindings for Ruby, which are only recommended.
  .
  This package installs the dependencies for Ruby compatibility version 1.9.1
- (currently Ruby 1.9.2).
+ (currently Ruby 1.9.3).
+
+Package: ruby1.9.3
+Architecture: all
+Depends: ruby1.9.1 (>= ${source:Version}), ${misc:Depends}
+Recommends: ruby1.9.1-full (>= ${source:Version})
+Description: Interpreter of object-oriented scripting language Ruby, version 1.9.3
+ Ruby is the interpreted scripting language for quick and easy
+ object-oriented programming.  It has many features to process text
+ files and to do system management tasks (as in perl).  It is simple,
+ straight-forward, and extensible.
+ .
+ Ruby uses two parallel versioning schemes: the `Ruby library compatibility
+ version' (1.9.1 for this package), which is similar to a library SONAME, and
+ the `Ruby version' (1.9.3 for this package). Ruby packages in Debian are
+ named using the Ruby library compatibility version, which is sometimes
+ confusing for users who do not follow Ruby development closely. This package
+ depends on the ruby1.9.1 package, and provides compatibility symbolic links
+ from 1.9.3 executables and manual pages to their 1.9.1 counterparts.

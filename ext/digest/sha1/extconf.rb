@@ -1,9 +1,10 @@
 # $RoughId: extconf.rb,v 1.3 2001/08/14 19:54:51 knu Exp $
-# $Id: extconf.rb 28341 2010-06-16 09:38:14Z knu $
+# $Id: extconf.rb 25189 2009-10-02 12:04:37Z akr $
 
 require "mkmf"
 
 $defs << "-DHAVE_CONFIG_H"
+$INCFLAGS << " -I$(srcdir)/.."
 
 $objs = [ "sha1init.#{$OBJEXT}" ]
 

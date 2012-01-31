@@ -1,3 +1,164 @@
+ruby1.9.1 (1.9.3.0-3) UNRELEASED; urgency=low
+
+  * Add hurd-path-max.diff. Fixes FTBFS on Hurd. Closes: #648055
+
+ -- Lucas Nussbaum <lucas@debian.org>  Tue, 20 Dec 2011 17:30:03 +0100
+
+ruby1.9.1 (1.9.3.0-2) unstable; urgency=low
+
+  * gcc's #635126 requiring -fno-tree-sra has been fixed.
+    Disable workaround in that package.
+  * add sparc-continuations.diff: fixes segfault during test suite on sparc.
+    Closes: #593138, #545345. Many thanks to Jurij Smakov.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 19 Dec 2011 21:33:37 +0100
+
+ruby1.9.1 (1.9.3.0-1) unstable; urgency=low
+
+  * New upstream release: 1.9.3p0.
+  * Disable test suites on ia64 sparc kfreebsd-i386 kfreebsd-amd64.
+    Those architectures are known to be broken at the moment.
+    Details: http://lists.debian.org/debian-release/2011/10/msg00279.html
+
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 31 Oct 2011 08:44:23 +0100
+
+ruby1.9.1 (1.9.3~rc1-3) experimental; urgency=low
+
+  * Update symbols file to fix FTBFS on i386, mips, mipsel, powerpc, s390.
+    Closes: #644705.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Sun, 09 Oct 2011 11:09:13 +0200
+
+ruby1.9.1 (1.9.3~rc1-2) experimental; urgency=low
+
+  * Add symbols file.
+    Some symbols were removed between 1.9.2.0 and 1.9.3~rc1, but this does
+    not constitute an ABI change as those symbols were not supposed to be used
+    by third-party extensions (not in header files, etc.)
+    See http://redmine.ruby-lang.org/issues/4666 for details.
+    Closes: #636966.
+  * Upload to experimental to test-build this.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Sat, 08 Oct 2011 10:30:33 +0200
+
+ruby1.9.1 (1.9.3~rc1-1) unstable; urgency=low
+
+  * New upstream release: 1.9.3 RC1.
+    + Includes load.c fixes. Closes: #639959.
+  * Upload to unstable.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Sat, 24 Sep 2011 19:16:17 +0200
+
+ruby1.9.1 (1.9.3~preview1+svn33236-1) experimental; urgency=low
+
+  * New upstream snapshot.
+  * add README.porters: instructions on how to run specific tests.
+  * 110829-freebsd_map_stack.patch: merged usptream, dropped.
+  * 110829-hurd_dirent_usage.patch: refresh.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Sat, 10 Sep 2011 10:07:12 +0200
+
+ruby1.9.1 (1.9.3~preview1+svn33077-3) experimental; urgency=low
+
+  * Add debian/run-test-suites.bash: test suites wrapper that
+    checks the number of failures and exit if there are too many.
+  * debian/rules: optimizations were dropped on ia64. Revert.
+  * 20100829-rubygems_default_dir.diff,
+    20100829-rubygems_disable_update_system.diff:
+    disable tests that are broken by those changes.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Tue, 30 Aug 2011 07:44:33 +0200
+
+ruby1.9.1 (1.9.3~preview1+svn33077-2) experimental; urgency=low
+
+  * Also add --no-tree-sra on sparc.
+  * Add 110829-freebsd_map_stack.patch. Work around FreeBSD bug.
+  * Add 110829-freebsd_assert_normal_exit.patch: workaround FreeBSD
+    bug in testsuite runner.
+  * Add 110829-hurd_dirent_usage.patch: Fix dirent issue on hurd.
+    Closes: #639664
+  * Modified 20100829-rubygems_default_dir.diff: avoid warning.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 29 Aug 2011 22:41:14 +0200
+
+ruby1.9.1 (1.9.3~preview1+svn33077-1) experimental; urgency=low
+
+  * New upstream snapshot (SVN rev 33029, ruby_1_9_3 branch).
+    + Should fix FTBFS on m68k. Closes: #611691.
+  * Cleanup disabled patches in debian/patches:
+    + Drop patch 110801-ftbfs-ia64-missing-semicolon.diff: fixed upstream.
+    + remove patch 110411_disable_osslv2.patch (was already disabled)
+    + Remove 201_gem_prelude.diff and 202_gem_default_dir.diff. Merged into
+      20100829-rubygems_default_dir.diff
+    + Remove 203_adjust_base_of_search_path.diff. Not needed anymore.
+    + Remove 900_ri_pager.diff. Applied upstream in lib/rdoc/ri/driver.rb
+    + Remove 902_define_YAML_in_yaml_stringio.rb.diff. This code has changed,
+      and the reason for this patch has been lost.
+    + Remove 904_linux_target_os.diff. This patch was only required for the
+      LPIA Ubuntu architecture, which no longer exists.
+    + Remove 931_libruby_suffix.diff. No longer needed.
+    + Remove 940_hppa_disable_test_propag_signal.diff. hppa is dead.
+    + Remove 940_test_file_exhaustive_fails_as_root.diff. Applied upstream.
+    + Remove 940_test_priority_fails.diff. Fixed upstream.
+    + re-enable and refresh 090729_fix_Makefile_deps.diff
+    + re-enable and refresh 090803_exclude_rdoc.diff
+    + Remove 091207_test_dl_free_func.diff. Merged upstream.
+    + Remove 100327_r24850_bootstraptest_test_thread.diff. Applied upstream.
+    + Remove 100503_r27337_rb_string_value_cstr.diff. Applied upstream.
+    + Remove 100503_r27356_queue_race.diff.diff. Applied upstream.
+    + Remove 100518_load_libc_libm.diff,
+      100518_r23483_suppress_pathname_warning.diff and
+      100518_r26515_free_rb_classext.diff. Were upstream backports.
+    + Remove 110801-ftbfs-ia64-missing-semicolon.diff. fixed upstream.
+  * Add 110825-run-tests-verbose.patch: run tests in verbose mode
+  * Add openssl to build-depends. Needed for
+    test_constants(OpenSSL::TestConfig).
+  * Improve rubygems_default_dir.diff to avoid warnings.
+  * Add 110825-tests_broken_as_root.patch: skip some tests when root.
+  * Introduce ruby1.9.3 package to improve the confusing situation.
+  * Fix 1.9.2 -> 1.9.3 in descriptions.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Fri, 26 Aug 2011 11:37:58 +0200
+
+ruby1.9.1 (1.9.3~preview1-2) experimental; urgency=low
+
+  * Add -fno-tree-sra on armel. Same workaround as for ruby1.8 (see #634260)
+
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 01 Aug 2011 20:58:07 +0200
+
+ruby1.9.1 (1.9.3~preview1-1) experimental; urgency=low
+
+  * New upstream version: 1.9.3 preview 1.
+  * debian/patches/20100829-rubygems_default_dir.diff: refreshed patch.
+  * debian/patches/20100829-rubygems_disable_update_system.diff: refreshed patch.
+  * Add 110801-ftbfs-ia64-missing-semicolon.diff. Fixes FTBFS on ia64.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Mon, 01 Aug 2011 16:59:35 +0200
+
+ruby1.9.1 (1.9.2.180+svn32566-1) experimental; urgency=low
+
+  * New SVN snapshot based on revision 32566 from the ruby_1_9_3 branch.
+  * Add patch 110720_tcltk_disable_rpath.diff: disable rpath in tcltk.
+
+  * Add patch 110720_tcltk_disable_rpath.diff: disable rpath in tcltk.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Wed, 20 Jul 2011 11:25:23 +0200
+
+ruby1.9.1 (1.9.2.180+svn32099-1) experimental; urgency=low
+
+  * New SVN snapshot based on revision 32099 from trunk.
+  * 20100829-rubygems_default_dir.diff: refresh
+  * 20100829-rubygems_disable_update_system.diff: refresh
+  * 909_update_lib_README.diff: refresh
+  * 110411_disable_osslv2.patch: drop, cleaner solution implemented upstream
+  * Update Lucas' email address.
+  * Build-depend on tcl-dev and tk-dev instead of {tcl,tk}8.4-dev.
+  * Relicensed under Ruby || BSDL.
+    + Update debian/copyright.
+    + Build-depend on libreadline6-dev.
+
+ -- Lucas Nussbaum <lucas@debian.org>  Wed, 15 Jun 2011 14:01:51 +0200
+
 ruby1.9.1 (1.9.2.180-5bbox1) lucid; urgency=low
 
   * Backported to Ubuntu Lucid
@@ -806,8 +967,6 @@ ruby1.9 (1.9.0+20050412-4) unstable; urgency=low
  -- akira yamada <akira@debian.org>  Sun, 17 Apr 2005 03:30:22 +0900
 
 ruby1.9 (1.9.0+20050412-3) unstable; urgency=high
-
-  * akira yamada <akira@debian.org>
   - debian/rules: fixed wrong filename conversion.  (closes: #304809)
   - debian/libruby1.9.*.in: should not be empty.
 

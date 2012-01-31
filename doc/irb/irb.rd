@@ -1,6 +1,6 @@
 irb -- interactive ruby
 		$Release Version: 0.9 $
-		$Revision: 25189 $
+		$Revision: 31953 $
 		by Keiju ISHITSUKA(keiju@ishitsuka.com)
 		by gotoken-san who is original translater from japanese version
 
@@ -252,7 +252,7 @@ For irb commands, both simple name and `irb_'-prefixed name are prepared.
 --- kill n, irb_kill n
     Kill subirb. The means of n is as same as the case of irb_fg. 
 
---- souce, irb_source  path
+--- source, irb_source  path
     This is a like UNIX-shell command source. evaluate script in path
     on current context.
 

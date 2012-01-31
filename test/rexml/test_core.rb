@@ -20,7 +20,7 @@ class Tester < Test::Unit::TestCase
       <?xsl stylesheet="blah.xsl"?>
       <!-- The first line tests the XMLDecl, the second tests PI.
       The next line tests DocType. This line tests comments. -->
-      <!DOCTYPE xsa PUBLIC 
+      <!DOCTYPE xsa PUBLIC
         "-//LM Garshol//DTD XML Software Autoupdate 1.0//EN//XML"
         "http://www.garshol.priv.no/download/xsa/xsa.dtd">
 
@@ -80,7 +80,7 @@ class Tester < Test::Unit::TestCase
     # This because of a reported bug in attribute handling in 1.0a8
     source = '<a att="A">blah</a>'
     doc = Document.new source
-    doc.elements.each do |a| 
+    doc.elements.each do |a|
       a.attributes['att'] << 'B'
       assert_equal "AB", a.attributes['att']
       a.attributes['att'] = 'C'
@@ -155,11 +155,11 @@ class Tester < Test::Unit::TestCase
     assert_equal 3, doc.root.size
     assert_equal 1, doc.root.elements.size
 
-    text = "  This is   text  
+    text = "  This is   text
     with a lot of   whitespace   "
     source = "<a>#{text}<b>#{text}</b><c>#{text}</c>#{text}</a>"
 
-    doc = Document.new( source, { 
+    doc = Document.new( source, {
       :respect_whitespace => %w{ a c }
     } )
     assert_equal text, doc.elements["//c"].text
@@ -207,8 +207,8 @@ class Tester < Test::Unit::TestCase
     doc.write(test="")
     assert_equal(correct, test)
 
-    multi_line_source = '<!DOCTYPE xsa PUBLIC 
-    "-//LM Garshol//DTD XML Software Autoupdate 1.0//EN//XML" 
+    multi_line_source = '<!DOCTYPE xsa PUBLIC
+    "-//LM Garshol//DTD XML Software Autoupdate 1.0//EN//XML"
     "http://www.garshol.priv.no/download/xsa/xsa.dtd">
     <a/>'
     d = Document.new( multi_line_source )
@@ -217,8 +217,8 @@ class Tester < Test::Unit::TestCase
     doc.write(test="")
     assert_equal(correct, test)
 
-    odd_space_source = '  <!DOCTYPE           
-    xsa      PUBLIC                 "-//LM Garshol//DTD XML Software Autoupdate 1.0//EN//XML" 
+    odd_space_source = '  <!DOCTYPE
+    xsa      PUBLIC                 "-//LM Garshol//DTD XML Software Autoupdate 1.0//EN//XML"
     "http://www.garshol.priv.no/download/xsa/xsa.dtd">   <a/>'
     d = Document.new( odd_space_source )
     dt = d.doctype
@@ -230,34 +230,12 @@ class Tester < Test::Unit::TestCase
     doc = Document.new(docin)
     doc.write(test="")
     assert_equal(31, doc.doctype.size)
-
-    # Here's a little ditty from Tobias...
-    src = <<-EOL
-    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN"
-    "http://www.w3.org/TR/SVG/DTD/svg10.dtd"
-    [
-    <!-- <!ENTITY % fast-slow "0 0  .5 1">-->
-    <!--<!ENTITY % slow-fast ".5 0  1 1">-->
-    <!ENTITY hover_ani
-    '<animateTransform attributeName="transform"
-    type="scale" restart="whenNotActive" values="1;0.96"
-    dur="0.5s" calcMode="spline" keySplines="0 0  .5 1"
-    fill="freeze" begin="mouseover"/>
-    <animateTransform  attributeName="transform"
-    type="scale" restart="whenNotActive" values="0.96;1"
-    dur="0.5s" calcMode="spline" keySplines=".5 0  1 1"
-    fill="freeze" begin="mouseover+0.5s"/>'
-    >
-    ]
-    > <a/>
-    EOL
   end
 
   def test_document
     # Testing cloning
     source = "<element/>"
     doc = Document.new source
-    doc2 = Document.new doc
 
     # Testing Root
     assert_equal doc.root.name.to_s, "element"
@@ -266,7 +244,7 @@ class Tester < Test::Unit::TestCase
     source = @xsa_source
     doc = Document.new source
     assert_instance_of XMLDecl, doc.xml_decl
-    assert_instance_of DocType, doc.doctype 
+    assert_instance_of DocType, doc.doctype
     assert_equal doc.version, "1.0"
 
     source = File.new(fixture_path("dash.xml"))
@@ -383,7 +361,7 @@ class Tester < Test::Unit::TestCase
     assert_equal(string, text.to_s)
 
     string2 = "<a>#{string}</a>"
-    doc = Document.new( string2, { 
+    doc = Document.new( string2, {
       :raw => %w{ a b }
     } )
     f.write(doc,out="")
@@ -422,6 +400,12 @@ class Tester < Test::Unit::TestCase
     assert_equal( '<a><b/><c/></a>', doc.to_s )
   end
 
+  def test_text_frozen
+    string = "Frozen".freeze
+    text = Text.new(string)
+    assert_equal(string, text.to_s)
+  end
+
   def test_xmldecl
     source = "<?xml version='1.0'?>"
     # test args
@@ -431,6 +415,11 @@ class Tester < Test::Unit::TestCase
     # test XMLDecl
     decl2 = XMLDecl.new "1.0"
     assert_equal source, decl2.to_s
+  end
+
+  def test_xmldecl_utf_16be_encoding_name
+    assert_equal("<?xml version='1.0' encoding='UTF-16'?>",
+                 XMLDecl.new("1.0", "UTF-16").to_s)
   end
 
   def each_test( element, xpath, num_children )
@@ -458,7 +447,7 @@ class Tester < Test::Unit::TestCase
       assert_equal "Datasets", child.name
     }
     each_test(doc, "Project/Datasets/link", 2 )
-    each_test(doc.root, "/Project/Description", 1) {|child| 
+    each_test(doc.root, "/Project/Description", 1) {|child|
       assert_equal "Description", child.name
     }
     each_test(doc.root, "./Description",1 ) { |child|
@@ -637,11 +626,10 @@ class Tester < Test::Unit::TestCase
   end
 
   def test_line
-    doc = Document.new File.new(fixture_path("bad.xml"))
+    Document.new File.new(fixture_path("bad.xml"))
     assert_fail "There should have been an error"
   rescue Exception
     # We should get here
-    er = $!
     assert($!.line == 5, "Should have been an error on line 5, "+
       "but was reported as being on line #{$!.line}" )
   end
@@ -659,13 +647,11 @@ class Tester < Test::Unit::TestCase
   def test_exception
     source = SourceFactory.create_from "<a/>"
     p = ParseException.new( "dummy message", source )
-    s = p.to_s
     begin
       raise "dummy"
     rescue Exception
       p.continued_exception = $!
     end
-    s = p.to_s
   end
 
   def test_bad_content
@@ -677,7 +663,7 @@ class Tester < Test::Unit::TestCase
     assert_equal "content>content", tree_gt.elements[1].text
     # This isn't
     begin
-      tree_lt = Document.new in_lt
+      Document.new in_lt
       assert_fail "Should have gotten a parse error"
     rescue ParseException
     end
@@ -761,7 +747,7 @@ class Tester < Test::Unit::TestCase
     doc.root.each_element_with_text( nil, 0, 'd', &block )
     assert_equal 0, arry.size
   end
-  
+
   def test_element_parse_stream
     s = Source.new( "<a>some text</a>" )
     l = Listener.new
@@ -805,7 +791,7 @@ EOL
     assert_equal('eeü'.force_encoding("UTF-8"), a.root.text)
   end
 
-  def test_element_decl 
+  def test_element_decl
     element_decl = Source.new("<!DOCTYPE foo [
 <!ELEMENT bar (#PCDATA)>
 ]>")
@@ -819,7 +805,7 @@ EOL
     <!DOCTYPE blah [
     <!ATTLIST blah
       xmlns    CDATA    "foo">
-    <!ATTLIST a 
+    <!ATTLIST a
       bar          CDATA "gobble"
       xmlns:one    CDATA  "two"
     >
@@ -850,17 +836,15 @@ EOL
 
   def test_attlist_write
     file=File.new(fixture_path("foo.xml"))
-    doc=Document.new file 
-    root = doc.root 
-
+    doc=Document.new file
     out = ''
-    doc.write(out) 
+    doc.write(out)
   end
 
   def test_more_namespaces
-    assert_raise( REXML::UndefinedNamespaceException, 
+    assert_raise( REXML::UndefinedNamespaceException,
                    %Q{Should have gotten an Undefined Namespace error} )  {
-      doc1 = Document.new("<r><p><n:c/></p></r>")
+      Document.new("<r><p><n:c/></p></r>")
     }
     doc2 = Document.new("<r xmlns:n='1'><p><n:c/></p></r>")
     es = XPath.match(doc2, '//c')
@@ -911,7 +895,7 @@ EOL
   end
 
   def test_oses_with_bad_EOLs
-    d = Document.new("\n\n\n<?xml version='1.0'?>\n\n\n<a/>\n\n")
+    Document.new("\n\n\n<?xml version='1.0'?>\n\n\n<a/>\n\n")
   end
 
   # Contributed (with patch to fix bug) by Kouhei
@@ -950,25 +934,25 @@ EOL
   end
 
   def test_accents
-    docs = [ 
+    docs = [
       %Q{<?xml version="1.0" encoding="ISO-8859-1"?>
 <gnuPod>
 <files>
   <file id="57"  artist="Coralie Cl\357\277\275ent" />
 </files>
-</gnuPod>}, 
+</gnuPod>},
       '<?xml version="1.0" encoding="ISO-8859-1"?>
 <gnuPod>
 <files>
     <file id="71"  album="Astrakan Caf" />
 </files>
-</gnuPod>', 
+</gnuPod>',
       %Q{<?xml version="1.0" encoding="ISO-8859-1"?>
 <gnuPod>
 <files>
     <file id="71"  album="Astrakan Caf\357\277\275eria" />
 </files>
-</gnuPod>}, 
+</gnuPod>},
       %Q{<?xml version="1.0" encoding="ISO-8859-1"?>
 <gnuPod>
 <files>
@@ -1019,7 +1003,6 @@ EOL
     document.write(s)
   end
 
-  
   def test_write_cdata
     src = "<a>A</a>"
     doc = REXML::Document.new( src )
@@ -1040,15 +1023,15 @@ EOL
       <x:b x:n="foo"/>
     </a>
     EOL
-    d = REXML::Document.new( source )
+    d = Document.new( source )
     assert_equal( 'foo', REXML::XPath.first(d.root, "//x:b/@x:n").value )
     assert_equal( nil, REXML::XPath.first(d.root, "//x:b/@x:n", {}))
   end
 
   def test_null_element_name
-    a = REXML::Document.new 
+    a = REXML::Document.new
     assert_raise( RuntimeError ) {
-      a.add_element( nil ) 
+      a.add_element( nil )
     }
   end
 
@@ -1090,22 +1073,22 @@ EOL
     # Ticket #44
     t = REXML::Text.new( "&amp;", false, nil, true )
     assert_equal( "&amp;", t.to_s )
-    
+
     t = REXML::Text.new("&amp;", false, false)
     assert_equal( "&amp;amp;", t.to_s )
   end
 
   def test_to_xpath
-  doc = REXML::Document.new( %q{<tag1> 
-      <tag2 name="tag2"/> 
-      <tag2 name="tag2"/> 
-    </tag1>}) 
+  doc = REXML::Document.new( %q{<tag1>
+      <tag2 name="tag2"/>
+      <tag2 name="tag2"/>
+    </tag1>})
     names = %w{ /tag1/tag2[1] /tag1/tag2[2] }
-    doc.root.elements.each_with_index {|el, i| 
+    doc.root.elements.each_with_index {|el, i|
       assert_equal( names[i], el.xpath )
-    } 
+    }
   end
-  
+
   def test_transitive
   doc = REXML::Document.new( "<a/>")
   s = ""
@@ -1123,7 +1106,6 @@ EOL
   end
 
   def test_repeated_writes
-    require 'iconv'
     a = IO.read(fixture_path("iso8859-1.xml"))
     f = REXML::Formatters::Pretty.new
 
@@ -1147,24 +1129,108 @@ EOL
     assert_not_equal( c, d )
   end
 
+  def test_pretty_format_long_text_finite
+    n = 1_000_000
+    long_text = 'aaaa ' * n
+    xml = "<doc>#{long_text}</doc>"
+    formatter = REXML::Formatters::Pretty.new
+    document = nil
+    begin
+      document = REXML::Document.new(xml)
+    rescue REXML::ParseException
+      skip_message = "skip this test because we can't check Pretty#wrap " +
+        "works without #<SystemStackError: stack level too deep> on " +
+        "small memory system. #<RegexpError: failed to allocate memory> " +
+        "will be raised on the system. See also [ruby-dev:42599]."
+      return skip_message
+    end
+    output = ""
+    formatter.write(document, output)
+    assert_equal("<doc>\n" +
+                 ((" " + (" aaaa" * 15) + "\n") * (n / 15)) +
+                 "  " + ("aaaa " * (n % 15)) + "\n" +
+                 "</doc>",
+                 output)
+  end
+
+  def test_pretty_format_deep_indent
+    n = 6
+    elements = ""
+    n.times do |i|
+      elements << "<element#{i}>"
+      elements << "element#{i} " * 5
+    end
+    (n - 1).downto(0) do |i|
+      elements << "</element#{i}>"
+    end
+    xml = "<doc>#{elements}</doc>"
+    document = REXML::Document.new(xml)
+    formatter = REXML::Formatters::Pretty.new
+    formatter.width = 20
+    output = ""
+    formatter.write(document, output)
+    assert_equal(<<-XML.strip, output)
+<doc>
+  <element0>
+    element0
+    element0
+    element0
+    element0
+    element0 
+    <element1>
+      element1
+      element1
+      element1
+      element1
+      element1 
+      <element2>
+        element2
+        element2
+        element2
+        element2
+        element2 
+        <element3>
+          element3
+          element3
+          element3
+          element3
+          element3 
+          <element4>
+            element4
+            element4
+            element4
+            element4
+            element4
+            
+            <element5>
+              element5 element5 element5 element5 element5 
+            </element5>
+          </element4>
+        </element3>
+      </element2>
+    </element1>
+  </element0>
+</doc>
+    XML
+  end
 
   def test_ticket_58
     doc = REXML::Document.new
     doc << REXML::XMLDecl.default
     doc << REXML::Element.new("a")
-    
+
     str = ""
     doc.write(str)
-    
+
     assert_equal("<a/>", str)
 
     doc = REXML::Document.new
     doc << REXML::XMLDecl.new("1.0", "UTF-8")
     doc << REXML::Element.new("a")
-    
+
     str = ""
     doc.write(str)
-    
+
     assert_equal("<?xml version='1.0' encoding='UTF-8'?><a/>", str)
   end
 
@@ -1183,7 +1249,7 @@ EOL
 
   def test_ticket_52
     source = "<!-- this is a single line comment -->"
-    d = REXML::Document.new(source) 
+    d = REXML::Document.new(source)
     d.write(k="")
     assert_equal( source, k )
 
@@ -1204,17 +1270,17 @@ EOL
   def test_ticket_21
     src = "<foo bar=value/>"
     assert_raise( ParseException, "invalid XML should be caught" ) {
-      d = REXML::Document.new(src)
+      Document.new(src)
     }
     begin
-      d = REXML::Document.new(src)
+      Document.new(src)
     rescue
       assert_match( /missing attribute quote/, $!.message )
     end
   end
 
   def test_ticket_63
-    d = REXML::Document.new(File.new(fixture_path("t63-1.xml")))
+    Document.new(File.new(fixture_path("t63-1.xml")))
   end
 
   def test_ticket_75
@@ -1227,7 +1293,7 @@ EOL
     #- rexml sanity check (bugs in ruby 1.8.4, ruby 1.8.6)
     xmldoc = Document.new("<test/>")
     xmldoc << XMLDecl.new(XMLDecl::DEFAULT_VERSION, "UTF-8")
-    content = ['61c3a927223c3e26'].pack("H*")  
+    content = ['61c3a927223c3e26'].pack("H*")
     content.force_encoding('UTF-8') if content.respond_to?(:force_encoding)
     #- is some UTF-8 text but just to make sure my editor won't magically convert..
     xmldoc.root.add_attribute('attr', content)
@@ -1243,14 +1309,14 @@ EOL
 
     assert_equal( sanity1, sanity2 )
   end
-  
+
   def test_ticket_88
     doc = REXML::Document.new("<?xml version=\"1.0\" encoding=\"shift_jis\"?>")
     assert_equal("<?xml version='1.0' encoding='SHIFT_JIS'?>", doc.to_s)
     doc = REXML::Document.new("<?xml version = \"1.0\" encoding = \"shift_jis\"?>")
     assert_equal("<?xml version='1.0' encoding='SHIFT_JIS'?>", doc.to_s)
   end
-  
+
   def test_ticket_85
     xml = <<ENDXML
 <foo>
@@ -1266,8 +1332,6 @@ ENDXML
   </bar>
 </foo>"
 
-    zml = "<foo><bar><bob name='jimmy'/></bar></foo>"
-    
     # The pretty printer ignores all whitespace, anyway so output1 == output2
     f = REXML::Formatters::Pretty.new( 2 )
     d = Document.new( xml, :ignore_whitespace_nodes=>:all )
@@ -1282,7 +1346,7 @@ ENDXML
     # The base case.
     d = Document.new(yml)
     f.write( d, output3="" )
-    
+
     assert_equal( output3.strip, output2.strip )
 
     d = Document.new(yml)
@@ -1326,10 +1390,10 @@ ENDXML
   end
 
   def test_ticket_14
-    # Per .2.5 Node Tests of XPath spec 
-    assert_raise( REXML::UndefinedNamespaceException, 
+    # Per .2.5 Node Tests of XPath spec
+    assert_raise( REXML::UndefinedNamespaceException,
                    %Q{Should have gotten an Undefined Namespace error} )  {
-      d = Document.new("<a><n:b/></a>") 
+      Document.new("<a><n:b/></a>")
     }
   end
 
@@ -1366,7 +1430,7 @@ ENDXML
     doc.add_element(bean_element)
 
     REXML::Formatters::Pretty.new(3).write( doc, out = "" )
-    
+
     assert_equal "<bean>\n   <prop key='filter'>\n      (&amp;#38;(|(memberof=CN=somegroupabcdefgh,OU=OUsucks,DC=hookemhorns,DC=com)(mail=*someco.com))(acct=%u)(!(extraparameter:2.2.222.222222.2.2.222:=2)))\n   </prop>\n</bean>", out
   end
 

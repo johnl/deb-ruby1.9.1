@@ -1,6 +1,6 @@
 # -*- mode: ruby; ruby-indent-level: 4; tab-width: 4; indent-tabs-mode: t -*-
 #												vim:sw=4:ts=4
-# $Id: test_yaml.rb 27591 2010-05-02 23:15:08Z nobu $
+# $Id: test_yaml.rb 31573 2011-05-15 11:55:52Z nobu $
 #
 require 'test/unit'
 require 'yaml'
@@ -20,6 +20,11 @@ class YAML_Unit_Tests < Test::Unit::TestCase
 
     def teardown
         YAML::ENGINE.yamler = @current_engine
+    end
+
+    # [ruby-core:34969]
+    def test_regexp_with_n
+        assert_cycle(Regexp.new('',0,'n'))
     end
 
 	#
@@ -500,7 +505,7 @@ EoY
 
     WHOIS lookup made at 11:56:46 19-Mar-2010
 
--- 
+--
 This WHOIS information is provided for free by Nominet UK the central registry
 for .uk domain names. This information and the .uk WHOIS are:
 
@@ -512,7 +517,7 @@ includes restrictions on: (A) use of the data for advertising, or its
 repackaging, recompilation, redistribution or reuse (B) obscuring, removing
 or hiding any or all of this notice and (C) exceeding query rate or volume
 limits. The data is provided on an 'as-is' basis and may lag behind the
-register. Access may be withdrawn or restricted at any time. 
+register. Access may be withdrawn or restricted at any time.
 EoY
 
 	end

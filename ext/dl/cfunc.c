@@ -1,12 +1,10 @@
 /* -*- C -*-
- * $Id: cfunc.c 30559 2011-01-16 06:30:33Z yugui $
+ * $Id: cfunc.c 32983 2011-08-16 00:51:58Z drbrain $
  */
 
 #include <ruby.h>
 #include <errno.h>
 #include "dl.h"
-
-VALUE rb_big2ulong_pack(VALUE x);
 
 VALUE rb_cDLCFunc;
 
@@ -70,7 +68,7 @@ dlcfunc_memsize(const void *ptr)
 
 const rb_data_type_t dlcfunc_data_type = {
     "dl/cfunc",
-    0, dlcfunc_free, dlcfunc_memsize,
+    {0, dlcfunc_free, dlcfunc_memsize,},
 };
 
 VALUE
@@ -300,10 +298,10 @@ rb_dlcfunc_inspect(VALUE self)
 
 
 # define DECL_FUNC_CDECL(f,ret,args,val) \
-    ret (FUNC_CDECL(*f))(args) = (ret (FUNC_CDECL(*))(args))(VALUE)(val)
+    ret (FUNC_CDECL(*(f)))(args) = (ret (FUNC_CDECL(*))(args))(VALUE)(val)
 #ifdef FUNC_STDCALL
 # define DECL_FUNC_STDCALL(f,ret,args,val) \
-    ret (FUNC_STDCALL(*f))(args) = (ret (FUNC_STDCALL(*))(args))(VALUE)(val)
+    ret (FUNC_STDCALL(*(f)))(args) = (ret (FUNC_STDCALL(*))(args))(VALUE)(val)
 #endif
 
 #define CALL_CASE switch( RARRAY_LEN(ary) ){ \
@@ -568,13 +566,15 @@ rb_dlcfunc_call(VALUE self, VALUE ary)
     }
 #endif
     else{
-	rb_raise(rb_eDLError,
-#ifndef LONG_LONG_VALUE
-		 "unsupported call type: %lx",
-#else
-		 "unsupported call type: %llx",
-#endif
-		 cfunc->calltype);
+	const char *name = rb_id2name(cfunc->calltype);
+	if( name ){
+	    rb_raise(rb_eDLError, "unsupported call type: %s",
+		     name);
+	}
+	else{
+	    rb_raise(rb_eDLError, "unsupported call type: %"PRIxVALUE,
+		     cfunc->calltype);
+	}
     }
 
     rb_dl_set_last_error(self, INT2NUM(errno));
@@ -610,10 +610,38 @@ Init_dlcfunc(void)
 #if defined(_WIN32)
     id_win32_last_error = rb_intern("__DL2_WIN32_LAST_ERROR__");
 #endif
+
+    /*
+     * Document-class: DL::CFunc
+     *
+     * A direct accessor to a function in a C library
+     *
+     * == Example
+     *
+     *   libc_so = "/lib64/libc.so.6"
+     *   => "/lib64/libc.so.6"
+     *   libc = DL::dlopen(libc_so)
+     *   => #<DL::Handle:0x00000000e05b00>
+     *   @cfunc = DL::CFunc.new(libc,['strcpy'], DL::TYPE_VOIDP, 'strcpy')
+     *   => #<DL::CFunc:0x000000012daec0 ptr=0x007f62ca5a8300 type=1 name='strcpy'>
+     *
+     */
     rb_cDLCFunc = rb_define_class_under(rb_mDL, "CFunc", rb_cObject);
     rb_define_alloc_func(rb_cDLCFunc, rb_dlcfunc_s_allocate);
+
+    /*
+     * Document-method: last_error
+     *
+     * Returns the last error for the current executing thread
+     */
     rb_define_module_function(rb_cDLCFunc, "last_error", rb_dl_get_last_error, 0);
 #if defined(_WIN32)
+
+    /*
+     * Document-method: win32_last_error
+     *
+     * Returns the last win32 error for the current executing thread
+     */
     rb_define_module_function(rb_cDLCFunc, "win32_last_error", rb_dl_get_win32_last_error, 0);
 #endif
     rb_define_method(rb_cDLCFunc, "initialize", rb_dlcfunc_initialize, -1);

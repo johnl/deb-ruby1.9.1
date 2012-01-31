@@ -2,7 +2,7 @@
 
   error.c -
 
-  $Author: yugui $
+  $Author: nobu $
   created at: Mon Aug  9 16:11:34 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -12,6 +12,7 @@
 #include "ruby/ruby.h"
 #include "ruby/st.h"
 #include "ruby/encoding.h"
+#include "internal.h"
 #include "vm_core.h"
 
 #include <stdio.h>
@@ -20,17 +21,35 @@
 #include <stdlib.h>
 #endif
 #include <errno.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS 0
 #endif
 
+#ifndef WIFEXITED
+#define WIFEXITED(status) 1
+#endif
+
+#ifndef WEXITSTATUS
+#define WEXITSTATUS(status) (status)
+#endif
+
 extern const char ruby_description[];
+
+#define REPORTBUG_MSG \
+	"[NOTE]\n" \
+	"You may have encountered a bug in the Ruby interpreter" \
+	" or extension libraries.\n" \
+	"Bug reports are welcome.\n" \
+	"For details: http://www.ruby-lang.org/bugreport.html\n\n" \
 
 static const char *
 rb_strerrno(int err)
 {
-#define defined_error(name, num) if (err == num) return name;
+#define defined_error(name, num) if (err == (num)) return (name);
 #define undefined_error(name)
 #include "known_errors.inc"
 #undef defined_error
@@ -80,7 +99,19 @@ compile_snprintf(char *buf, long len, const char *file, int line, const char *fm
     }
 }
 
-static void err_append(const char*);
+static void err_append(const char*, rb_encoding *);
+
+void
+rb_compile_error_with_enc(const char *file, int line, void *enc, const char *fmt, ...)
+{
+    va_list args;
+    char buf[BUFSIZ];
+
+    va_start(args, fmt);
+    compile_snprintf(buf, BUFSIZ, file, line, fmt, args);
+    va_end(args);
+    err_append(buf, (rb_encoding *)enc);
+}
 
 void
 rb_compile_error(const char *file, int line, const char *fmt, ...)
@@ -91,7 +122,7 @@ rb_compile_error(const char *file, int line, const char *fmt, ...)
     va_start(args, fmt);
     compile_snprintf(buf, BUFSIZ, file, line, fmt, args);
     va_end(args);
-    err_append(buf);
+    err_append(buf, NULL);
 }
 
 void
@@ -103,7 +134,7 @@ rb_compile_error_append(const char *fmt, ...)
     va_start(args, fmt);
     vsnprintf(buf, BUFSIZ, fmt, args);
     va_end(args);
-    err_append(buf);
+    err_append(buf, NULL);
 }
 
 static void
@@ -210,8 +241,6 @@ rb_warn_m(VALUE self, VALUE mesg)
     return Qnil;
 }
 
-void rb_vm_bugreport(void);
-
 static void
 report_bug(const char *file, int line, const char *fmt, va_list args)
 {
@@ -228,12 +257,7 @@ report_bug(const char *file, int line, const char *fmt, va_list args)
 
 	rb_vm_bugreport();
 
-	fprintf(out,
-		"[NOTE]\n"
-		"You may have encountered a bug in the Ruby interpreter"
-		" or extension libraries.\n"
-		"Bug reports are welcome.\n"
-		"For details: http://www.ruby-lang.org/bugreport.html\n\n");
+	fprintf(out, REPORTBUG_MSG);
     }
 }
 
@@ -241,9 +265,16 @@ void
 rb_bug(const char *fmt, ...)
 {
     va_list args;
+    const char *file = NULL;
+    int line = 0;
+
+    if (GET_THREAD()) {
+	file = rb_sourcefile();
+	line = rb_sourceline();
+    }
 
     va_start(args, fmt);
-    report_bug(rb_sourcefile(), rb_sourceline(), fmt, args);
+    report_bug(file, line, fmt, args);
     va_end(args);
 
 #if defined(_WIN32) && defined(RT_VER) && RT_VER >= 80
@@ -265,6 +296,37 @@ rb_bug_errno(const char *mesg, int errno_arg)
         else
             rb_bug("%s: %s (%d)", mesg, strerror(errno_arg), errno_arg);
     }
+}
+
+/*
+ * this is safe to call inside signal handler and timer thread
+ * (which isn't a Ruby Thread object)
+ */
+#define write_or_abort(fd, str, len) (write((fd), (str), (len)) < 0 ? abort() : (void)0)
+#define WRITE_CONST(fd,str) write_or_abort((fd),(str),sizeof(str) - 1)
+
+void
+rb_async_bug_errno(const char *mesg, int errno_arg)
+{
+    WRITE_CONST(2, "[ASYNC BUG] ");
+    write_or_abort(2, mesg, strlen(mesg));
+    WRITE_CONST(2, "\n");
+
+    if (errno_arg == 0) {
+	WRITE_CONST(2, "errno == 0 (NOERROR)\n");
+    }
+    else {
+	const char *errno_str = rb_strerrno(errno_arg);
+
+	if (!errno_str)
+	    errno_str = "undefined errno";
+	write_or_abort(2, errno_str, strlen(errno_str));
+    }
+    WRITE_CONST(2, "\n\n");
+    write_or_abort(2, ruby_description, strlen(ruby_description));
+    WRITE_CONST(2, "\n\n");
+    WRITE_CONST(2, REPORTBUG_MSG);
+    abort();
 }
 
 void
@@ -336,7 +398,8 @@ rb_check_type(VALUE x, int t)
 		    etype = "Symbol";
 		}
 		else if (rb_special_const_p(x)) {
-		    etype = RSTRING_PTR(rb_obj_as_string(x));
+		    x = rb_obj_as_string(x);
+		    etype = StringValuePtr(x);
 		}
 		else {
 		    etype = rb_obj_classname(x);
@@ -346,15 +409,28 @@ rb_check_type(VALUE x, int t)
 	    }
 	    type++;
 	}
-	rb_bug("unknown type 0x%x (0x%x given)", t, TYPE(x));
+	if (xt > T_MASK && xt <= 0x3f) {
+	    rb_fatal("unknown type 0x%x (0x%x given, probably comes from extension library for ruby 1.8)", t, xt);
+	}
+	rb_bug("unknown type 0x%x (0x%x given)", t, xt);
     }
+}
+
+int
+rb_typeddata_inherited_p(const rb_data_type_t *child, const rb_data_type_t *parent)
+{
+    while (child) {
+	if (child == parent) return 1;
+	child = child->parent;
+    }
+    return 0;
 }
 
 int
 rb_typeddata_is_kind_of(VALUE obj, const rb_data_type_t *data_type)
 {
     if (SPECIAL_CONST_P(obj) || BUILTIN_TYPE(obj) != T_DATA ||
-	!RTYPEDDATA_P(obj) || RTYPEDDATA_TYPE(obj) != data_type) {
+	!RTYPEDDATA_P(obj) || !rb_typeddata_inherited_p(RTYPEDDATA_TYPE(obj), data_type)) {
 	return 0;
     }
     return 1;
@@ -373,7 +449,7 @@ rb_check_typeddata(VALUE obj, const rb_data_type_t *data_type)
 	etype = rb_obj_classname(obj);
 	rb_raise(rb_eTypeError, mesg, etype, data_type->wrap_struct_name);
     }
-    else if (RTYPEDDATA_TYPE(obj) != data_type) {
+    else if (!rb_typeddata_inherited_p(RTYPEDDATA_TYPE(obj), data_type)) {
 	etype = RTYPEDDATA_TYPE(obj)->wrap_struct_name;
 	rb_raise(rb_eTypeError, mesg, etype, data_type->wrap_struct_name);
     }
@@ -489,10 +565,12 @@ static VALUE
 exc_to_s(VALUE exc)
 {
     VALUE mesg = rb_attr_get(exc, rb_intern("mesg"));
+    VALUE r = Qnil;
 
     if (NIL_P(mesg)) return rb_class_name(CLASS_OF(exc));
-    if (OBJ_TAINTED(exc)) OBJ_TAINT(mesg);
-    return mesg;
+    r = rb_String(mesg);
+    OBJ_INFECT(r, exc);
+    return r;
 }
 
 /*
@@ -700,9 +778,15 @@ exit_status(VALUE exc)
 static VALUE
 exit_success_p(VALUE exc)
 {
-    VALUE status = rb_attr_get(exc, rb_intern("status"));
-    if (NIL_P(status)) return Qtrue;
-    if (status == INT2FIX(EXIT_SUCCESS)) return Qtrue;
+    VALUE status_val = rb_attr_get(exc, rb_intern("status"));
+    int status;
+
+    if (NIL_P(status_val))
+	return Qtrue;
+    status = NUM2INT(status_val);
+    if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS)
+	return Qtrue;
+
     return Qfalse;
 }
 
@@ -772,7 +856,7 @@ name_err_to_s(VALUE exc)
     if (str != mesg) {
 	rb_iv_set(exc, "mesg", mesg = str);
     }
-    if (OBJ_TAINTED(exc)) OBJ_TAINT(mesg);
+    OBJ_INFECT(mesg, exc);
     return mesg;
 }
 
@@ -815,9 +899,11 @@ name_err_mesg_memsize(const void *p)
 
 static const rb_data_type_t name_err_mesg_data_type = {
     "name_err_mesg",
-    name_err_mesg_mark,
-    name_err_mesg_free,
-    name_err_mesg_memsize,
+    {
+	name_err_mesg_mark,
+	name_err_mesg_free,
+	name_err_mesg_memsize,
+    },
 };
 
 /* :nodoc: */
@@ -899,7 +985,7 @@ name_err_mesg_to_str(VALUE obj)
 	args[2] = d;
 	mesg = rb_f_sprintf(NAME_ERR_MESG_COUNT, args);
     }
-    if (OBJ_TAINTED(obj)) OBJ_TAINT(mesg);
+    OBJ_INFECT(mesg, obj);
     return mesg;
 }
 
@@ -968,7 +1054,7 @@ static st_table *syserr_tbl;
 static VALUE
 set_syserr(int n, const char *name)
 {
-    VALUE error;
+    st_data_t error;
 
     if (!st_lookup(syserr_tbl, n, &error)) {
 	error = rb_define_class_under(rb_mErrno, name, rb_eSystemCallError);
@@ -984,7 +1070,7 @@ set_syserr(int n, const char *name)
 static VALUE
 get_syserr(int n)
 {
-    VALUE error;
+    st_data_t error;
 
     if (!st_lookup(syserr_tbl, n, &error)) {
 	char name[8];	/* some Windows' errno have 5 digits. */
@@ -1017,11 +1103,13 @@ syserr_initialize(int argc, VALUE *argv, VALUE self)
     VALUE klass = rb_obj_class(self);
 
     if (klass == rb_eSystemCallError) {
+	st_data_t data = (st_data_t)klass;
 	rb_scan_args(argc, argv, "11", &mesg, &error);
 	if (argc == 1 && FIXNUM_P(mesg)) {
 	    error = mesg; mesg = Qnil;
 	}
-	if (!NIL_P(error) && st_lookup(syserr_tbl, NUM2LONG(error), &klass)) {
+	if (!NIL_P(error) && st_lookup(syserr_tbl, NUM2LONG(error), &data)) {
+	    klass = (VALUE)data;
 	    /* change class */
 	    if (TYPE(self) != T_OBJECT) { /* insurance to avoid type crash */
 		rb_raise(rb_eTypeError, "invalid instance type");
@@ -1036,16 +1124,24 @@ syserr_initialize(int argc, VALUE *argv, VALUE self)
     if (!NIL_P(error)) err = strerror(NUM2INT(error));
     else err = "unknown error";
     if (!NIL_P(mesg)) {
+	rb_encoding *le = rb_locale_encoding();
 	VALUE str = mesg;
 
 	StringValue(str);
 	mesg = rb_sprintf("%s - %.*s", err,
 			  (int)RSTRING_LEN(str), RSTRING_PTR(str));
+	if (le == rb_usascii_encoding()) {
+	    rb_encoding *me = rb_enc_get(mesg);
+	    if (le != me && rb_enc_asciicompat(me))
+		le = me;
+	}/* else assume err is non ASCII string. */
+	OBJ_INFECT(mesg, str);
+	rb_enc_associate(mesg, le);
     }
     else {
 	mesg = rb_str_new2(err);
+	rb_enc_associate(mesg, rb_locale_encoding());
     }
-    rb_enc_associate(mesg, rb_locale_encoding());
     rb_call_super(1, &mesg);
     rb_iv_set(self, "errno", error);
     return self;
@@ -1378,10 +1474,28 @@ syserr_eqq(VALUE self, VALUE exc)
  */
 
 /*
+ * Document-class: EncodingError
+ *
+ * EncodingError is the base class for encoding errors.
+ */
+
+/*
  *  Document-class: Encoding::CompatibilityError
  *
  *  Raised by Encoding and String methods when the source encoding is
  *  incompatible with the target encoding.
+ */
+
+/*
+ * Document-class: fatal
+ *
+ * fatal is an Exception that is raised when ruby has encountered a fatal
+ * error and must exit.  You are not able to rescue fatal.
+ */
+
+/*
+ * Document-class: NameError::message
+ * :nodoc:
  */
 
 /*
@@ -1510,15 +1624,26 @@ static VALUE
 make_errno_exc(const char *mesg)
 {
     int n = errno;
-    VALUE arg;
 
     errno = 0;
     if (n == 0) {
 	rb_bug("rb_sys_fail(%s) - errno == 0", mesg ? mesg : "");
     }
+    return rb_syserr_new(n, mesg);
+}
 
+VALUE
+rb_syserr_new(int n, const char *mesg)
+{
+    VALUE arg;
     arg = mesg ? rb_str_new2(mesg) : Qnil;
     return rb_class_new_instance(1, &arg, get_syserr(n));
+}
+
+void
+rb_syserr_fail(int e, const char *mesg)
+{
+    rb_exc_raise(rb_syserr_new(e, mesg));
 }
 
 void
@@ -1531,6 +1656,14 @@ void
 rb_mod_sys_fail(VALUE mod, const char *mesg)
 {
     VALUE exc = make_errno_exc(mesg);
+    rb_extend_object(exc, mod);
+    rb_exc_raise(exc);
+}
+
+void
+rb_mod_syserr_fail(VALUE mod, int e, const char *mesg)
+{
+    VALUE exc = rb_syserr_new(e, mesg);
     rb_extend_object(exc, mod);
     rb_exc_raise(exc);
 }
@@ -1567,32 +1700,34 @@ rb_error_frozen(const char *what)
     rb_raise(rb_eRuntimeError, "can't modify frozen %s", what);
 }
 
+#undef rb_check_frozen
 void
 rb_check_frozen(VALUE obj)
 {
-    if (OBJ_FROZEN(obj)) rb_error_frozen(rb_obj_classname(obj));
+    rb_check_frozen_internal(obj);
 }
 
 void
 Init_syserr(void)
 {
     rb_eNOERROR = set_syserr(0, "NOERROR");
-#define defined_error(name, num) set_syserr(num, name);
-#define undefined_error(name) set_syserr(0, name);
+#define defined_error(name, num) set_syserr((num), (name));
+#define undefined_error(name) set_syserr(0, (name));
 #include "known_errors.inc"
 #undef defined_error
 #undef undefined_error
 }
 
 static void
-err_append(const char *s)
+err_append(const char *s, rb_encoding *enc)
 {
     rb_thread_t *th = GET_THREAD();
     VALUE err = th->errinfo;
 
     if (th->mild_compile_error) {
 	if (!RTEST(err)) {
-	    err = rb_exc_new2(rb_eSyntaxError, s);
+	    err = rb_exc_new3(rb_eSyntaxError,
+			      rb_enc_str_new(s, strlen(s), enc));
 	    th->errinfo = err;
 	}
 	else {

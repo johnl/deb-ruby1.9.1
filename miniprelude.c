@@ -4,6 +4,7 @@
  sources: prelude
 */
 #include "ruby/ruby.h"
+#include "internal.h"
 #include "vm_core.h"
 
 
@@ -30,7 +31,7 @@ static const char prelude_code0[] =
 "\n"
 "  # call-seq:\n"
 "  #    Thread.exclusive { block }   => obj\n"
-"  #  \n"
+"  #\n"
 "  # Wraps a block in Thread.critical, restoring the original value\n"
 "  # upon exit from the critical section, and returns the value of the\n"
 "  # block.\n"
@@ -44,8 +45,6 @@ static const char prelude_code0[] =
 
 #define PRELUDE_COUNT 0
 
-
-VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE filepath, VALUE line, VALUE opt);
 
 static void
 prelude_eval(VALUE code, VALUE name, VALUE line)

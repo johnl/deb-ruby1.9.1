@@ -7,17 +7,35 @@ require 'fileutils'
 require 'tmpdir'
 require 'enumerator'
 
+require_relative '../ruby/envutil'
+
 class TestPathname < Test::Unit::TestCase
-  def self.define_assertion(name, &block)
-    @defassert_num ||= {}
-    @defassert_num[name] ||= 0
-    @defassert_num[name] += 1
-    define_method("test_#{name}_#{@defassert_num[name]}", &block)
+  def self.define_assertion(name, linenum, &block)
+    name = "test_#{name}_#{linenum}"
+    define_method(name, &block)
+  end
+
+  def self.get_linenum
+    if /:(\d+):/ =~ caller[1]
+      $1.to_i
+    else
+      nil
+    end
   end
 
   def self.defassert(name, result, *args)
-    define_assertion(name) {
-      assert_equal(result, self.send(name, *args), "#{name}(#{args.map {|a| a.inspect }.join(', ')})")
+    define_assertion(name, get_linenum) {
+      mesg = "#{name}(#{args.map {|a| a.inspect }.join(', ')})"
+      assert_nothing_raised(mesg) {
+        assert_equal(result, self.send(name, *args), mesg)
+      }
+    }
+  end
+
+  def self.defassert_raise(name, exc, *args)
+    define_assertion(name, get_linenum) {
+      message = "#{name}(#{args.map {|a| a.inspect }.join(', ')})"
+      assert_raise(exc, message) { self.send(name, *args) }
     }
   end
 
@@ -173,6 +191,10 @@ class TestPathname < Test::Unit::TestCase
     end
   end
 
+  def test_plus
+    assert_kind_of(Pathname, Pathname("a") + Pathname("b"))
+  end
+
   def plus(path1, path2) # -> path
     (Pathname.new(path1) + Pathname.new(path2)).to_s
   end
@@ -194,6 +216,34 @@ class TestPathname < Test::Unit::TestCase
   defassert(:plus, '../../c', '..', '../c')
 
   defassert(:plus, 'a//b/d//e', 'a//b/c', '../d//e')
+
+  def test_parent
+    assert_equal(Pathname("."), Pathname("a").parent)
+  end
+
+  def parent(path) # -> path
+    Pathname.new(path).parent.to_s
+  end
+
+  defassert(:parent, '/', '/')
+  defassert(:parent, '/', '/a')
+  defassert(:parent, '/a', '/a/b')
+  defassert(:parent, '/a/b', '/a/b/c')
+  defassert(:parent, '.', 'a')
+  defassert(:parent, 'a', 'a/b')
+  defassert(:parent, 'a/b', 'a/b/c')
+  defassert(:parent, '..', '.')
+  defassert(:parent, '../..', '..')
+
+  def test_join
+    r = Pathname("a").join(Pathname("b"), Pathname("c"))
+    assert_equal(Pathname("a/b/c"), r)
+  end
+
+  def test_absolute
+    assert_equal(true, Pathname("/").absolute?)
+    assert_equal(false, Pathname("a").absolute?)
+  end
 
   def relative?(path)
     Pathname.new(path).relative?
@@ -256,13 +306,6 @@ class TestPathname < Test::Unit::TestCase
 
   defassert(:relative_path_from, "a", "a", "b/..")
   defassert(:relative_path_from, "b/c", "b/c", "b/..")
-
-  def self.defassert_raise(name, exc, *args)
-    define_assertion(name) {
-      message = "#{name}(#{args.map {|a| a.inspect }.join(', ')})"
-      assert_raise(exc, message) { self.send(name, *args) }
-    }
-  end
 
   defassert_raise(:relative_path_from, ArgumentError, "/", ".")
   defassert_raise(:relative_path_from, ArgumentError, ".", "/")
@@ -472,6 +515,7 @@ class TestPathname < Test::Unit::TestCase
   defassert(:pathsubext, 'lex.yy.o', 'lex.yy.c', '.o')
   defassert(:pathsubext, 'fooaa.o', 'fooaa', '.o')
   defassert(:pathsubext, 'd.e/aa.o', 'd.e/aa', '.o')
+  defassert(:pathsubext, 'long_enough.bug-3664', 'long_enough.not_to_be_embeded[ruby-core:31640]', '.bug-3664')
 
   def test_sub_matchdata
     result = Pathname("abc.gif").sub(/\..*/) {
@@ -491,6 +535,11 @@ class TestPathname < Test::Unit::TestCase
   defassert(:root?, true, "///")
   defassert(:root?, false, "")
   defassert(:root?, false, "a")
+
+  def test_mountpoint?
+    r = Pathname("/").mountpoint?
+    assert_include([true, false], r)
+  end
 
   def test_destructive_update
     path = Pathname.new("a")
@@ -546,6 +595,20 @@ class TestPathname < Test::Unit::TestCase
     assert_equal(false, Pathname.new("a".freeze)       .to_s.frozen?)
     assert_equal(false, Pathname.new("a"       ).freeze.to_s.frozen?)
     assert_equal(false, Pathname.new("a".freeze).freeze.to_s.frozen?)
+  end
+
+  def test_freeze_and_taint
+    obj = Pathname.new("a")
+    obj.freeze
+    assert_equal(false, obj.tainted?)
+    assert_raise(RuntimeError) { obj.taint }
+
+    obj = Pathname.new("a")
+    obj.taint
+    assert_equal(true, obj.tainted?)
+    obj.freeze
+    assert_equal(true, obj.tainted?)
+    assert_nothing_raised { obj.taint }
   end
 
   def test_to_s
@@ -1096,11 +1159,20 @@ class TestPathname < Test::Unit::TestCase
       open("f", "w") {|f| f.write "abc" }
       Dir.mkdir("d")
       assert_equal([Pathname("d"), Pathname("f")], Pathname.glob("*").sort)
+      a = []
+      Pathname.glob("*") {|path| a << path }
+      a.sort!
+      assert_equal([Pathname("d"), Pathname("f")], a)
     }
   end
 
   def test_s_getwd
     wd = Pathname.getwd
+    assert_kind_of(Pathname, wd)
+  end
+
+  def test_s_pwd
+    wd = Pathname.pwd
     assert_kind_of(Pathname, wd)
   end
 
@@ -1126,6 +1198,8 @@ class TestPathname < Test::Unit::TestCase
     with_tmpchdir('rubytest-pathname') {|dir|
       Pathname("d").mkdir
       assert(File.directory?("d"))
+      Pathname("e").mkdir(0770)
+      assert(File.directory?("e"))
     }
   end
 

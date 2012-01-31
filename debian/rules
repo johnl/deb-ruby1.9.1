@@ -39,16 +39,6 @@ ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 else
 	CFLAGS += -g -O2
 endif
-ifneq (,$(findstring $(DEB_HOST_GNU_CPU),ia64))
-	CFLAGS := $(patsubst -O1,,$(CFLAGS))
-	CFLAGS := $(patsubst -O2,,$(CFLAGS))
-	CFLAGS := $(patsubst -O3,,$(CFLAGS))
-	CFLAGS += -O0
-	CXXFLAGS := $(patsubst -O1,,$(CFLAGS))
-	CXXFLAGS := $(patsubst -O2,,$(CFLAGS))
-	CXXFLAGS := $(patsubst -O3,,$(CFLAGS))
-	CXXFLAGS += -O0
-endif
 
 # Renesas SH(sh4) needs -mieee option. #591785
 ifeq (sh4,$(shell dpkg-architecture -qDEB_HOST_ARCH))
@@ -139,13 +129,11 @@ pre-build::
 
 common-post-build-arch::
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-# On FreeBSD, do not consider test suite failures as fatal
-ifeq ($(DEB_HOST_GNU_SYSTEM),kfreebsd-gnu)
-	-$(MAKE) OPTS=-v test
-else
-	$(MAKE) OPTS=-v test
+# Disable test suites on some broken architectures.
+# See http://lists.debian.org/debian-release/2011/10/msg00279.html
+ifeq (,$(filter $(DEB_BUILD_ARCH),ia64 kfreebsd-i386 kfreebsd-amd64))
+	debian/run-test-suites.bash
 endif
-	-$(MAKE) OPTS=-v test-all
 endif
 
 binary-install/libtcltk-ruby$(ruby_ver)::
@@ -319,15 +307,17 @@ PACKAGE = ruby1.9.1
 SRC_VERSION := $(shell dpkg-parsechangelog | sed -ne 's/^Version: \(\([0-9]\+\):\)\?\(.*\)-.*/\3/p')
 SVN_REVISION := $(shell echo $(SRC_VERSION) | awk -F"+" '{ print $$2 }' | sed 's/svn//' )
 TARBALL = $(PACKAGE)_$(SRC_VERSION).orig.tar.gz
+SVN_PATH = http://svn.ruby-lang.org/repos/ruby/branches/ruby_1_9_3
+#SVN_PATH = http://svn.ruby-lang.org/repos/ruby/trunk
 .PHONY: get-orig-source check-orig-source
 get-orig-source:
 	rm -rf get-orig-source $(TARBALL)
 	mkdir get-orig-source
-	svn export -r $(SVN_REVISION) http://svn.ruby-lang.org/repos/ruby/branches/ruby_1_9_2 \
+	svn export -r $(SVN_REVISION) $(SVN_PATH) \
 	get-orig-source/$(PACKAGE)-$(SRC_VERSION).orig
 	GZIP=--best tar czf $(TARBALL) -C get-orig-source $(PACKAGE)-$(SRC_VERSION).orig
 	rm -rf get-orig-source
 	echo "  "$(TARBALL)" created; move it to the right destination to build the package"
 
 check-orig-source:
-	svn log http://svn.ruby-lang.org/repos/ruby/branches/ruby_1_9_2 | head -20
+	svn log $(SVN_PATH) | head -20

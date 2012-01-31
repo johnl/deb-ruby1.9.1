@@ -1,0 +1,41 @@
+## Description: add some description
+## Origin/Author: add some origin or author
+## Bug: bug URL
+--- a/test/gdbm/test_gdbm.rb
++++ b/test/gdbm/test_gdbm.rb
+@@ -77,7 +77,7 @@ if defined? GDBM
+       assert_nil(gdbm.close)
+     end
+     def test_s_open_create_new
+-      return if /^CYGWIN_9/ =~ SYSTEM
++      return if /^CYGWIN_9/ =~ SYSTEM or Process.euid == 0
+ 
+       save_mask = File.umask(0)
+       begin
+@@ -439,7 +439,7 @@ if defined? GDBM
+ 
+       assert_nil(@gdbm.delete(key))
+ 
+-      if /^CYGWIN_9/ !~ SYSTEM
++      if /^CYGWIN_9/ !~ SYSTEM and Process.euid != 0
+         assert_raise(GDBMError) {
+           @gdbm_rdonly.delete("foo")
+         }
+--- a/test/test_find.rb
++++ b/test/test_find.rb
+@@ -92,6 +92,7 @@ class TestFind < Test::Unit::TestCase
+ 
+   def test_unreadable_dir
+     skip "no meaning test on Windows" if /mswin|mingw/ =~ RUBY_PLATFORM
++    skip "does not work when running as root" if Process.euid == 0
+     Dir.mktmpdir {|d|
+       Dir.mkdir(dir = "#{d}/dir")
+       File.open(file = "#{dir}/foo", "w"){}
+@@ -107,6 +108,7 @@ class TestFind < Test::Unit::TestCase
+   end
+ 
+   def test_unsearchable_dir
++    skip "does not work when running as root" if Process.euid == 0
+     Dir.mktmpdir {|d|
+       Dir.mkdir(dir = "#{d}/dir")
+       File.open(file = "#{dir}/foo", "w"){}

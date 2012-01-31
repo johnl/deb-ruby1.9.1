@@ -9,10 +9,10 @@
 @DPATCH@
 --- a/lib/README
 +++ b/lib/README
-@@ -27,7 +27,6 @@ logger.rb	simple logging utility
+@@ -25,7 +25,6 @@ logger.rb	simple logging utility
  mathn.rb	extended math operation (obsolete)
  matrix.rb	matrix calculation library
- minitest/unit	minimal drop-in replacement for test-unit	
+ minitest/unit	minimal drop-in replacement for test-unit
 -mkmf.rb		Makefile maker
  monitor.rb	exclusive region monitor for thread
  mutex_m.rb	mutex mixin

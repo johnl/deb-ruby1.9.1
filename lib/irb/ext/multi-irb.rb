@@ -1,7 +1,7 @@
 #
 #   irb/multi-irb.rb - multiple irb module
 #   	$Release Version: 0.9.6$
-#   	$Revision: 27444 $
+#   	$Revision: 29726 $
 #   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
 #
 # --
@@ -14,7 +14,7 @@ require "thread"
 module IRB
   # job management class
   class JobManager
-    @RCS_ID='-$Id: multi-irb.rb 27444 2010-04-22 12:54:18Z keiju $-'
+    @RCS_ID='-$Id: multi-irb.rb 29726 2010-11-08 20:59:01Z marcandre $-'
 
     def initialize
       # @jobs = [[thread, irb],...]
@@ -29,12 +29,12 @@ module IRB
     end
 
     def thread(key)
-      th, irb = search(key)
+      th, = search(key)
       th
     end
 
     def irb(key)
-      th, irb = search(key)
+      _, irb = search(key)
       irb
     end
 
@@ -62,7 +62,7 @@ module IRB
 
     def kill(*keys)
       for key in keys
-	th, irb = search(key)
+	th, _ = search(key)
 	IRB.fail IrbAlreadyDead unless th.alive?
 	th.exit
       end

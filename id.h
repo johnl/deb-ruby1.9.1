@@ -28,6 +28,8 @@
 #include "parse.h"
 #endif
 
+#include "vm_opts.h" /* for SUPPORT_JOKE */
+
 #define symIFUNC ID2SYM(idIFUNC)
 #define symCFUNC ID2SYM(idCFUNC)
 
@@ -106,6 +108,7 @@ enum ruby_method_ids {
     tSend,
     t__send__,
     tInitialize,
+    tUScore,
 #if SUPPORT_JOKE
     tBitblt,
     tAnswer,
@@ -126,13 +129,15 @@ enum ruby_method_ids {
     TOKEN2ID(Lambda),
     TOKEN2ID(Send),
     TOKEN2ID(__send__),
-    TOKEN2ID(Initialize)
+    TOKEN2ID(Initialize),
+    TOKEN2ID(UScore),
+    TOKEN2ID(LAST_ID)
 };
 
 #ifdef tLAST_TOKEN
 struct ruby_method_ids_check {
 #define ruby_method_id_check_for(name, value) \
-    int checking_for_##name[name == value ? 1 : -1]
+    int checking_for_##name[name == (value) ? 1 : -1]
 ruby_method_id_check_for(tUPLUS, 321);
 ruby_method_id_check_for(tUMINUS, 322);
 ruby_method_id_check_for(tPOW, 323);

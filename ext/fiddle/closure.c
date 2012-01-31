@@ -5,7 +5,7 @@ VALUE cFiddleClosure;
 typedef struct {
     void * code;
     ffi_closure *pcl;
-    ffi_cif * cif;
+    ffi_cif cif;
     int argc;
     ffi_type **argv;
 } fiddle_closure;
@@ -23,7 +23,6 @@ dealloc(void * ptr)
 #else
     munmap(cls->pcl, sizeof(cls->pcl));
 #endif
-    xfree(cls->cif);
     if (cls->argv) xfree(cls->argv);
     xfree(cls);
 }
@@ -37,7 +36,7 @@ closure_memsize(const void * ptr)
     if (ptr) {
 	size += sizeof(*cls);
 #if !defined(FFI_NO_RAW_API) || !FFI_NO_RAW_API
-	size += ffi_raw_size(cls->cif);
+	size += ffi_raw_size(&cls->cif);
 #endif
 	size += sizeof(*cls->argv);
 	size += sizeof(ffi_closure);
@@ -47,7 +46,7 @@ closure_memsize(const void * ptr)
 
 const rb_data_type_t closure_data_type = {
     "fiddle/closure",
-    0, dealloc, closure_memsize,
+    {0, dealloc, closure_memsize,},
 };
 
 void
@@ -57,7 +56,7 @@ callback(ffi_cif *cif, void *resp, void **args, void *ctx)
     VALUE rbargs    = rb_iv_get(self, "@args");
     VALUE ctype     = rb_iv_get(self, "@ctype");
     int argc        = RARRAY_LENINT(rbargs);
-    VALUE *params   = xcalloc(argc, sizeof(VALUE *));
+    VALUE params    = rb_ary_tmp_new(argc);
     VALUE ret;
     VALUE cPointer;
     int i, type;
@@ -71,27 +70,28 @@ callback(ffi_cif *cif, void *resp, void **args, void *ctx)
 	    argc = 0;
 	    break;
 	  case TYPE_INT:
-	    params[i] = INT2NUM(*(int *)args[i]);
+	    rb_ary_push(params, INT2NUM(*(int *)args[i]));
 	    break;
 	  case TYPE_VOIDP:
-            params[i] = rb_funcall(cPointer, rb_intern("[]"), 1,
-              PTR2NUM(*(void **)args[i]));
+	    rb_ary_push(params,
+			rb_funcall(cPointer, rb_intern("[]"), 1,
+				   PTR2NUM(*(void **)args[i])));
 	    break;
 	  case TYPE_LONG:
-	    params[i] = LONG2NUM(*(long *)args[i]);
+	    rb_ary_push(params, LONG2NUM(*(long *)args[i]));
 	    break;
 	  case TYPE_CHAR:
-	    params[i] = INT2NUM(*(char *)args[i]);
+	    rb_ary_push(params, INT2NUM(*(char *)args[i]));
 	    break;
 	  case TYPE_DOUBLE:
-	    params[i] = rb_float_new(*(double *)args[i]);
+	    rb_ary_push(params, rb_float_new(*(double *)args[i]));
 	    break;
 	  case TYPE_FLOAT:
-	    params[i] = rb_float_new(*(float *)args[i]);
+	    rb_ary_push(params, rb_float_new(*(float *)args[i]));
 	    break;
 #if HAVE_LONG_LONG
 	  case TYPE_LONG_LONG:
-	    params[i] = rb_ull2inum(*(unsigned LONG_LONG *)args[i]);
+	    rb_ary_push(params, rb_ull2inum(*(unsigned LONG_LONG *)args[i]));
 	    break;
 #endif
 	  default:
@@ -99,7 +99,8 @@ callback(ffi_cif *cif, void *resp, void **args, void *ctx)
         }
     }
 
-    ret = rb_funcall2(self, rb_intern("call"), argc, params);
+    ret = rb_funcall2(self, rb_intern("call"), argc, RARRAY_PTR(params));
+    RB_GC_GUARD(params);
 
     type = NUM2INT(ctype);
     switch (type) {
@@ -109,13 +110,12 @@ callback(ffi_cif *cif, void *resp, void **args, void *ctx)
 	*(long *)resp = NUM2LONG(ret);
 	break;
       case TYPE_CHAR:
-	*(char *)resp = NUM2INT(ret);
+      case TYPE_SHORT:
+      case TYPE_INT:
+	*(ffi_sarg *)resp = NUM2INT(ret);
 	break;
       case TYPE_VOIDP:
 	*(void **)resp = NUM2PTR(ret);
-	break;
-      case TYPE_INT:
-	*(int *)resp = NUM2INT(ret);
 	break;
       case TYPE_DOUBLE:
 	*(double *)resp = NUM2DBL(ret);
@@ -131,7 +131,6 @@ callback(ffi_cif *cif, void *resp, void **args, void *ctx)
       default:
 	rb_raise(rb_eRuntimeError, "closure retval: %d", type);
     }
-    xfree(params);
 }
 
 static VALUE
@@ -148,7 +147,6 @@ allocate(VALUE klass)
     closure->pcl = mmap(NULL, sizeof(ffi_closure), PROT_READ | PROT_WRITE,
         MAP_ANON | MAP_PRIVATE, -1, 0);
 #endif
-    closure->cif = xmalloc(sizeof(ffi_cif));
 
     return i;
 }
@@ -185,7 +183,7 @@ initialize(int rbargc, VALUE argv[], VALUE self)
     rb_iv_set(self, "@ctype", ret);
     rb_iv_set(self, "@args", args);
 
-    cif = cl->cif;
+    cif = &cl->cif;
     pcl = cl->pcl;
 
     result = ffi_prep_cif(cif, NUM2INT(abi), argc,
@@ -226,11 +224,55 @@ to_i(VALUE self)
 void
 Init_fiddle_closure()
 {
+#if 0
+    mFiddle = rb_define_module("Fiddle"); /* let rdoc know about mFiddle */
+#endif
+
+    /*
+     * Document-class: Fiddle::Closure
+     *
+     * == Description
+     *
+     * An FFI closure wrapper, for handling callbacks.
+     *
+     * == Example
+     *
+     *   closure = Class.new(Fiddle::Closure) {
+     *     def call
+     *       10
+     *     end
+     *   }.new(Fiddle::TYPE_INT, [])
+     *   => #<#<Class:0x0000000150d308>:0x0000000150d240>
+     *   func = Fiddle::Function.new(closure, [], Fiddle::TYPE_INT)
+     *   => #<Fiddle::Function:0x00000001516e58>
+     *   func.call
+     *   => 10
+     */
     cFiddleClosure = rb_define_class_under(mFiddle, "Closure", rb_cObject);
 
     rb_define_alloc_func(cFiddleClosure, allocate);
 
+    /*
+     * Document-method: new
+     *
+     * call-seq: new(ret, *args, abi = Fiddle::DEFAULT)
+     *
+     * Construct a new Closure object.
+     *
+     * * +ret+ is the C type to be returned
+     * * +args+ are passed the callback
+     * * +abi+ is the abi of the closure
+     *
+     * If there is an error in preparing the ffi_cif or ffi_prep_closure,
+     * then a RuntimeError will be raised.
+     */
     rb_define_method(cFiddleClosure, "initialize", initialize, -1);
+
+    /*
+     * Document-method: to_i
+     *
+     * Returns the memory address for this closure
+     */
     rb_define_method(cFiddleClosure, "to_i", to_i, 0);
 }
 /* vim: set noet sw=4 sts=4 */

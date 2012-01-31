@@ -73,9 +73,6 @@
 #define VMS_EXT		1	/* include %v for VMS date format */
 #define MAILHEADER_EXT	1	/* add %z for HHMM format */
 #define ISO_DATE_EXT	1	/* %G and %g for year of ISO week */
-#ifndef GAWK
-#define POSIX_SEMANTICS	1	/* call tzset() if TZ changes */
-#endif
 
 #if defined(ISO_DATE_EXT)
 #if ! defined(POSIX2_DATE)
@@ -123,26 +120,7 @@ extern char *getenv();
 extern char *strchr();
 #endif
 
-#define range(low, item, hi)	max(low, min(item, hi))
-
-#if defined __WIN32__ || defined _WIN32
-#define DLL_IMPORT __declspec(dllimport)
-#endif
-#ifndef DLL_IMPORT
-#define DLL_IMPORT
-#endif
-#if !defined(OS2) && defined(HAVE_TZNAME)
-extern DLL_IMPORT char *tzname[2];
-#ifdef HAVE_DAYLIGHT
-extern DLL_IMPORT int daylight;
-#endif
-#ifdef HAVE_VAR_TIMEZONE
-extern DLL_IMPORT TYPEOF_VAR_TIMEZONE timezone;
-#endif
-#ifdef HAVE_VAR_ALTZONE
-extern DLL_IMPORT TYPEOF_VAR_ALTZONE altzone;
-#endif
-#endif
+#define range(low, item, hi)	max((low), min((item), (hi)))
 
 #undef min	/* just in case */
 
@@ -192,30 +170,15 @@ max(int a, int b)
 static size_t
 rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const struct vtm *vtm, VALUE timev, struct timespec *ts, int gmt)
 {
-	char *endp = s + maxsize;
-	char *start = s;
+	const char *const endp = s + maxsize;
+	const char *const start = s;
 	const char *sp, *tp;
 	auto char tbuf[100];
 	long off;
 	ptrdiff_t i;
 	int w;
 	long y;
-	static short first = 1;
-#ifdef POSIX_SEMANTICS
-	static char *savetz = NULL;
-	static size_t savetzlen = 0;
-	char *tz;
-#endif /* POSIX_SEMANTICS */
-#ifndef HAVE_TM_ZONE
-#ifndef HAVE_TM_NAME
-#if ((defined(MAILHEADER_EXT) && !HAVE_VAR_TIMEZONE && HAVE_GETTIMEOFDAY) || \
-     (!HAVE_TZNAME && HAVE_TIMEZONE))
-	struct timeval tv;
-	struct timezone zone;
-#endif
-#endif /* HAVE_TM_NAME */
-#endif /* HAVE_TM_ZONE */
-	int precision, flags;
+	int precision, flags, colons;
 	char padding;
 	enum {LEFT, CHCASE, LOWER, UPPER, LOCALE_O, LOCALE_E};
 #define BIT_OF(n) (1U<<(n))
@@ -242,52 +205,17 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
 		return 0;
 	}
 
-#ifndef POSIX_SEMANTICS
-	if (first) {
-		tzset();
-		first = 0;
-	}
-#else	/* POSIX_SEMANTICS */
-	tz = getenv("TZ");
-	if (first) {
-		if (tz != NULL) {
-			size_t tzlen = strlen(tz);
-
-			savetz = (char *) malloc(tzlen + 1);
-			if (savetz != NULL) {
-				savetzlen = tzlen + 1;
-				memcpy(savetz, tz, savetzlen);
-			}
-		}
-		tzset();
-		first = 0;
-	}
-	/* if we have a saved TZ, and it is different, recapture and reset */
-	if (tz && savetz && (tz[0] != savetz[0] || strcmp(tz, savetz) != 0)) {
-		size_t i = strlen(tz) + 1;
-		if (i > savetzlen) {
-			savetz = (char *) realloc(savetz, i);
-			if (savetz) {
-				savetzlen = i;
-				memcpy(savetz, tz, i);
-			}
-		} else
-			memcpy(savetz, tz, i);
-		tzset();
-	}
-#endif	/* POSIX_SEMANTICS */
-
 	for (; *format && s < endp - 1; format++) {
 #define FLAG_FOUND() do { \
 			if (precision > 0 || flags & (BIT_OF(LOCALE_E)|BIT_OF(LOCALE_O))) \
 				goto unknown; \
 		} while (0)
-#define NEEDS(n) do if (s + (n) >= endp - 1) goto err; while (0)
+#define NEEDS(n) do if (s >= endp || (n) >= endp - s - 1) goto err; while (0)
 #define FILL_PADDING(i) do { \
-	if (!(flags & BIT_OF(LEFT)) && precision > i) { \
+	if (!(flags & BIT_OF(LEFT)) && precision > (i)) { \
 		NEEDS(precision); \
-		memset(s, padding ? padding : ' ', precision - i); \
-		s += precision - i; \
+		memset(s, padding ? padding : ' ', precision - (i)); \
+		s += precision - (i); \
 	} \
 	else { \
 		NEEDS(i); \
@@ -299,16 +227,17 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
 			if (precision <= 0) precision = (def_prec); \
 			if (flags & BIT_OF(LEFT)) precision = 1; \
 			l = snprintf(s, endp - s, \
-				     ((padding == '0' || (!padding && def_pad == '0')) ? "%0*"fmt : "%*"fmt), \
-				     precision, val); \
+				     ((padding == '0' || (!padding && (def_pad) == '0')) ? "%0*"fmt : "%*"fmt), \
+				     precision, (val)); \
 			if (l < 0) goto err; \
 			s += l; \
 		} while (0)
 #define STRFTIME(fmt) \
 		do { \
-			i = rb_strftime_with_timespec(s, endp - s, fmt, vtm, timev, ts, gmt); \
+			i = rb_strftime_with_timespec(s, endp - s, (fmt), vtm, timev, ts, gmt); \
 			if (!i) return 0; \
 			if (precision > i) {\
+				NEEDS(precision); \
 				memmove(s + precision - i, s, i);\
 				memset(s, padding ? padding : ' ', precision - i); \
 				s += precision;	\
@@ -327,8 +256,8 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
                                 if (precision <= 0) precision = (def_prec); \
                                 if (flags & BIT_OF(LEFT)) precision = 1; \
                                 args[0] = INT2FIX(precision); \
-                                args[1] = val; \
-                                if (padding == '0' || (!padding && def_pad == '0')) \
+                                args[1] = (val); \
+                                if (padding == '0' || (!padding && (def_pad) == '0')) \
                                         result = rb_str_format(2, args, rb_str_new2("%0*"fmt)); \
                                 else \
                                         result = rb_str_format(2, args, rb_str_new2("%*"fmt)); \
@@ -348,6 +277,7 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
 		precision = -1;
 		flags = 0;
 		padding = 0;
+                colons = 0;
 	again:
 		switch (*++format) {
 		case '\0':
@@ -514,68 +444,32 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
 			continue;
 
 #ifdef MAILHEADER_EXT
-		/*
-		 * From: Chip Rosenthal <chip@chinacat.unicom.com>
-		 * Date: Sun, 19 Mar 1995 00:33:29 -0600 (CST)
-		 *
-		 * Warning: the %z [code] is implemented by inspecting the
-		 * timezone name conditional compile settings, and
-		 * inferring a method to get timezone offsets. I've tried
-		 * this code on a couple of machines, but I don't doubt
-		 * there is some system out there that won't like it.
-		 * Maybe the easiest thing to do would be to bracket this
-		 * with an #ifdef that can turn it off. The %z feature
-		 * would be an admittedly obscure one that most folks can
-		 * live without, but it would be a great help to those of
-		 * us that muck around with various message processors.
-		 */
 		case 'z':	/* time zone offset east of GMT e.g. -0600 */
-			if (precision < 4) precision = 4;
-			NEEDS(precision + 1);
+                        switch (colons) {
+                          case 0: /* %z -> +hhmm */
+                            precision = precision <= 5 ? 2 : precision-3;
+                            NEEDS(precision + 3);
+                            break;
+
+                          case 1: /* %:z -> +hh:mm */
+                            precision = precision <= 6 ? 2 : precision-4;
+                            NEEDS(precision + 4);
+                            break;
+
+                          case 2: /* %::z -> +hh:mm:ss */
+                            precision = precision <= 9 ? 2 : precision-7;
+                            NEEDS(precision + 7);
+                            break;
+
+                          default:
+                            format--;
+                            goto unknown;
+                        }
 			if (gmt) {
 				off = 0;
 			}
 			else {
-				off = NUM2LONG(rb_funcall(quo(vtm->utc_offset, INT2FIX(60)), rb_intern("round"), 0));
-#if 0
-#ifdef HAVE_TM_NAME
-				/*
-				 * Systems with tm_name probably have tm_tzadj as
-				 * secs west of GMT.  Convert to mins east of GMT.
-				 */
-				off = -timeptr->tm_tzadj / 60;
-#else /* !HAVE_TM_NAME */
-#ifdef HAVE_TM_ZONE
-				/*
-				 * Systems with tm_zone probably have tm_gmtoff as
-				 * secs east of GMT.  Convert to mins east of GMT.
-				 */
-				off = timeptr->tm_gmtoff / 60;
-#else /* !HAVE_TM_ZONE */
-#if HAVE_VAR_TIMEZONE
-#if HAVE_VAR_ALTZONE
-				off = -(daylight ? timezone : altzone) / 60;
-#else
-				off = -timezone / 60;
-#endif
-#else /* !HAVE_VAR_TIMEZONE */
-#ifdef HAVE_GETTIMEOFDAY
-				gettimeofday(&tv, &zone);
-				off = -zone.tz_minuteswest;
-#else
-				/* no timezone info, then calc by myself */
-				{
-					struct tm utc;
-					time_t now;
-					time(&now);
-					utc = *gmtime(&now);
-					off = (long)((now - mktime(&utc)) / 60);
-				}
-#endif
-#endif /* !HAVE_VAR_TIMEZONE */
-#endif /* !HAVE_TM_ZONE */
-#endif /* !HAVE_TM_NAME */
-#endif /* 0 */
+				off = NUM2LONG(rb_funcall(vtm->utc_offset, rb_intern("round"), 0));
 			}
 			if (off < 0) {
 				off = -off;
@@ -583,11 +477,22 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
 			} else {
 				*s++ = '+';
 			}
-			off = off/60*100 + off%60;
-			i = snprintf(s, endp - s, (padding == ' ' ? "%*ld" : "%.*ld"),
-				     precision - (precision > 4), off);
+			i = snprintf(s, endp - s, (padding == ' ' ? "%*ld" : "%.*ld"), precision, off / 3600);
 			if (i < 0) goto err;
 			s += i;
+                        off = off % 3600;
+                        if (1 <= colons)
+                            *s++ = ':';
+			i = snprintf(s, endp - s, "%02d", (int)(off / 60));
+			if (i < 0) goto err;
+			s += i;
+                        off = off % 60;
+                        if (2 <= colons) {
+                            *s++ = ':';
+                            i = snprintf(s, endp - s, "%02d", (int)off);
+                            if (i < 0) goto err;
+                            s += i;
+                        }
 			continue;
 #endif /* MAILHEADER_EXT */
 
@@ -601,29 +506,6 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
 				tp = "UTC";
 				break;
 			}
-#if 0
-#ifdef HAVE_TZNAME
-			i = (daylight && timeptr->tm_isdst > 0); /* 0 or 1 */
-			tp = tzname[i];
-#else
-#ifdef HAVE_TM_ZONE
-			tp = timeptr->tm_zone;
-#else
-#ifdef HAVE_TM_NAME
-			tp = timeptr->tm_name;
-#else
-#ifdef HAVE_TIMEZONE
-			gettimeofday(& tv, & zone);
-#ifdef TIMEZONE_VOID
-			tp = timezone();
-#else
-			tp = timezone(zone.tz_minuteswest, timeptr->tm_isdst > 0);
-#endif /* TIMEZONE_VOID */
-#endif /* HAVE_TIMEZONE */
-#endif /* HAVE_TM_NAME */
-#endif /* HAVE_TM_ZONE */
-#endif /* HAVE_TZNAME */
-#endif /* 0 */
                         if (vtm->zone == NULL)
                             tp = "";
                         else
@@ -732,7 +614,13 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
                                         yv = sub(yv, INT2FIX(1));
 
                                 if (*format == 'G') {
-                                        FMTV('0', 1, "d", yv);
+                                        if (FIXNUM_P(yv)) {
+                                                const long y = FIX2LONG(yv);
+                                                FMT('0', 0 <= y ? 4 : 5, "ld", y);
+                                        }
+                                        else {
+                                                FMTV('0', 4, "d", yv);
+                                        }
                                 }
                                 else {
                                         yv = mod(yv, INT2FIX(100));
@@ -798,17 +686,15 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
                                 subsec = div(subsec, INT2FIX(1));
 
                                 if (FIXNUM_P(subsec)) {
-                                        int l;
-                                        l = snprintf(s, endp - s, "%0*ld", precision, FIX2LONG(subsec));
+                                        (void)snprintf(s, endp - s, "%0*ld", precision, FIX2LONG(subsec));
                                         s += precision;
                                 }
                                 else {
                                         VALUE args[2], result;
-                                        size_t l;
                                         args[0] = INT2FIX(precision);
                                         args[1] = subsec;
                                         result = rb_str_format(2, args, rb_str_new2("%0*d"));
-                                        l = strlcpy(s, StringValueCStr(result), endp-s);
+                                        (void)strlcpy(s, StringValueCStr(result), endp-s);
                                         s += precision;
                                 }
 			}
@@ -839,6 +725,11 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
 			padding = ' ';
 			goto again;
 
+		case ':':
+			FLAG_FOUND();
+                        colons++;
+			goto again;
+
 		case '0':
 			padding = '0';
 		case '1':  case '2': case '3': case '4':
@@ -857,6 +748,7 @@ rb_strftime_with_timespec(char *s, size_t maxsize, const char *format, const str
 			precision = -1;
 			flags = 0;
 			padding = 0;
+                        colons = 0;
 			break;
 		}
 		if (i) {

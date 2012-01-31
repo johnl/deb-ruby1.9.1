@@ -144,7 +144,7 @@ class TestRubyOptimization < Test::Unit::TestCase
       tailcall_optimization: true,
       trace_instruction: false,
     }
-    iseq = RubyVM::InstructionSequence.new(<<-EOF, bug4082, __FILE__, __LINE__+1, option).eval
+    iseq = RubyVM::InstructionSequence.new(<<-EOF, "Bug#4082", bug4082, nil, option).eval
       class #{self.class}::Tailcall
         def fact_helper(n, res)
           if n == 1

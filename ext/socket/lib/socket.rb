@@ -29,7 +29,13 @@ class Addrinfo
     end
   end
 
-  def connect_internal(local_addrinfo)
+  # creates a new Socket connected to the address of +local_addrinfo+.
+  #
+  # If no arguments are given, the address of the socket is not bound.
+  #
+  # If a block is given the created socket is yielded for each address.
+  #
+  def connect_internal(local_addrinfo) # :yields: socket
     sock = Socket.new(self.pfamily, self.socktype, self.protocol)
     begin
       sock.ipv6only! if self.ipv6?
@@ -535,12 +541,10 @@ class Socket < BasicSocket
       end
     end
 
-    pktinfo_sockets = {}
     sockets.each {|s|
       ai = s.local_address
       if ipv6_recvpktinfo && ai.ipv6? && ai.ip_address == "::"
         s.setsockopt(:IPV6, ipv6_recvpktinfo, 1)
-        pktinfo_sockets[s] = true
       end
     }
 
@@ -577,7 +581,7 @@ class Socket < BasicSocket
   def self.udp_server_recv(sockets)
     sockets.each {|r|
       begin
-        msg, sender_addrinfo, rflags, *controls = r.recvmsg_nonblock
+        msg, sender_addrinfo, _, *controls = r.recvmsg_nonblock
       rescue IO::WaitReadable
         next
       end
@@ -639,17 +643,28 @@ class Socket < BasicSocket
 
   # UDP/IP address information used by Socket.udp_server_loop.
   class UDPSource
+    # +remote_adress+ is an Addrinfo object.
+    #
+    # +local_adress+ is an Addrinfo object.
+    #
+    # +reply_proc+ is a Proc used to send reply back to the source.
     def initialize(remote_address, local_address, &reply_proc)
       @remote_address = remote_address
       @local_address = local_address
       @reply_proc = reply_proc
     end
-    attr_reader :remote_address, :local_address
 
-    def inspect
+    # Address of the source
+    attr_reader :remote_address
+
+    # Local address
+    attr_reader :local_address
+
+    def inspect # :nodoc:
       "\#<#{self.class}: #{@remote_address.inspect_sockaddr} to #{@local_address.inspect_sockaddr}>"
     end
 
+    # Sends the String +msg+ to the source
     def reply(msg)
       @reply_proc.call msg
     end

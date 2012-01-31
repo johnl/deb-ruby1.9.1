@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_x509name.c 27440 2010-04-22 08:21:01Z nobu $
+ * $Id: ossl_x509name.c 32213 2011-06-23 13:51:55Z nahi $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001 Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -11,20 +11,20 @@
 #include "ossl.h"
 
 #define WrapX509Name(klass, obj, name) do { \
-    if (!name) { \
+    if (!(name)) { \
 	ossl_raise(rb_eRuntimeError, "Name wasn't initialized."); \
     } \
-    obj = Data_Wrap_Struct(klass, 0, X509_NAME_free, name); \
+    (obj) = Data_Wrap_Struct((klass), 0, X509_NAME_free, (name)); \
 } while (0)
 #define GetX509Name(obj, name) do { \
-    Data_Get_Struct(obj, X509_NAME, name); \
-    if (!name) { \
+    Data_Get_Struct((obj), X509_NAME, (name)); \
+    if (!(name)) { \
 	ossl_raise(rb_eRuntimeError, "Name wasn't initialized."); \
     } \
 } while (0)
 #define SafeGetX509Name(obj, name) do { \
-    OSSL_Check_Kind(obj, cX509Name); \
-    GetX509Name(obj, name); \
+    OSSL_Check_Kind((obj), cX509Name); \
+    GetX509Name((obj), (name)); \
 } while (0)
 
 #define OBJECT_TYPE_TEMPLATE \
@@ -87,9 +87,9 @@ ossl_x509name_alloc(VALUE klass)
     return obj;
 }
 
-static int id_aref;
+static ID id_aref;
 static VALUE ossl_x509name_add_entry(int, VALUE*, VALUE);
-#define rb_aref(obj, key) rb_funcall(obj, id_aref, 1, key)
+#define rb_aref(obj, key) rb_funcall((obj), id_aref, 1, (key))
 
 static VALUE
 ossl_x509name_init_i(VALUE i, VALUE args)
@@ -167,7 +167,7 @@ VALUE ossl_x509name_add_entry(int argc, VALUE *argv, VALUE self)
     if(NIL_P(type)) type = rb_aref(OBJECT_TYPE_TEMPLATE, oid);
     GetX509Name(self, name);
     if (!X509_NAME_add_entry_by_txt(name, RSTRING_PTR(oid), NUM2INT(type),
-		(const unsigned char *)RSTRING_PTR(value), RSTRING_LEN(value), -1, 0)) {
+		(const unsigned char *)RSTRING_PTR(value), RSTRING_LENINT(value), -1, 0)) {
 	ossl_raise(eX509NameError, NULL);
     }
 
@@ -266,6 +266,14 @@ ossl_x509name_cmp0(VALUE self, VALUE other)
     return X509_NAME_cmp(name1, name2);
 }
 
+/*
+ * call-seq:
+ *    name.cmp other => integer
+ *    name.<=> other => integer
+ *
+ * Compares this Name with +other+ and returns 0 if they are the same and -1 or
+ * +1 if they are greater or less than each other respectively.
+ */
 static VALUE
 ossl_x509name_cmp(VALUE self, VALUE other)
 {
@@ -292,6 +300,9 @@ ossl_x509name_eql(VALUE self, VALUE other)
 /*
  * call-seq:
  *    name.hash => integer
+ *
+ * The hash value returned is suitable for use as a certificate's filename in
+ * a CA path.
  */
 static VALUE
 ossl_x509name_hash(VALUE self)
@@ -305,6 +316,27 @@ ossl_x509name_hash(VALUE self)
 
     return ULONG2NUM(hash);
 }
+
+#ifdef HAVE_X509_NAME_HASH_OLD
+/*
+ * call-seq:
+ *    name.hash_old => integer
+ *
+ * hash_old returns MD5 based hash used in OpenSSL 0.9.X.
+ */
+static VALUE
+ossl_x509name_hash_old(VALUE self)
+{
+    X509_NAME *name;
+    unsigned long hash;
+
+    GetX509Name(self, name);
+
+    hash = X509_NAME_hash_old(name);
+
+    return ULONG2NUM(hash);
+}
+#endif
 
 /*
  * call-seq:
@@ -342,6 +374,8 @@ Init_ossl_x509name()
     eX509NameError = rb_define_class_under(mX509, "NameError", eOSSLError);
     cX509Name = rb_define_class_under(mX509, "Name", rb_cObject);
 
+    rb_include_module(cX509Name, rb_mComparable);
+
     rb_define_alloc_func(cX509Name, ossl_x509name_alloc);
     rb_define_method(cX509Name, "initialize", ossl_x509name_initialize, -1);
     rb_define_method(cX509Name, "add_entry", ossl_x509name_add_entry, -1);
@@ -351,6 +385,9 @@ Init_ossl_x509name()
     rb_define_alias(cX509Name, "<=>", "cmp");
     rb_define_method(cX509Name, "eql?", ossl_x509name_eql, 1);
     rb_define_method(cX509Name, "hash", ossl_x509name_hash, 0);
+#ifdef HAVE_X509_NAME_HASH_OLD
+    rb_define_method(cX509Name, "hash_old", ossl_x509name_hash_old, 0);
+#endif
     rb_define_method(cX509Name, "to_der", ossl_x509name_to_der, 0);
 
     utf8str = INT2NUM(V_ASN1_UTF8STRING);

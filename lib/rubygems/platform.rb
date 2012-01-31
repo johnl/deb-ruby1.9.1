@@ -1,3 +1,5 @@
+require "rubygems/deprecate"
+
 ##
 # Available list of platforms for targeting Gem installations.
 
@@ -70,7 +72,7 @@ class Gem::Platform
                       when /hpux(\d+)/ then            [ 'hpux',      $1  ]
                       when /^java$/, /^jruby$/ then    [ 'java',      nil ]
                       when /^java([\d.]*)/ then        [ 'java',      $1  ]
-                      when /^dotnet$/ then             [ 'dotnet',    nil ]                       
+                      when /^dotnet$/ then             [ 'dotnet',    nil ]
                       when /^dotnet([\d.]*)/ then      [ 'dotnet',    $1  ]
                       when /linux/ then                [ 'linux',     $1  ]
                       when /mingw32/ then              [ 'mingw32',   nil ]
@@ -115,8 +117,13 @@ class Gem::Platform
   # the same CPU, OS and version.
 
   def ==(other)
-    self.class === other and
-      @cpu == other.cpu and @os == other.os and @version == other.version
+    self.class === other and to_a == other.to_a
+  end
+
+  alias :eql? :==
+
+  def hash # :nodoc:
+    to_a.hash
   end
 
   ##
@@ -179,5 +186,8 @@ class Gem::Platform
 
   CURRENT = 'current'
 
+  extend Gem::Deprecate
+
+  deprecate :empty?, :none, 2011, 11
 end
 
