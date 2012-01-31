@@ -1,0 +1,26 @@
+From 1f88c47ed71d6b1467c7b4cd4c69a900ae4496d4 Mon Sep 17 00:00:00 2001
+From: Samuel Cochran <sj26@sj26.com>
+Date: Fri, 16 Sep 2011 09:42:16 +0800
+Subject: [PATCH] Removing visibility flag hiding required symbols in ruby
+ binary during final linking.
+
+Fixes ruby-debug19, along with many other extensions.
+---
+ configure.in |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/configure.in b/configure.in
+index ec51a9b..4ded2a9 100644
+--- a/configure.in
++++ b/configure.in
+@@ -493,7 +493,6 @@ if test "$GCC" = ""; then
+     AS_CASE(["$target_os"],[aix*],[warnflags="-qinfo=por"])
+ fi
+ if test "$GCC" = yes; then
+-    RUBY_TRY_CFLAGS(-fvisibility=hidden, [RUBY_APPEND_OPTION(XCFLAGS, -fvisibility=hidden)])
+     AC_SUBST(WERRORFLAG, "-Werror")
+     if test "$visibility_option" = yes; then
+ 	RUBY_APPEND_OPTION(XCFLAGS, -fvisibility=hidden)
+-- 
+1.7.5.4
+

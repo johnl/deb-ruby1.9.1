@@ -17,3 +17,4 @@
 sparc-continuations.diff
 hurd-path-max.diff
 120131_funny_falcon_performance.patch
+110916_fix_ruby_debug19.patch
