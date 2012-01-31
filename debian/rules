@@ -4,7 +4,6 @@ ruby_ver = 1.9.1
 ruby_ver_major = 1.9
 ruby_ver_dir = $(ruby_ver)
 ruby_libpkgsfx = $(ruby_ver)
-tcltk_ver = 8.4
 
 arch_name = $(subst linux-gnu,linux-,$(patsubst %linux-gnu,%linux,$(DEB_HOST_GNU_TYPE)))
 ifeq (i686-linux-lp,$(arch_name))
@@ -47,11 +46,13 @@ endif
 
 ifeq ($(DEB_HOST_GNU_CPU),i386)
 	DEB_CONFIGURE_USER_FLAGS += --enable-frame-address
+	LDFLAGS += -ltcmalloc_minimal
 endif
 ifneq (,$(filter $(DEB_HOST_GNU_CPU),i486 i586 i686))
 	DEB_CONFIGURE_USER_FLAGS += --enable-frame-address
+	LDFLAGS += -ltcmalloc_minimal
 endif
-DEB_CONFIGURE_USER_FLAGS += --enable-pthread
+DEB_CONFIGURE_USER_FLAGS += --disable-pthread
 DEB_CONFIGURE_USER_FLAGS += --enable-shared
 DEB_CONFIGURE_USER_FLAGS += --disable-rpath
 DEB_CONFIGURE_USER_FLAGS += --disable-install-doc
@@ -63,9 +64,6 @@ DEB_CONFIGURE_USER_FLAGS += --with-baseruby=/usr/bin/ruby1.8
 # the following are ignored by ./configure, but used by some extconf.rb scripts
 DEB_CONFIGURE_USER_FLAGS += --enable-ipv6
 DEB_CONFIGURE_USER_FLAGS += --with-dbm-type=gdbm_compat
-DEB_CONFIGURE_USER_FLAGS += --with-tklib=tk$(tcltk_ver)
-DEB_CONFIGURE_USER_FLAGS += --with-tcllib=tcl$(tcltk_ver)
-DEB_CONFIGURE_USER_FLAGS += --with-tcl-include=/usr/include/tcl$(tcltk_ver)
 DEB_CONFIGURE_USER_FLAGS += --with-bundled-sha1
 DEB_CONFIGURE_USER_FLAGS += --with-bundled-md5
 DEB_CONFIGURE_USER_FLAGS += --with-bundled-rmd160
@@ -75,9 +73,6 @@ DEB_MAKE_BUILD_TARGET = all
 else
 DEB_MAKE_BUILD_TARGET = main
 endif
-
-DEB_INSTALL_DOCS_libtcltk-ruby$(ruby_ver) += $(DEB_SRCDIR)/ext/tk/README*
-DEB_INSTALL_DOCS_libtcltk-ruby$(ruby_ver) += $(DEB_SRCDIR)/ext/tk/MANUAL*
 
 DEB_INSTALL_DIRS_ruby$(ruby_ver) += $(bin_dir)
 DEB_INSTALL_DIRS_ruby$(ruby_ver) += $(man_dir)
@@ -135,30 +130,6 @@ ifeq (,$(filter $(DEB_BUILD_ARCH),ia64 kfreebsd-i386 kfreebsd-amd64))
 	debian/run-test-suites.bash
 endif
 endif
-
-binary-install/libtcltk-ruby$(ruby_ver)::
-	dh_movefiles -p$(cdbs_curpkg) \
-	    $(ruby_archdir)/tcltklib.so \
-	    $(ruby_archdir)/tkutil.so
-	sh $(CURDIR)/debian/extfixup_rubylibs.sh $(ruby_libdir) $(cdbs_curpkg) \
-	    $(DEB_SRCDIR)/ext/tk
-
-	install -d \
-	    $(CURDIR)/debian/$(cdbs_curpkg)/usr/share/doc/$(cdbs_curpkg)/examples
-	(cd $(DEB_SRCDIR)/ext/tk/sample && \
-	 tar cf - .) | \
-	  (cd $(CURDIR)/debian/$(cdbs_curpkg)/usr/share/doc/$(cdbs_curpkg)/examples && tar xf -)
-	mv $(CURDIR)/debian/tmp/$(ruby_libdir)/tkextlib/SUPPORT_STATUS \
-	    $(CURDIR)/debian/$(cdbs_curpkg)/usr/share/doc/$(cdbs_curpkg)/
-	install \
-	    $(DEB_SRCDIR)/ext/tk/lib/README \
-	    $(CURDIR)/debian/$(cdbs_curpkg)/usr/share/doc/$(cdbs_curpkg)/README.lib
-	install \
-	    $(DEB_SRCDIR)/ext/tk/lib/tkextlib/tcllib/README \
-	    $(CURDIR)/debian/$(cdbs_curpkg)/usr/share/doc/$(cdbs_curpkg)/README.tcllib
-	install \
-	    $(DEB_SRCDIR)/ext/tk/lib/tkextlib/tkimg/README \
-	    $(CURDIR)/debian/$(cdbs_curpkg)/usr/share/doc/$(cdbs_curpkg)/README.tkimg
 
 binary-install/libruby$(ruby_libpkgsfx):: $(patsubst %,binary-install/%,$(filter-out libruby$(ruby_libpkgsfx),$(DEB_PACKAGES)))
 	install -d $(CURDIR)/debian/$(cdbs_curpkg)/$(ruby_archdir)

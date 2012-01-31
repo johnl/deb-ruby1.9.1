@@ -3,7 +3,7 @@ Section: ruby
 Priority: optional
 Maintainer: akira yamada <akira@debian.org>
 Uploaders: Daigo Moriwaki <daigo@debian.org>, Lucas Nussbaum <lucas@debian.org>
-Build-Depends: debhelper (>= 5), cdbs, quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline-gplv2-dev | libreadline5-dev, tcl-dev, tk-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev, openssl
+Build-Depends: debhelper (>= 5), cdbs, quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline-gplv2-dev | libreadline5-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev, openssl, libgoogle-perftools-dev
 Standards-Version: 3.9.2
 Homepage: http://www.ruby-lang.org/
 Vcs-Git: git://git.debian.org/collab-maint/ruby1.9.1.git
@@ -68,13 +68,6 @@ Description: Header files for compiling extension modules for the Ruby 1.9.1
  to make extension library for Ruby 1.9.1. It is also required to build
  many gems.
 
-Package: libtcltk-ruby1.9.1
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Tcl/Tk interface for Ruby 1.9.1
- tcltklib is an extension library for Ruby 1.9.1.  It makes Ruby 1.9.1
- programs to be able to use low level interface for the Tcl/Tk.
-
 Package: ruby1.9.1-examples
 Architecture: all
 Depends: ${misc:Depends}
@@ -104,12 +97,11 @@ Description: Ruby Interactive reference (for Ruby 1.9.1)
 Package: ruby1.9.1-full
 Architecture: all
 Depends: ruby1.9.1 (>= ${source:Version}), libruby1.9.1-dbg (>= ${source:Version}), ruby1.9.1-dev (>= ${source:Version}), ruby1.9.1-examples (>= ${source:Version}), ri1.9.1 (>= ${source:Version}), ${misc:Depends}
-Recommends: libtcltk-ruby1.9.1 (>= ${source:Version})
 Description: Ruby 1.9.1 full installation
  For many good reasons, the Ruby programming language is split in many
  small different packages. Installing this package will make sure you have
  all the packages that add up to a full Ruby installation, with the exception
- of the Tcl/Tk bindings for Ruby, which are only recommended.
+ of the Tcl/Tk bindings for Ruby.
  .
  This package installs the dependencies for Ruby compatibility version 1.9.1
  (currently Ruby 1.9.3).
