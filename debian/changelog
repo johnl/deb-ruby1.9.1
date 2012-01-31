@@ -1,3 +1,9 @@
+ruby1.9.1 (1:1.9.3.0-3bbox1) lucid; urgency=low
+
+  * Backported to Lucid
+
+ -- John Leach <john@brightbox.co.uk>  Tue, 31 Jan 2012 22:08:05 +0000
+
 ruby1.9.1 (1.9.3.0-3) UNRELEASED; urgency=low
 
   * Add hurd-path-max.diff. Fixes FTBFS on Hurd. Closes: #648055
