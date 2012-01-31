@@ -1,3 +1,12 @@
+ruby1.9.1 (1:1.9.3.0-4bbox1) lucid; urgency=low
+
+  * Disable pthreads (and remove tcl/tk packages)
+  * Link with tcmalloc
+  * funny-falcon's performance patches
+  * Re-expose symbols necessary for ruby-debug
+
+ -- John Leach <john@brightbox.co.uk>  Tue, 31 Jan 2012 23:01:03 +0000
+
 ruby1.9.1 (1:1.9.3.0-3bbox1) lucid; urgency=low
 
   * Backported to Lucid
