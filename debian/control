@@ -56,7 +56,7 @@ Description: Debugging symbols for Ruby 1.9.1
 
 Package: ruby1.9.1-dev
 Architecture: any
-Depends: libruby1.9.1 (= ${binary:Version}), libc6-dev, ${misc:Depends}
+Depends: libruby1.9.1 (= ${binary:Version}), libc6-dev, ${misc:Depends}, libgoogle-perftools-dev
 Recommends: ruby1.9.1 (= ${binary:Version})
 Description: Header files for compiling extension modules for the Ruby 1.9.1
  Ruby is the interpreted scripting language for quick and easy
