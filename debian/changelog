@@ -1,8 +1,14 @@
-ruby1.9.1 (1.9.3.0-3) UNRELEASED; urgency=low
+ruby1.9.1 (1.9.3.125-1) unstable; urgency=low
 
+  [ Lucas Nussbaum ]
   * Add hurd-path-max.diff. Fixes FTBFS on Hurd. Closes: #648055
 
- -- Lucas Nussbaum <lucas@debian.org>  Tue, 20 Dec 2011 17:30:03 +0100
+  [ Daigo Moriwaki ]
+  * New upstream release: 1.9.3p125.
+  * Removed debian/patches/debian/patches/sparc-continuations.diff,
+    which the upstream has applied.
+
+ -- Daigo Moriwaki <daigo@debian.org>  Sun, 26 Feb 2012 19:25:55 +0900
 
 ruby1.9.1 (1.9.3.0-2) unstable; urgency=low
 
