@@ -7,6 +7,7 @@ ruby1.9.1 (1.9.3.125-1) unstable; urgency=low
   * New upstream release: 1.9.3p125.
   * Removed debian/patches/debian/patches/sparc-continuations.diff,
     which the upstream has applied.
+  * debian/rules: Bumped up tcltk_ver to 8.5.
 
  -- Daigo Moriwaki <daigo@debian.org>  Sun, 26 Feb 2012 19:25:55 +0900
 

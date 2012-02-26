@@ -4,7 +4,7 @@ ruby_ver = 1.9.1
 ruby_ver_major = 1.9
 ruby_ver_dir = $(ruby_ver)
 ruby_libpkgsfx = $(ruby_ver)
-tcltk_ver = 8.4
+tcltk_ver = 8.5
 
 arch_name = $(subst linux-gnu,linux-,$(patsubst %linux-gnu,%linux,$(DEB_HOST_GNU_TYPE)))
 ifeq (i686-linux-lp,$(arch_name))
