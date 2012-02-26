@@ -109,6 +109,7 @@ static ID ripper_id_until_mod;
 static ID ripper_id_var_alias;
 static ID ripper_id_var_field;
 static ID ripper_id_var_ref;
+static ID ripper_id_vcall;
 static ID ripper_id_void_stmt;
 static ID ripper_id_when;
 static ID ripper_id_while;
@@ -240,6 +241,7 @@ ripper_init_eventids1(VALUE self)
     ripper_id_var_alias = rb_intern_const("on_var_alias");
     ripper_id_var_field = rb_intern_const("on_var_field");
     ripper_id_var_ref = rb_intern_const("on_var_ref");
+    ripper_id_vcall = rb_intern_const("on_vcall");
     ripper_id_void_stmt = rb_intern_const("on_void_stmt");
     ripper_id_when = rb_intern_const("on_when");
     ripper_id_while = rb_intern_const("on_while");
@@ -478,6 +480,8 @@ ripper_init_eventids1(VALUE self)
     id = rb_intern_const("var_field");
     rb_hash_aset(h, ID2SYM(id), INT2NUM(1));
     id = rb_intern_const("var_ref");
+    rb_hash_aset(h, ID2SYM(id), INT2NUM(1));
+    id = rb_intern_const("vcall");
     rb_hash_aset(h, ID2SYM(id), INT2NUM(1));
     id = rb_intern_const("void_stmt");
     rb_hash_aset(h, ID2SYM(id), INT2NUM(0));

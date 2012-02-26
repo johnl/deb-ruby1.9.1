@@ -1205,6 +1205,18 @@ module TkCore
             #  module TkCore; RUN_EVENTLOOP_ON_MAIN_THREAD = true; end
             #  ----------------------------------------------------------
             #
+            # *** ADD (2010/07/05) ***
+            #  The value of TclTkLib::WINDOWING_SYSTEM is defined at compiling.
+            #  If it is inconsistent with linked DLL, please call the following
+            #  before "require 'tk'".
+            #  ----------------------------------------------------------
+            #  require 'tcltklib'
+            #  module TclTkLib
+            #    remove_const :WINDOWING_SYSTEM
+            #    WINDOWING_SYSTEM = 'x11' # or 'aqua'
+            #  end
+            #  ----------------------------------------------------------
+            #
             RUN_EVENTLOOP_ON_MAIN_THREAD = true
           else
             RUN_EVENTLOOP_ON_MAIN_THREAD = false
@@ -1303,7 +1315,7 @@ EOS
 
         ensure
           # interp must be deleted before the thread for interp is dead.
-          # If not, raise Tcl_Panic on Tcl_AsyncDelete because async handler 
+          # If not, raise Tcl_Panic on Tcl_AsyncDelete because async handler
           # deleted by the wrong thread.
           interp.delete
         end
@@ -1347,7 +1359,7 @@ EOS
 
     INTERP.instance_eval{
       # @tk_cmd_tbl = TkUtil.untrust({})
-      @tk_cmd_tbl = 
+      @tk_cmd_tbl =
         TkUtil.untrust(Hash.new{|hash, key|
                          fail IndexError, "unknown command ID '#{key}'"
                        })

@@ -1,7 +1,7 @@
 #
 #   irb/locale.rb - internationalization module
 #   	$Release Version: 0.9.6$
-#   	$Revision: 31201 $
+#   	$Revision: 31573 $
 #   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
 #
 # --
@@ -10,7 +10,7 @@
 #
 module IRB
   class Locale
-    @RCS_ID='-$Id: locale.rb 31201 2011-03-28 13:40:53Z yugui $-'
+    @RCS_ID='-$Id: locale.rb 31573 2011-05-15 11:55:52Z nobu $-'
 
     LOCALE_NAME_RE = %r[
       (?<language>[[:alpha:]]{2,3})
@@ -136,7 +136,7 @@ module IRB
     end
 
     # @param paths load paths in which IRB find a localized file.
-    # @param dir directory 
+    # @param dir directory
     # @param file basename to be localized
     #
     # typically, for the parameters and a <path> in paths, it searches

@@ -7,6 +7,12 @@ module Psych
     # Taken from http://yaml.org/type/timestamp.html
     TIME = /^\d{4}-\d{1,2}-\d{1,2}([Tt]|\s+)\d{1,2}:\d\d:\d\d(\.\d*)?(\s*Z|[-+]\d{1,2}(:\d\d)?)?/
 
+    # Taken from http://yaml.org/type/float.html
+    FLOAT = /^(?:[-+]?([0-9][0-9_,]*)?\.[0-9.]*([eE][-+][0-9]+)?(?# base 10)
+              |[-+]?[0-9][0-9_,]*(:[0-5]?[0-9])+\.[0-9_]*(?# base 60)
+              |[-+]?\.(inf|Inf|INF)(?# infinity)
+              |\.(nan|NaN|NAN)(?# not a number))$/x
+
     # Create a new scanner
     def initialize
       @string_cache = {}
@@ -67,9 +73,16 @@ module Psych
           i += (n.to_f * 60 ** (e - 2).abs)
         end
         i
-      else
-        return Integer(string.gsub(/[,_]/, '')) rescue ArgumentError
+      when FLOAT
         return Float(string.gsub(/[,_]/, '')) rescue ArgumentError
+
+        @string_cache[string] = true
+        string
+      else
+        if string.count('.') < 2
+          return Integer(string.gsub(/[,_]/, '')) rescue ArgumentError
+        end
+
         @string_cache[string] = true
         string
       end
@@ -80,10 +93,10 @@ module Psych
     def parse_time string
       date, time = *(string.split(/[ tT]/, 2))
       (yy, m, dd) = date.split('-').map { |x| x.to_i }
-      md = time.match(/(\d+:\d+:\d+)(\.\d*)?\s*(Z|[-+]\d+(:\d\d)?)?/)
+      md = time.match(/(\d+:\d+:\d+)(?:\.(\d*))?\s*(Z|[-+]\d+(:\d\d)?)?/)
 
       (hh, mm, ss) = md[1].split(':').map { |x| x.to_i }
-      us = (md[2] ? Rational(md[2].sub(/^\./, '0.')) : 0) * 1000000
+      us = (md[2] ? Rational("0.#{md[2]}") : 0) * 1000000
 
       time = Time.utc(yy, m, dd, hh, mm, ss, us)
 

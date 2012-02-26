@@ -1,5 +1,6 @@
 require 'test/unit'
 require 'timeout'
+require 'socket'
 begin
   require 'io/wait'
 rescue LoadError
@@ -8,7 +9,11 @@ end
 class TestIOWait < Test::Unit::TestCase
 
   def setup
-    @r, @w = IO.pipe
+    if /mswin|mingw/ =~ RUBY_PLATFORM
+      @r, @w = Socket.pair(Socket::AF_INET, Socket::SOCK_STREAM, 0)
+    else
+      @r, @w = IO.pipe
+    end
   end
 
   def teardown
@@ -19,6 +24,7 @@ class TestIOWait < Test::Unit::TestCase
   def test_nread
     assert_equal 0, @r.nread
     @w.syswrite "."
+    sleep 0.1
     assert_equal 1, @r.nread
   end
 
@@ -29,9 +35,10 @@ class TestIOWait < Test::Unit::TestCase
   end
 
   def test_ready?
-    refute @r.ready?
+    refute @r.ready?, "shouldn't ready, but ready"
     @w.syswrite "."
-    assert @r.ready?
+    sleep 0.1
+    assert @r.ready?, "should ready, but not"
   end
 
   def test_buffered_ready?
@@ -43,6 +50,7 @@ class TestIOWait < Test::Unit::TestCase
   def test_wait
     assert_nil @r.wait(0)
     @w.syswrite "."
+    sleep 0.1
     assert_equal @r, @r.wait(0)
   end
 

@@ -1,4 +1,4 @@
-# $Id: test_nowrite.rb 31404 2011-05-01 09:37:17Z yugui $
+# $Id: test_nowrite.rb 30787 2011-02-04 18:37:52Z nobu $
 
 require 'fileutils'
 require 'test/unit'

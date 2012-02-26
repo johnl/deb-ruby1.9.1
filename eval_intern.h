@@ -65,7 +65,7 @@ char *strrchr(const char *, const char);
 #endif
 
 #define ruby_setjmp(env) RUBY_SETJMP(env)
-#define ruby_longjmp(env,val) RUBY_LONGJMP(env,val)
+#define ruby_longjmp(env,val) RUBY_LONGJMP((env),(val))
 #ifdef __CYGWIN__
 # ifndef _setjmp
 int _setjmp(jmp_buf);
@@ -90,7 +90,8 @@ NORETURN(void _longjmp(jmp_buf, int));
   So following definition is required to use select_large_fdset.
 */
 #ifdef HAVE_SELECT_LARGE_FDSET
-#define select(n, r, w, e, t) select_large_fdset(n, r, w, e, t)
+#define select(n, r, w, e, t) select_large_fdset((n), (r), (w), (e), (t))
+extern int select_large_fdset(int, fd_set *, fd_set *, fd_set *, struct timeval *);
 #endif
 
 #ifdef HAVE_SYS_PARAM_H
@@ -108,7 +109,7 @@ NORETURN(void _longjmp(jmp_buf, int));
   } while (0)
 
 #define TH_PUSH_TAG(th) do { \
-  rb_thread_t * const _th = th; \
+  rb_thread_t * const _th = (th); \
   struct rb_vm_tag _tag; \
   _tag.tag = 0; \
   _tag.prev = _th->tag; \
@@ -130,10 +131,12 @@ NORETURN(void _longjmp(jmp_buf, int));
   TH_EXEC_TAG()
 
 #define TH_JUMP_TAG(th, st) do { \
-  ruby_longjmp(th->tag->buf,(st)); \
+  ruby_longjmp((th)->tag->buf,(st)); \
 } while (0)
 
-#define JUMP_TAG(st) TH_JUMP_TAG(GET_THREAD(), st)
+#define JUMP_TAG(st) TH_JUMP_TAG(GET_THREAD(), (st))
+
+#define INTERNAL_EXCEPTION_P(exc) FIXNUM_P(exc)
 
 enum ruby_tag_type {
     RUBY_TAG_RETURN	= 0x1,
@@ -172,7 +175,7 @@ enum ruby_tag_type {
 #define SCOPE_SET(f)   (rb_vm_cref()->nd_visi = (f))
 
 #define CHECK_STACK_OVERFLOW(cfp, margin) do \
-  if ((VALUE *)((char *)(((VALUE *)(cfp)->sp) + (margin)) + sizeof(rb_control_frame_t)) >= ((VALUE *)cfp)) { \
+  if ((VALUE *)((char *)(((VALUE *)(cfp)->sp) + (margin)) + sizeof(rb_control_frame_t)) >= ((VALUE *)(cfp))) { \
       rb_exc_raise(sysstack_error); \
   } \
 while (0)
@@ -205,16 +208,15 @@ NORETURN(void rb_raise_method_missing(rb_thread_t *th, int argc, VALUE *argv,
 
 VALUE rb_vm_make_jump_tag_but_local_jump(int state, VALUE val);
 NODE *rb_vm_cref(void);
-VALUE rb_vm_call_cfunc(VALUE recv, VALUE (*func)(VALUE), VALUE arg, const rb_block_t *blockptr, VALUE filename, VALUE filepath);
+VALUE rb_vm_call_cfunc(VALUE recv, VALUE (*func)(VALUE), VALUE arg, const rb_block_t *blockptr, VALUE filename);
 void rb_vm_set_progname(VALUE filename);
 void rb_thread_terminate_all(void);
 VALUE rb_vm_top_self();
 VALUE rb_vm_cbase(void);
-int rb_vm_get_sourceline(const rb_control_frame_t *);
 void rb_trap_restore_mask(void);
 
 #ifndef CharNext		/* defined as CharNext[AW] on Windows. */
-#define CharNext(p) ((p) + mblen(p, RUBY_MBCHAR_MAXSIZE))
+#define CharNext(p) ((p) + mblen((p), RUBY_MBCHAR_MAXSIZE))
 #endif
 
 #if defined DOSISH || defined __CYGWIN__

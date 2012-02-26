@@ -4,6 +4,7 @@
  sources: golf_prelude
 */
 #include "ruby/ruby.h"
+#include "internal.h"
 #include "vm_core.h"
 
 
@@ -123,12 +124,18 @@ static const char prelude_code0[] =
 "  alias old_inspect inspect\n"
 "  alias inspect old_to_s\n"
 "end\n"
+"\n"
+"class Symbol\n"
+"  def call(*args, &block)\n"
+"    proc do |recv|\n"
+"      recv.__send__(self, *args, &block)\n"
+"    end\n"
+"  end\n"
+"end\n"
 ;
 
 #define PRELUDE_COUNT 0
 
-
-VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE filepath, VALUE line, VALUE opt);
 
 static void
 prelude_eval(VALUE code, VALUE name, VALUE line)

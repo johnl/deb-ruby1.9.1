@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #
 # $RoughId: test.rb,v 1.4 2001/07/13 15:38:27 knu Exp $
-# $Id: test_digest.rb 29665 2010-11-01 15:04:05Z yugui $
+# $Id: test_digest.rb 32547 2011-07-15 03:05:23Z nahi $
 
 require 'test/unit'
 
@@ -16,6 +16,12 @@ end
 module TestDigest
   Data1 = "abc"
   Data2 = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+
+  def test_s_new
+    self.class::DATA.each do |str, hexdigest|
+      assert_raise(ArgumentError) { self.class::ALGO.new("") }
+    end
+  end
 
   def test_s_hexdigest
     self.class::DATA.each do |str, hexdigest|
@@ -69,6 +75,15 @@ module TestDigest
   def test_instance_eval
     assert_nothing_raised {
       self.class::ALGO.new.instance_eval { update "a" }
+    }
+  end
+
+  def test_alignment
+    md = self.class::ALGO.new
+    assert_nothing_raised('#4320') {
+      md.update('a' * 97)
+      md.update('a' * 97)
+      md.hexdigest
     }
   end
 

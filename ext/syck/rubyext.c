@@ -2,7 +2,7 @@
 /*
  * rubyext.c
  *
- * $Author: yugui $
+ * $Author: nobu $
  *
  * Copyright (C) 2003-2005 why the lucky stiff
  */
@@ -114,7 +114,7 @@ rb_syck_compile(VALUE self, VALUE port)
     syck_parser_taguri_expansion( parser, 0 );
     oid = syck_parse( parser );
     if (!syck_lookup_sym( parser, oid, &data )) {
-	rb_raise(rb_eSyntaxError, "root node <%lx> not found", oid);
+	rb_raise(rb_eSyntaxError, "root node <%p> not found", (void *)oid);
     }
     sav = data;
 
@@ -208,24 +208,25 @@ syck_get_hash_aref(VALUE hsh, VALUE key)
  * creating timestamps
  */
 struct mktime_arg {
-    char *str;
+    const char *str;
     long len;
 };
 
-SYMID
-mktime_do(struct mktime_arg *arg)
+VALUE
+mktime_do(VALUE varg)
 {
+    struct mktime_arg *arg = (struct mktime_arg *)varg;
     VALUE time;
-    char *str = arg->str;
+    const char *str = arg->str;
     long len = arg->len;
-    char *ptr = str;
+    const char *ptr = str;
     VALUE year = INT2FIX(0);
     VALUE mon = INT2FIX(0);
     VALUE day = INT2FIX(0);
     VALUE hour = INT2FIX(0);
     VALUE min = INT2FIX(0);
     VALUE sec = INT2FIX(0);
-    double usec;
+    long usec;
 
     /* Year*/
     if ( ptr[0] != '\0' && len > 0 ) {
@@ -271,20 +272,19 @@ mktime_do(struct mktime_arg *arg)
     ptr += 2;
     if ( len > ptr - str && *ptr == '.' )
     {
-        char padded[] = "000000.000000";
-        const int padding = 6;
-        const int offset = padding + 1;
+        char padded[] = "000000";
+        const int padding = (int)(sizeof(padded) - 1);
         const char *end = ptr + 1;
         const char *begin = end;
-        int length;
+        ptrdiff_t length;
         while ( isdigit( *end ) ) end++;
-        length = (int)(end - begin) <= padding ? (int)(end - begin) : padding;
+        if ((length = (end - begin)) > padding) length = padding;
         MEMCPY(padded, begin, char, length);
-        usec = strtod(padded, NULL);
+        usec = strtol(padded, NULL, 10);
     }
     else
     {
-        usec = 0.0;
+        usec = 0;
     }
 
     /* Time Zone*/
@@ -312,18 +312,20 @@ mktime_do(struct mktime_arg *arg)
         time = rb_funcall(rb_cTime, s_utc, 6, year, mon, day, hour, min, sec);
         tmp = rb_funcall(time, s_to_i, 0);
         tmp = rb_funcall(tmp, '-', 1, LONG2FIX(tz_offset));
-        return rb_funcall(rb_cTime, s_at, 2, tmp, rb_float_new(usec));
+        return rb_funcall(rb_cTime, s_at, 2, tmp, LONG2NUM(usec));
     }
     else
     {
         /* Make UTC time*/
-        return rb_funcall(rb_cTime, s_utc, 7, year, mon, day, hour, min, sec, rb_float_new(usec));
+        return rb_funcall(rb_cTime, s_utc, 7, year, mon, day, hour, min, sec, LONG2NUM(usec));
     }
 }
 
-SYMID
-mktime_r(struct mktime_arg *arg)
+VALUE
+mktime_r(VALUE varg)
 {
+    struct mktime_arg *arg = (struct mktime_arg *)varg;
+
     if (!cDateTime) {
         /*
          * Load Date module
@@ -334,8 +336,8 @@ mktime_r(struct mktime_arg *arg)
     return rb_funcall(cDateTime, s_parse, 1, rb_str_new(arg->str, arg->len));
 }
 
-SYMID
-rb_syck_mktime(char *str, long len)
+VALUE
+rb_syck_mktime(const char *str, long len)
 {
     struct mktime_arg a;
 
@@ -1720,6 +1722,7 @@ syck_map_style_set(VALUE self, VALUE style)
     return self;
 }
 
+#if 0
 /*
  * Cloning method for all node types
  */
@@ -1742,6 +1745,7 @@ syck_node_init_copy(VALUE copy, VALUE orig)
     MEMCPY( copy_n, orig_n, SyckNode, 1 );
     return copy;
 }
+#endif
 
 /*
  * YAML::Syck::Node#type_id=
@@ -2223,7 +2227,7 @@ Init_syck()
      * Define YAML::Syck::Node class
      */
     cNode = rb_define_class_under( rb_syck, "Node", rb_cObject );
-    rb_define_method( cNode, "initialize_copy", syck_node_init_copy, 1 );
+    rb_undef( cNode, rb_intern("initialize_copy") );
     rb_define_attr( cNode, "emitter", 1, 1 );
     rb_define_attr( cNode, "resolver", 1, 1 );
     rb_define_attr( cNode, "kind", 1, 0 );

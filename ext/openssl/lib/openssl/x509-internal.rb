@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: x509-internal.rb 27967 2010-05-23 08:48:44Z nobu $
+  $Id: x509-internal.rb 32663 2011-07-25 04:51:26Z nahi $
 =end
 
 module OpenSSL
@@ -109,7 +109,6 @@ module OpenSSL
           ary = []
           while true
             if md = TypeAndValue.match(str)
-              matched = md.to_s
               remain = md.post_match
               type = md[1]
               value, tag = expand_value(md[2], md[3], md[4]) rescue nil
@@ -147,6 +146,12 @@ module OpenSSL
         end
 
         alias parse parse_openssl
+      end
+    end
+
+    class StoreContext
+      def cleanup
+        warn "(#{caller.first}) OpenSSL::X509::StoreContext#cleanup is deprecated with no replacement" if $VERBOSE
       end
     end
   end

@@ -248,7 +248,7 @@ unix_send_io(VALUE sock, VALUE val)
 #endif
 
     arg.fd = fptr->fd;
-    while ((int)BLOCKING_REGION(sendmsg_blocking, &arg) == -1) {
+    while ((int)BLOCKING_REGION_FD(sendmsg_blocking, &arg) == -1) {
 	if (!rb_io_wait_writable(arg.fd))
 	    rb_sys_fail("sendmsg(2)");
     }
@@ -335,13 +335,13 @@ unix_recv_io(int argc, VALUE *argv, VALUE sock)
 #endif
 
     arg.fd = fptr->fd;
-    while ((int)BLOCKING_REGION(recvmsg_blocking, &arg) == -1) {
+    while ((int)BLOCKING_REGION_FD(recvmsg_blocking, &arg) == -1) {
 	if (!rb_io_wait_readable(arg.fd))
 	    rb_sys_fail("recvmsg(2)");
     }
 
 #if FD_PASSING_BY_MSG_CONTROL
-    if (arg.msg.msg_controllen < sizeof(struct cmsghdr)) {
+    if (arg.msg.msg_controllen < (socklen_t)sizeof(struct cmsghdr)) {
 	rb_raise(rb_eSocket,
 		 "file descriptor was not passed (msg_controllen=%d smaller than sizeof(struct cmsghdr)=%d)",
 		 (int)arg.msg.msg_controllen, (int)sizeof(struct cmsghdr));
@@ -356,18 +356,18 @@ unix_recv_io(int argc, VALUE *argv, VALUE sock)
 		 "file descriptor was not passed (cmsg_type=%d, %d expected)",
 		 cmsg.hdr.cmsg_type, SCM_RIGHTS);
     }
-    if (arg.msg.msg_controllen < CMSG_LEN(sizeof(int))) {
+    if (arg.msg.msg_controllen < (socklen_t)CMSG_LEN(sizeof(int))) {
 	rb_raise(rb_eSocket,
 		 "file descriptor was not passed (msg_controllen=%d smaller than CMSG_LEN(sizeof(int))=%d)",
 		 (int)arg.msg.msg_controllen, (int)CMSG_LEN(sizeof(int)));
     }
-    if (CMSG_SPACE(sizeof(int)) < arg.msg.msg_controllen) {
+    if ((socklen_t)CMSG_SPACE(sizeof(int)) < arg.msg.msg_controllen) {
 	rb_raise(rb_eSocket,
 		 "file descriptor was not passed (msg_controllen=%d bigger than CMSG_SPACE(sizeof(int))=%d)",
 		 (int)arg.msg.msg_controllen, (int)CMSG_SPACE(sizeof(int)));
     }
     if (cmsg.hdr.cmsg_len != CMSG_LEN(sizeof(int))) {
-	rsock_discard_cmsg_resource(&arg.msg);
+	rsock_discard_cmsg_resource(&arg.msg, 0);
 	rb_raise(rb_eSocket,
 		 "file descriptor was not passed (cmsg_len=%d, %d expected)",
 		 (int)cmsg.hdr.cmsg_len, (int)CMSG_LEN(sizeof(int)));
@@ -383,6 +383,7 @@ unix_recv_io(int argc, VALUE *argv, VALUE sock)
 #if FD_PASSING_BY_MSG_CONTROL
     memcpy(&fd, CMSG_DATA(&cmsg.hdr), sizeof(int));
 #endif
+    rb_update_max_fd(fd);
 
     if (klass == Qnil)
 	return INT2FIX(fd);
@@ -491,15 +492,15 @@ unix_s_socketpair(int argc, VALUE *argv, VALUE klass)
 }
 #endif
 
-/*
- * Document-class: ::UNIXSocket < BasicSocket
- *
- * UNIXSocket represents a UNIX domain stream client socket.
- */
 void
 rsock_init_unixsocket(void)
 {
 #ifdef HAVE_SYS_UN_H
+    /*
+     * Document-class: UNIXSocket < BasicSocket
+     *
+     * UNIXSocket represents a UNIX domain stream client socket.
+     */
     rb_cUNIXSocket = rb_define_class("UNIXSocket", rb_cBasicSocket);
     rb_define_method(rb_cUNIXSocket, "initialize", unix_init, 1);
     rb_define_method(rb_cUNIXSocket, "path", unix_path, 0);

@@ -1,15 +1,11 @@
-# $Id: fileasserts.rb 31404 2011-05-01 09:37:17Z yugui $
+# $Id: fileasserts.rb 30804 2011-02-06 03:13:08Z nobu $
 
 module Test
   module Unit
-    module Assertions   # redefine
+    module FileAssertions
 
       def _wrap_assertion
         yield
-      end
-
-      def assert_block(*msgs)
-        assert yield, *msgs.compact
       end
 
       def assert_same_file(from, to, message=nil)

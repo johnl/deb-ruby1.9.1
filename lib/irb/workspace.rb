@@ -1,7 +1,7 @@
 #
 #   irb/workspace-binding.rb -
 #   	$Release Version: 0.9.6$
-#   	$Revision: 25189 $
+#   	$Revision: 32252 $
 #   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
 #
 # --
@@ -97,7 +97,7 @@ EOF
       when 3
 	return nil if bt =~ /irb\/.*\.rb/
 	return nil if bt =~ /irb\.rb/
-	bt.sub!(/:\s*in `irb_binding'/, '')
+	bt = bt.sub(/:\s*in `irb_binding'/, '')
       end
       bt
     end

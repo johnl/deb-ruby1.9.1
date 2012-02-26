@@ -1,4 +1,4 @@
-# -*- encoding: ASCII-8BIT -*-   # make sure this runs in binary mode
+# encoding: ASCII-8BIT   # make sure this runs in binary mode
 # some of the comments are in UTF-8
 
 require 'test/unit'
@@ -51,7 +51,7 @@ class TestTranscode < Test::Unit::TestCase
   end
 
   def check_both_ways(utf8, raw, encoding)
-    assert_equal(utf8.force_encoding('utf-8'), raw.encode('utf-8', encoding))
+    assert_equal(utf8.force_encoding('utf-8'), raw.encode('utf-8', encoding),utf8.dump)
     assert_equal(raw.force_encoding(encoding), utf8.encode(encoding, 'utf-8'))
   end
 
@@ -1019,6 +1019,21 @@ class TestTranscode < Test::Unit::TestCase
     check_utf_16_both_ways("\u{F00FF}", "\xDB\x80\xDC\xFF")
   end
 
+  def test_utf_16_bom
+    expected = "\u{3042}\u{3044}\u{20bb7}"
+    assert_equal(expected, %w/fffe4230443042d8b7df/.pack("H*").encode("UTF-8","UTF-16"))
+    check_both_ways(expected, %w/feff30423044d842dfb7/.pack("H*"), "UTF-16")
+    assert_raise(Encoding::InvalidByteSequenceError){%w/feffdfb7/.pack("H*").encode("UTF-8","UTF-16")}
+    assert_raise(Encoding::InvalidByteSequenceError){%w/fffeb7df/.pack("H*").encode("UTF-8","UTF-16")}
+  end
+
+  def test_utf_32_bom
+    expected = "\u{3042}\u{3044}\u{20bb7}"
+    assert_equal(expected, %w/fffe00004230000044300000b70b0200/.pack("H*").encode("UTF-8","UTF-32"))
+    check_both_ways(expected, %w/0000feff000030420000304400020bb7/.pack("H*"), "UTF-32")
+    assert_raise(Encoding::InvalidByteSequenceError){%w/0000feff00110000/.pack("H*").encode("UTF-8","UTF-32")}
+  end
+
   def check_utf_32_both_ways(utf8, raw)
     copy = raw.dup
     0.step(copy.length-1, 4) do |i|
@@ -1797,9 +1812,9 @@ class TestTranscode < Test::Unit::TestCase
     check_both_ways("\u77AC", "\xC0\xFE", 'Big5') # 瞬
     check_both_ways("\u8B96", "\xC6\x40", 'Big5') # 讖
     check_both_ways("\u7C72", "\xC6\x7E", 'Big5') # 籲
-	#assert_raise(Encoding::UndefinedConversionError) { "\xC6\xA1".encode("utf-8", 'Big5') }
+    #assert_raise(Encoding::UndefinedConversionError) { "\xC6\xA1".encode("utf-8", 'Big5') }
     #assert_raise(Encoding::UndefinedConversionError) { "\xC7\x40".encode("utf-8", 'Big5') }
-    assert_raise(Encoding::UndefinedConversionError) { "\xC8\x40".encode("utf-8", 'Big5') }
+    #assert_raise(Encoding::UndefinedConversionError) { "\xC8\x40".encode("utf-8", 'Big5') }
     check_both_ways("\u4E42", "\xC9\x40", 'Big5') # 乂
     check_both_ways("\u6C15", "\xC9\x7E", 'Big5') # 氕
     check_both_ways("\u6C36", "\xC9\xA1", 'Big5') # 氶
@@ -1832,7 +1847,7 @@ class TestTranscode < Test::Unit::TestCase
     check_both_ways("\u9F0A", "\xF9\x7E", 'Big5') # 鼊
     check_both_ways("\u9FA4", "\xF9\xA1", 'Big5') # 龤
     check_both_ways("\u9F98", "\xF9\xD5", 'Big5') # 龘
-    assert_raise(Encoding::UndefinedConversionError) { "\xF9\xD6".encode("utf-8", 'Big5') }
+    #assert_raise(Encoding::UndefinedConversionError) { "\xF9\xD6".encode("utf-8", 'Big5') }
     check_both_ways("\u795E\u6797\u7FA9\u535A", "\xAF\xAB\xAA\x4C\xB8\x71\xB3\xD5", 'Big5') # 神林義博
   end
 
@@ -1864,7 +1879,7 @@ class TestTranscode < Test::Unit::TestCase
     check_both_ways("\u77AC", "\xC0\xFE", 'Big5-HKSCS') # 瞬
     check_both_ways("\u8B96", "\xC6\x40", 'Big5-HKSCS') # 讖
     check_both_ways("\u7C72", "\xC6\x7E", 'Big5-HKSCS') # 籲
-	#assert_raise(Encoding::UndefinedConversionError) { "\xC6\xA1".encode("utf-8", 'Big5-HKSCS') }
+    #assert_raise(Encoding::UndefinedConversionError) { "\xC6\xA1".encode("utf-8", 'Big5-HKSCS') }
     #assert_raise(Encoding::UndefinedConversionError) { "\xC7\x40".encode("utf-8", 'Big5-HKSCS') }
     #assert_raise(Encoding::UndefinedConversionError) { "\xC8\x40".encode("utf-8", 'Big5-HKSCS') }
     check_both_ways("\u4E42", "\xC9\x40", 'Big5-HKSCS') # 乂
@@ -1899,7 +1914,7 @@ class TestTranscode < Test::Unit::TestCase
     check_both_ways("\u9F0A", "\xF9\x7E", 'Big5-HKSCS') # 鼊
     check_both_ways("\u9FA4", "\xF9\xA1", 'Big5-HKSCS') # 龤
     check_both_ways("\u9F98", "\xF9\xD5", 'Big5-HKSCS') # 龘
-    check_both_ways("\u{23ED7}", "\x8E\x40", 'Big5-HKSCS') # 𣻗
+    #check_both_ways("\u{23ED7}", "\x8E\x40", 'Big5-HKSCS') # 𣻗
     #assert_raise(Encoding::UndefinedConversionError) { "\xF9\xD6".encode("utf-8", 'Big5-HKSCS') }
     check_both_ways("\u795E\u6797\u7FA9\u535A", "\xAF\xAB\xAA\x4C\xB8\x71\xB3\xD5", 'Big5-HKSCS') # 神林義博
   end
@@ -1932,5 +1947,22 @@ class TestTranscode < Test::Unit::TestCase
         fallback: {"\u{20000}" => "\u3042"}))
     assert_equal("[ISU]", "\u{1F4BA}".encode("SJIS-KDDI",
         fallback: {"\u{1F4BA}" => "[ISU]"}))
+  end
+
+  def test_fallback_hash_default
+    fallback = Hash.new {|h, x| "U+%.4X" % x.unpack("U")}
+    assert_equal("U+3042", "\u{3042}".encode("US-ASCII", fallback: fallback))
+  end
+
+  def test_fallback_proc
+    fallback = proc {|x| "U+%.4X" % x.unpack("U")}
+    assert_equal("U+3042", "\u{3042}".encode("US-ASCII", fallback: fallback))
+  end
+
+  def test_fallback_method
+    def (fallback = "U+%.4X").escape(x)
+      self % x.unpack("U")
+    end
+    assert_equal("U+3042", "\u{3042}".encode("US-ASCII", fallback: fallback.method(:escape)))
   end
 end

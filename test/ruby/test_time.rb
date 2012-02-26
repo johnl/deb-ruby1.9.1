@@ -176,7 +176,7 @@ class TestTime < Test::Unit::TestCase
 
     t = Time.at(2**40 + "1/3".to_r, 9999999999999).utc
     assert_equal(36812, t.year)
-    
+
     t = Time.at(-0x3fff_ffff_ffff_ffff)
     assert_equal(-146138510344, t.year)
     t = Time.at(-0x4000_0000_0000_0000)
@@ -275,6 +275,13 @@ class TestTime < Test::Unit::TestCase
     t2 = Marshal.load(m)
     assert_equal(t1, t2)
     assert_equal(29700, t2.utc_offset, bug)
+  end
+
+  def test_marshal_to_s
+    t1 = Time.new(2011,11,8, 0,42,25, 9*3600)
+    t2 = Time.at(Marshal.load(Marshal.dump(t1)))
+    assert_equal("2011-11-08 00:42:25 +0900", t2.to_s,
+      "[ruby-dev:44827] [Bug #5586]")
   end
 
   # Sat Jan 01 00:00:00 UTC 2000
@@ -590,6 +597,18 @@ class TestTime < Test::Unit::TestCase
     assert_equal("02", t.strftime("%0l"))
     assert_equal(" 2", t.strftime("%_l"))
 
+    t = Time.utc(1,1,4)
+    assert_equal("0001", t.strftime("%Y"))
+    assert_equal("0001", t.strftime("%G"))
+
+    t = Time.utc(0,1,4)
+    assert_equal("0000", t.strftime("%Y"))
+    assert_equal("0000", t.strftime("%G"))
+
+    t = Time.utc(-1,1,4)
+    assert_equal("-0001", t.strftime("%Y"))
+    assert_equal("-0001", t.strftime("%G"))
+
     # [ruby-dev:37155]
     t = Time.mktime(1970, 1, 18)
     assert_equal("0", t.strftime("%w"))
@@ -637,6 +656,9 @@ class TestTime < Test::Unit::TestCase
 
     # [ruby-core:33985]
     assert_equal("3000000000", Time.at(3000000000).strftime('%s'))
+
+    bug4457 = '[ruby-dev:43285]'
+    assert_raise(Errno::ERANGE, bug4457) {Time.now.strftime('%8192z')}
   end
 
   def test_delegate
@@ -684,5 +706,19 @@ class TestTime < Test::Unit::TestCase
       assert_equal(Rational(i % 10, 10), t2.subsec)
       off += 0.1
     }
+  end
+
+  def test_getlocal_dont_share_eigenclass
+    bug5012 = "[ruby-dev:44071]"
+
+    t0 = Time.now
+    class <<t0; end
+    t1 = t0.getlocal
+
+    def t0.m
+      0
+    end
+
+    assert_raise(NoMethodError, bug5012) { t1.m }
   end
 end

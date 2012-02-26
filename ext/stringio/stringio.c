@@ -2,7 +2,7 @@
 
   stringio.c -
 
-  $Author: yugui $
+  $Author: nobu $
   $RoughId: stringio.c,v 1.13 2002/03/14 03:24:18 nobu Exp $
   created at: Tue Feb 19 04:10:38 JST 2002
 
@@ -30,7 +30,7 @@ struct StringIO {
 
 static void strio_init(int, VALUE *, struct StringIO *);
 
-#define IS_STRIO(obj) (rb_typeddata_is_kind_of(obj, &strio_data_type))
+#define IS_STRIO(obj) (rb_typeddata_is_kind_of((obj), &strio_data_type))
 #define error_inval(msg) (errno = EINVAL, rb_sys_fail(msg))
 
 static struct StringIO *
@@ -73,12 +73,14 @@ strio_memsize(const void *p)
 
 static const rb_data_type_t strio_data_type = {
     "strio",
-    strio_mark,
-    strio_free,
-    strio_memsize,
+    {
+	strio_mark,
+	strio_free,
+	strio_memsize,
+    },
 };
 
-#define check_strio(self) ((struct StringIO*)rb_check_typeddata(self, &strio_data_type))
+#define check_strio(self) ((struct StringIO*)rb_check_typeddata((self), &strio_data_type))
 
 static struct StringIO*
 get_strio(VALUE self)
@@ -1067,6 +1069,11 @@ strio_each(int argc, VALUE *argv, VALUE self)
 
     RETURN_ENUMERATOR(self, argc, argv);
 
+    if (argc > 0 && !NIL_P(argv[argc-1]) && NIL_P(rb_check_string_type(argv[argc-1])) &&
+	NUM2LONG(argv[argc-1]) == 0) {
+	rb_raise(rb_eArgError, "invalid limit: 0 for each_line");
+    }
+
     while (!NIL_P(line = strio_getline(argc, argv, readable(ptr)))) {
 	rb_yield(line);
     }
@@ -1086,6 +1093,12 @@ strio_readlines(int argc, VALUE *argv, VALUE self)
 {
     struct StringIO *ptr = StringIO(self);
     VALUE ary = rb_ary_new(), line;
+
+    if (argc > 0 && !NIL_P(argv[argc-1]) && NIL_P(rb_check_string_type(argv[argc-1])) &&
+	NUM2LONG(argv[argc-1]) == 0) {
+	rb_raise(rb_eArgError, "invalid limit: 0 for readlines");
+    }
+
     while (!NIL_P(line = strio_getline(argc, argv, readable(ptr)))) {
 	rb_ary_push(ary, line);
     }
@@ -1206,12 +1219,15 @@ strio_read(int argc, VALUE *argv, VALUE self)
     struct StringIO *ptr = readable(StringIO(self));
     VALUE str = Qnil;
     long len;
+    int binary = 0;
 
     switch (argc) {
       case 2:
 	str = argv[1];
-	StringValue(str);
-	rb_str_modify(str);
+	if (!NIL_P(str)) {
+	    StringValue(str);
+	    rb_str_modify(str);
+	}
       case 1:
 	if (!NIL_P(argv[0])) {
 	    len = NUM2LONG(argv[0]);
@@ -1222,6 +1238,7 @@ strio_read(int argc, VALUE *argv, VALUE self)
 		if (!NIL_P(str)) rb_str_resize(str, 0);
 		return Qnil;
 	    }
+	    binary = 1;
 	    break;
 	}
 	/* fall through */
@@ -1245,21 +1262,19 @@ strio_read(int argc, VALUE *argv, VALUE self)
     }
     if (NIL_P(str)) {
 	str = strio_substr(ptr, ptr->pos, len);
-	if (argc > 0) rb_enc_associate(str, rb_ascii8bit_encoding());
+	if (binary) rb_enc_associate(str, rb_ascii8bit_encoding());
     }
     else {
 	long rest = RSTRING_LEN(ptr->string) - ptr->pos;
 	if (len > rest) len = rest;
 	rb_str_resize(str, len);
 	MEMCPY(RSTRING_PTR(str), RSTRING_PTR(ptr->string) + ptr->pos, char, len);
+	if (binary)
+	    rb_enc_associate(str, rb_ascii8bit_encoding());
+	else
+	    rb_enc_copy(str, ptr->string);
     }
-    if (NIL_P(str)) {
-	str = rb_str_new(0, 0);
-	len = 0;
-    }
-    else {
-	ptr->pos += len = RSTRING_LEN(str);
-    }
+    ptr->pos += RSTRING_LEN(str);
     return str;
 }
 
@@ -1365,17 +1380,29 @@ strio_internal_encoding(VALUE self)
 
 /*
  *  call-seq:
- *     strio.set_encoding(ext_enc)                => strio
+ *     strio.set_encoding(ext_enc, [int_enc[, opt]])  => strio
  *
- *  Tagged with the encoding specified.
+ *  Specify the encoding of the StringIO as <i>ext_enc</i>.
+ *  Use the default external encoding if <i>ext_enc</i> is nil.
+ *  2nd argument <i>int_enc</i> and optional hash <i>opt</i> argument
+ *  are ignored; they are for API compatibility to IO.
  */
 
 static VALUE
-strio_set_encoding(VALUE self, VALUE ext_enc)
+strio_set_encoding(int argc, VALUE *argv, VALUE self)
 {
     rb_encoding* enc;
     VALUE str = StringIO(self)->string;
-    enc = rb_to_encoding(ext_enc);
+    VALUE ext_enc, int_enc, opt;
+
+    argc = rb_scan_args(argc, argv, "11:", &ext_enc, &int_enc, &opt);
+
+    if (NIL_P(ext_enc)) {
+	enc = rb_default_external_encoding();
+    }
+    else {
+	enc = rb_to_encoding(ext_enc);
+    }
     rb_enc_associate(str, enc);
     return self;
 }
@@ -1462,5 +1489,5 @@ Init_stringio()
 
     rb_define_method(StringIO, "external_encoding", strio_external_encoding, 0);
     rb_define_method(StringIO, "internal_encoding", strio_internal_encoding, 0);
-    rb_define_method(StringIO, "set_encoding", strio_set_encoding, 1);
+    rb_define_method(StringIO, "set_encoding", strio_set_encoding, -1);
 }

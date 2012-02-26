@@ -1,7 +1,7 @@
 /*
  * syck.c
  *
- * $Author: nobu $
+ * $Author: naruse $
  *
  * Copyright (C) 2003 why the lucky stiff
  */
@@ -186,7 +186,7 @@ syck_add_sym( SyckParser *p, void *data )
     }
     id = p->syms->num_entries + 1;
     st_insert( p->syms, id, (st_data_t)data );
-    return id;
+    return (int)id;
 }
 
 int

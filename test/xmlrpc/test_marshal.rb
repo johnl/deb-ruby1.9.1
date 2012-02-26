@@ -84,6 +84,7 @@ class Test_Marshal < Test::Unit::TestCase
   def test_parser_invalid_values
     values = [
       -1-(2**31), 2**31,
+      Float::INFINITY, -Float::INFINITY, Float::NAN
     ]
     XMLRPC::XMLParser.each_installed_parser do |parser|
       m = XMLRPC::Marshal.new(parser)

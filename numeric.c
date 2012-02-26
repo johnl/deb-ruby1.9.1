@@ -2,7 +2,7 @@
 
   numeric.c -
 
-  $Author: yugui $
+  $Author: naruse $
   created at: Fri Aug 13 18:33:09 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -12,6 +12,7 @@
 #include "ruby/ruby.h"
 #include "ruby/encoding.h"
 #include "ruby/util.h"
+#include "internal.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -64,20 +65,18 @@
 #endif
 
 #ifdef HAVE_INFINITY
-#elif BYTE_ORDER == LITTLE_ENDIAN
+#elif !defined(WORDS_BIGENDIAN) /* BYTE_ORDER == LITTLE_ENDIAN */
 const unsigned char rb_infinity[] = "\x00\x00\x80\x7f";
 #else
 const unsigned char rb_infinity[] = "\x7f\x80\x00\x00";
 #endif
 
 #ifdef HAVE_NAN
-#elif BYTE_ORDER == LITTLE_ENDIAN
+#elif !defined(WORDS_BIGENDIAN) /* BYTE_ORDER == LITTLE_ENDIAN */
 const unsigned char rb_nan[] = "\x00\x00\xc0\x7f";
 #else
 const unsigned char rb_nan[] = "\x7f\xc0\x00\x00";
 #endif
-
-extern double round(double);
 
 #ifndef HAVE_ROUND
 double
@@ -117,6 +116,39 @@ rb_num_zerodiv(void)
     rb_raise(rb_eZeroDivError, "divided by 0");
 }
 
+/* experimental API */
+int
+rb_num_to_uint(VALUE val, unsigned int *ret)
+{
+#define NUMERR_TYPE     1
+#define NUMERR_NEGATIVE 2
+#define NUMERR_TOOLARGE 3
+    if (FIXNUM_P(val)) {
+	long v = FIX2LONG(val);
+#if SIZEOF_INT < SIZEOF_LONG
+	if (v > (long)UINT_MAX) return NUMERR_TOOLARGE;
+#endif
+	if (v < 0) return NUMERR_NEGATIVE;
+	*ret = (unsigned int)v;
+	return 0;
+    }
+
+    switch (TYPE(val)) {
+      case T_BIGNUM:
+	if (RBIGNUM_NEGATIVE_P(val)) return NUMERR_NEGATIVE;
+#if SIZEOF_INT < SIZEOF_LONG
+	/* long is 64bit */
+	return NUMERR_TOOLARGE;
+#else
+	/* long is 32bit */
+#define DIGSPERLONG (SIZEOF_LONG/SIZEOF_BDIGITS)
+	if (RBIGNUM_LEN(val) > DIGSPERLONG) return NUMERR_TOOLARGE;
+	*ret = (unsigned int)rb_big2ulong((VALUE)val);
+	return 0;
+#endif
+    }
+    return NUMERR_TYPE;
+}
 
 /*
  *  call-seq:
@@ -537,6 +569,13 @@ num_to_int(VALUE num)
  *  <code>Float</code> objects represent inexact real numbers using
  *  the native architecture's double-precision floating point
  *  representation.
+ *
+ *  Floating point has a different arithmetic and is a inexact number.
+ *  So you should know its esoteric system. see following:
+ *
+ *  - http://docs.sun.com/source/806-3568/ncg_goldberg.html
+ *  - http://wiki.github.com/rdp/ruby_tutorials_core/ruby-talk-faq#floats_imprecise
+ *  - http://en.wikipedia.org/wiki/Floating_point#Accuracy_problems
  */
 
 VALUE
@@ -629,7 +668,15 @@ flo_to_s(VALUE flt)
 }
 
 /*
- * MISSING: documentation
+ *  call-seq:
+ *     flt.coerce(numeric)  ->  array
+ *
+ *  Returns an array with both <i>aNumeric</i> and <i>flt</i> represented
+ *  as <code>Float</code> objects.
+ *  This is achieved by converting <i>aNumeric</i> to a <code>Float</code>.
+ *
+ *     1.2.coerce(3)       #=> [3.0, 1.2]
+ *     2.5.coerce(1.1)     #=> [1.1, 2.5]
  */
 
 static VALUE
@@ -826,8 +873,8 @@ flo_mod(VALUE x, VALUE y)
 static VALUE
 dbl2ival(double d)
 {
+    d = round(d);
     if (FIXABLE(d)) {
-	d = round(d);
 	return LONG2FIX((long)d);
     }
     return rb_dbl2big(d);
@@ -1021,6 +1068,7 @@ static VALUE
 flo_cmp(VALUE x, VALUE y)
 {
     double a, b;
+    VALUE i;
 
     a = RFLOAT_VALUE(x);
     if (isnan(a)) return Qnil;
@@ -1042,8 +1090,12 @@ flo_cmp(VALUE x, VALUE y)
 	break;
 
       default:
-	if (isinf(a) && (!rb_respond_to(y, rb_intern("infinite?")) ||
-			 !RTEST(rb_funcall(y, rb_intern("infinite?"), 0, 0)))) {
+	if (isinf(a) && (i = rb_check_funcall(y, rb_intern("infinite?"), 0, 0)) != Qundef) {
+	    if (RTEST(i)) {
+		int j = rb_cmpint(i, x, y);
+		j = (a > 0.0) ? (j > 0 ? 0 : +1) : (j < 0 ? 0 : -1);
+		return INT2FIX(j);
+	    }
 	    if (a > 0.0) return INT2FIX(1);
 	    return INT2FIX(-1);
 	}
@@ -1404,6 +1456,48 @@ flo_ceil(VALUE num)
 }
 
 /*
+ * Assumes num is an Integer, ndigits <= 0
+ */
+static VALUE
+int_round_0(VALUE num, int ndigits)
+{
+    VALUE n, f, h, r;
+    long bytes;
+    ID op;
+    /* If 10**N / 2 > num, then return 0 */
+    /* We have log_256(10) > 0.415241 and log_256(1/2) = -0.125, so */
+    bytes = FIXNUM_P(num) ? sizeof(long) : rb_funcall(num, rb_intern("size"), 0);
+    if (-0.415241 * ndigits - 0.125 > bytes ) {
+	return INT2FIX(0);
+    }
+
+    f = int_pow(10, -ndigits);
+    if (FIXNUM_P(num) && FIXNUM_P(f)) {
+	SIGNED_VALUE x = FIX2LONG(num), y = FIX2LONG(f);
+	int neg = x < 0;
+	if (neg) x = -x;
+	x = (x + y / 2) / y * y;
+	if (neg) x = -x;
+	return LONG2NUM(x);
+    }
+    if (TYPE(f) == T_FLOAT) {
+	/* then int_pow overflow */
+	return INT2FIX(0);
+    }
+    h = rb_funcall(f, '/', 1, INT2FIX(2));
+    r = rb_funcall(num, '%', 1, f);
+    n = rb_funcall(num, '-', 1, r);
+    op = RTEST(rb_funcall(num, '<', 1, INT2FIX(0))) ? rb_intern("<=") : '<';
+    if (!RTEST(rb_funcall(r, op, 1, h))) {
+	n = rb_funcall(n, '+', 1, f);
+    }
+    return n;
+}
+
+static VALUE
+flo_truncate(VALUE num);
+
+/*
  *  call-seq:
  *     flt.round([ndigits])  ->  integer or float
  *
@@ -1438,50 +1532,48 @@ flo_round(int argc, VALUE *argv, VALUE num)
 {
     VALUE nd;
     double number, f;
-    int ndigits = 0, i;
-    long val;
+    int ndigits = 0;
+    int binexp;
+    enum {float_dig = DBL_DIG+2};
 
     if (argc > 0 && rb_scan_args(argc, argv, "01", &nd) == 1) {
 	ndigits = NUM2INT(nd);
     }
+    if (ndigits < 0) {
+	return int_round_0(flo_truncate(num), ndigits);
+    }
     number  = RFLOAT_VALUE(num);
-    f = 1.0;
-    i = abs(ndigits);
-    while  (--i >= 0)
-	f = f*10.0;
-
-    if (isinf(f)) {
-	if (ndigits < 0) number = 0;
+    if (ndigits == 0) {
+	return dbl2ival(number);
     }
-    else {
-	if (ndigits < 0) {
-	    double absnum = fabs(number);
-	    if (absnum < f) return INT2FIX(0);
-	    if (!FIXABLE(number)) {
-		VALUE f10 = int_pow(10, -ndigits);
-		VALUE n10 = f10;
-		if (number < 0) {
-                    extern VALUE rb_big_uminus(VALUE x);
-		    f10 = FIXNUM_P(f10) ? fix_uminus(f10) : rb_big_uminus(f10);
-		}
-		num = rb_big_idiv(rb_dbl2big(absnum), n10);
-		return FIXNUM_P(num) ? fix_mul(num, f10) : rb_big_mul(num, f10);
-	    }
-	    number /= f;
-	}
-	else number *= f;
-	number = round(number);
-	if (ndigits < 0) number *= f;
-	else number /= f;
-    }
+    frexp(number, &binexp);
 
-    if (ndigits > 0) return DBL2NUM(number);
-
-    if (!FIXABLE(number)) {
-	return rb_dbl2big(number);
+/* Let `exp` be such that `number` is written as:"0.#{digits}e#{exp}",
+   i.e. such that  10 ** (exp - 1) <= |number| < 10 ** exp
+   Recall that up to float_dig digits can be needed to represent a double,
+   so if ndigits + exp >= float_dig, the intermediate value (number * 10 ** ndigits)
+   will be an integer and thus the result is the original number.
+   If ndigits + exp <= 0, the result is 0 or "1e#{exp}", so
+   if ndigits + exp < 0, the result is 0.
+   We have:
+	2 ** (binexp-1) <= |number| < 2 ** binexp
+	10 ** ((binexp-1)/log_2(10)) <= |number| < 10 ** (binexp/log_2(10))
+	If binexp >= 0, and since log_2(10) = 3.322259:
+	   10 ** (binexp/4 - 1) < |number| < 10 ** (binexp/3)
+	   floor(binexp/4) <= exp <= ceil(binexp/3)
+	If binexp <= 0, swap the /4 and the /3
+	So if ndigits + floor(binexp/(4 or 3)) >= float_dig, the result is number
+	If ndigits + ceil(binexp/(3 or 4)) < 0 the result is 0
+*/
+    if (isinf(number) || isnan(number) ||
+	(ndigits >= float_dig - (binexp > 0 ? binexp / 4 : binexp / 3 - 1))) {
+	return num;
     }
-    val = (long)number;
-    return LONG2FIX(val);
+    if (ndigits < - (binexp > 0 ? binexp / 3 + 1 : binexp / 4)) {
+	return DBL2NUM(0);
+    }
+    f = pow(10, ndigits);
+    return DBL2NUM(round(number * f) / f);
 }
 
 /*
@@ -1554,7 +1646,7 @@ num_ceil(VALUE num)
  *     num.round([ndigits])  ->  integer or float
  *
  *  Rounds <i>num</i> to a given precision in decimal digits (default 0 digits).
- *  Precision may be negative.  Returns a floating point number when ndigits
+ *  Precision may be negative.  Returns a floating point number when <i>ndigits</i>
  *  is more than zero.  <code>Numeric</code> implements this by converting itself
  *  to a <code>Float</code> and invoking <code>Float#round</code>.
  */
@@ -1701,6 +1793,10 @@ num_step(int argc, VALUE *argv, VALUE from)
     return from;
 }
 
+#define LONG_MIN_MINUS_ONE ((double)LONG_MIN-1)
+#define LONG_MAX_PLUS_ONE (2*(double)(LONG_MAX/2+1))
+#define ULONG_MAX_PLUS_ONE (2*(double)(ULONG_MAX/2+1))
+
 SIGNED_VALUE
 rb_num2long(VALUE val)
 {
@@ -1713,8 +1809,8 @@ rb_num2long(VALUE val)
 
     switch (TYPE(val)) {
       case T_FLOAT:
-	if (RFLOAT_VALUE(val) <= (double)LONG_MAX
-	    && RFLOAT_VALUE(val) >= (double)LONG_MIN) {
+	if (RFLOAT_VALUE(val) < LONG_MAX_PLUS_ONE
+	    && RFLOAT_VALUE(val) > LONG_MIN_MINUS_ONE) {
 	    return (SIGNED_VALUE)(RFLOAT_VALUE(val));
 	}
 	else {
@@ -1747,8 +1843,8 @@ rb_num2ulong(VALUE val)
 
     switch (TYPE(val)) {
       case T_FLOAT:
-       if (RFLOAT_VALUE(val) <= (double)LONG_MAX
-           && RFLOAT_VALUE(val) >= (double)LONG_MIN) {
+       if (RFLOAT_VALUE(val) < ULONG_MAX_PLUS_ONE
+           && RFLOAT_VALUE(val) > LONG_MIN_MINUS_ONE) {
            return (VALUE)RFLOAT_VALUE(val);
        }
        else {
@@ -1793,7 +1889,8 @@ check_uint(VALUE num, VALUE sign)
     if (RTEST(sign)) {
 	/* minus */
 	if ((num & mask) != mask || (num & ~mask) <= INT_MAX + 1UL)
-	    rb_raise(rb_eRangeError, "integer %"PRIdVALUE " too small to convert to `unsigned int'", num);
+#define VALUE_MSBMASK   ((VALUE)1 << ((sizeof(VALUE) * CHAR_BIT) - 1))
+	    rb_raise(rb_eRangeError, "integer %"PRIdVALUE " too small to convert to `unsigned int'", num|VALUE_MSBMASK);
     }
     else {
 	/* plus */
@@ -1823,10 +1920,10 @@ rb_fix2int(VALUE val)
 unsigned long
 rb_num2uint(VALUE val)
 {
-    unsigned long num = rb_num2ulong(val);
+    VALUE num = rb_num2ulong(val);
 
     check_uint(num, rb_funcall(val, '<', 1, INT2FIX(0)));
-    return num;
+    return (unsigned long)num;
 }
 
 unsigned long
@@ -1859,7 +1956,7 @@ rb_fix2int(VALUE val)
 VALUE
 rb_num2fix(VALUE val)
 {
-    long v;
+    SIGNED_VALUE v;
 
     if (FIXNUM_P(val)) return val;
 
@@ -1870,6 +1967,13 @@ rb_num2fix(VALUE val)
 }
 
 #if HAVE_LONG_LONG
+
+#define LLONG_MIN_MINUS_ONE ((double)LLONG_MIN-1)
+#define LLONG_MAX_PLUS_ONE (2*(double)(LLONG_MAX/2+1))
+#define ULLONG_MAX_PLUS_ONE (2*(double)(ULLONG_MAX/2+1))
+#ifndef ULLONG_MAX
+#define ULLONG_MAX ((unsigned LONG_LONG)LLONG_MAX*2+1)
+#endif
 
 LONG_LONG
 rb_num2ll(VALUE val)
@@ -1882,8 +1986,8 @@ rb_num2ll(VALUE val)
 
     switch (TYPE(val)) {
       case T_FLOAT:
-	if (RFLOAT_VALUE(val) <= (double)LLONG_MAX
-	    && RFLOAT_VALUE(val) >= (double)LLONG_MIN) {
+	if (RFLOAT_VALUE(val) < LLONG_MAX_PLUS_ONE
+	    && RFLOAT_VALUE(val) > LLONG_MIN_MINUS_ONE) {
 	    return (LONG_LONG)(RFLOAT_VALUE(val));
 	}
 	else {
@@ -1916,10 +2020,43 @@ rb_num2ll(VALUE val)
 unsigned LONG_LONG
 rb_num2ull(VALUE val)
 {
-    if (TYPE(val) == T_BIGNUM) {
+    switch (TYPE(val)) {
+      case T_NIL:
+	rb_raise(rb_eTypeError, "no implicit conversion from nil");
+
+      case T_FIXNUM:
+	return (LONG_LONG)FIX2LONG(val); /* this is FIX2LONG, inteneded */
+
+      case T_FLOAT:
+	if (RFLOAT_VALUE(val) < ULLONG_MAX_PLUS_ONE
+	    && RFLOAT_VALUE(val) > 0) {
+	    return (unsigned LONG_LONG)(RFLOAT_VALUE(val));
+	}
+	else {
+	    char buf[24];
+	    char *s;
+
+	    snprintf(buf, sizeof(buf), "%-.10g", RFLOAT_VALUE(val));
+	    if ((s = strchr(buf, ' ')) != 0) *s = '\0';
+	    rb_raise(rb_eRangeError, "float %s out of range of unsgined long long", buf);
+	}
+
+      case T_BIGNUM:
 	return rb_big2ull(val);
+
+      case T_STRING:
+	rb_raise(rb_eTypeError, "no implicit conversion from string");
+	return Qnil;            /* not reached */
+
+      case T_TRUE:
+      case T_FALSE:
+	rb_raise(rb_eTypeError, "no implicit conversion from boolean");
+	return Qnil;		/* not reached */
+
+      default:
+	val = rb_to_int(val);
+	return NUM2ULL(val);
     }
-    return (unsigned LONG_LONG)rb_num2ll(val);
 }
 
 #endif  /* HAVE_LONG_LONG */
@@ -1932,14 +2069,12 @@ rb_num2ull(VALUE val)
  *
  */
 
-
 /*
  *  call-seq:
  *     int.to_i      ->  integer
  *     int.to_int    ->  integer
  *     int.floor     ->  integer
  *     int.ceil      ->  integer
- *     int.round     ->  integer
  *     int.truncate  ->  integer
  *
  *  As <i>int</i> is already an <code>Integer</code>, all these
@@ -2061,11 +2196,20 @@ rb_enc_uint_chr(unsigned int code, rb_encoding *enc)
 {
     int n;
     VALUE str;
-    if ((n = rb_enc_codelen(code, enc)) <= 0) {
-	rb_raise(rb_eRangeError, "%d out of char range", code);
+    switch (n = rb_enc_codelen(code, enc)) {
+      case ONIGERR_INVALID_CODE_POINT_VALUE:
+	rb_raise(rb_eRangeError, "invalid codepoint 0x%X in %s", code, rb_enc_name(enc));
+	break;
+      case ONIGERR_TOO_BIG_WIDE_CHAR_VALUE:
+      case 0:
+	rb_raise(rb_eRangeError, "%u out of char range", code);
+	break;
     }
     str = rb_enc_str_new(0, n, enc);
     rb_enc_mbcput(code, RSTRING_PTR(str), enc);
+    if (rb_enc_precise_mbclen(RSTRING_PTR(str), RSTRING_END(str), enc) != n) {
+	rb_raise(rb_eRangeError, "invalid codepoint 0x%X in %s", code, rb_enc_name(enc));
+    }
     return str;
 }
 
@@ -2085,18 +2229,25 @@ static VALUE
 int_chr(int argc, VALUE *argv, VALUE num)
 {
     char c;
-    unsigned int i = NUM2UINT(num);
+    unsigned int i;
     rb_encoding *enc;
+
+    if (rb_num_to_uint(num, &i) == 0) {
+    }
+    else if (FIXNUM_P(num)) {
+	rb_raise(rb_eRangeError, "%ld out of char range", FIX2LONG(num));
+    }
+    else {
+	rb_raise(rb_eRangeError, "bignum out of char range");
+    }
 
     switch (argc) {
       case 0:
-	if (i < 0) {
-	  out_of_range:
-	    rb_raise(rb_eRangeError, "%d out of char range", i);
-	}
 	if (0xff < i) {
 	    enc = rb_default_internal_encoding();
-	    if (!enc) goto out_of_range;
+	    if (!enc) {
+		rb_raise(rb_eRangeError, "%d out of char range", i);
+	    }
 	    goto decode;
 	}
 	c = (char)i;
@@ -2132,8 +2283,7 @@ int_chr(int argc, VALUE *argv, VALUE num)
  */
 
 static VALUE
-int_ord(num)
-    VALUE num;
+int_ord(VALUE num)
 {
     return num;
 }
@@ -2383,8 +2533,6 @@ fixdivmod(long x, long y, long *divp, long *modp)
     if (modp) *modp = mod;
 }
 
-VALUE rb_big_fdiv(VALUE x, VALUE y);
-
 /*
  *  call-seq:
  *     fix.fdiv(numeric)  ->  float
@@ -2412,8 +2560,6 @@ fix_fdiv(VALUE x, VALUE y)
 	return rb_num_coerce_bin(x, y, rb_intern("fdiv"));
     }
 }
-
-VALUE rb_rational_reciprocal(VALUE x);
 
 static VALUE
 fix_divide(VALUE x, VALUE y, ID op)
@@ -2817,10 +2963,7 @@ fix_le(VALUE x, VALUE y)
 static VALUE
 fix_rev(VALUE num)
 {
-    long val = FIX2LONG(num);
-
-    val = ~val;
-    return LONG2NUM(val);
+    return ~num | FIXNUM_FLAG;
 }
 
 static VALUE
@@ -3192,7 +3335,7 @@ int_dotimes(VALUE num)
 
 /*
  *  call-seq:
- *     num.round([ndigits])  ->  integer or float
+ *     int.round([ndigits])  ->  integer or float
  *
  *  Rounds <i>flt</i> to a given precision in decimal digits (default 0 digits).
  *  Precision may be negative.  Returns a floating point number when +ndigits+
@@ -3206,7 +3349,7 @@ int_dotimes(VALUE num)
 static VALUE
 int_round(int argc, VALUE* argv, VALUE num)
 {
-    VALUE n, f, h, r;
+    VALUE n;
     int ndigits;
 
     if (argc == 0) return num;
@@ -3218,26 +3361,7 @@ int_round(int argc, VALUE* argv, VALUE num)
     if (ndigits == 0) {
 	return num;
     }
-    ndigits = -ndigits;
-    if (ndigits < 0) {
-	rb_raise(rb_eArgError, "ndigits out of range");
-    }
-    f = int_pow(10, ndigits);
-    if (FIXNUM_P(num) && FIXNUM_P(f)) {
-	SIGNED_VALUE x = FIX2LONG(num), y = FIX2LONG(f);
-	int neg = x < 0;
-	if (neg) x = -x;
-	x = (x + y / 2) / y * y;
-	if (neg) x = -x;
-	return LONG2NUM(x);
-    }
-    h = rb_funcall(f, '/', 1, INT2FIX(2));
-    r = rb_funcall(num, '%', 1, f);
-    n = rb_funcall(num, '-', 1, r);
-    if (!RTEST(rb_funcall(r, '<', 1, h))) {
-	n = rb_funcall(n, '+', 1, f);
-    }
-    return n;
+    return int_round_0(num, ndigits);
 }
 
 /*
@@ -3336,6 +3460,7 @@ Init_Numeric(void)
 #elif defined(__BORLANDC__)
     /* Turn off floating point exceptions for overflow, etc. */
     _control87(MCW_EM, MCW_EM);
+    _control87(_control87(0,0),0x1FFF);
 #endif
     id_coerce = rb_intern("coerce");
     id_to_i = rb_intern("to_i");

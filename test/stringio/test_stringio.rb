@@ -418,6 +418,14 @@ class TestStringIO < Test::Unit::TestCase
     assert_equal("\u3042\u3044", f.read)
     f.rewind
     assert_equal("\u3042\u3044".force_encoding(Encoding::ASCII_8BIT), f.read(f.size))
+
+    bug5207 = '[ruby-core:39026]'
+    f.rewind
+    assert_equal("\u3042\u3044", f.read(nil, nil), bug5207)
+    f.rewind
+    s = ""
+    f.read(nil, s)
+    assert_equal("\u3042\u3044", s, bug5207)
   end
 
   def test_readpartial
@@ -481,5 +489,14 @@ class TestStringIO < Test::Unit::TestCase
     assert_raise(RuntimeError, bug) {s.puts("foo")}
     assert_raise(RuntimeError, bug) {s.string = "foo"}
     assert_raise(RuntimeError, bug) {s.reopen("")}
+  end
+
+  def test_readlines_limit_0
+    assert_raise(ArgumentError, "[ruby-dev:43392]") { StringIO.new.readlines(0) }
+  end
+
+  def test_each_line_limit_0
+    assert_raise(ArgumentError, "[ruby-dev:43392]") { StringIO.new.each_line(0){} }
+    assert_raise(ArgumentError, "[ruby-dev:43392]") { StringIO.new.each_line("a",0){} }
   end
 end

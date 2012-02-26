@@ -2,7 +2,7 @@
 
   vm.h -
 
-  $Author: yugui $
+  $Author: akr $
   created at: 04/01/01 16:56:59 JST
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -20,8 +20,8 @@ typedef rb_iseq_t *ISEQ;
 
 #ifdef  COLLECT_USAGE_ANALYSIS
 #define USAGE_ANALYSIS_INSN(insn)           vm_analysis_insn(insn)
-#define USAGE_ANALYSIS_OPERAND(insn, n, op) vm_analysis_operand(insn, n, (VALUE)op)
-#define USAGE_ANALYSIS_REGISTER(reg, s)     vm_analysis_register(reg, s)
+#define USAGE_ANALYSIS_OPERAND(insn, n, op) vm_analysis_operand((insn), (n), (VALUE)(op))
+#define USAGE_ANALYSIS_REGISTER(reg, s)     vm_analysis_register((reg), (s))
 #else
 #define USAGE_ANALYSIS_INSN(insn)		/* none */
 #define USAGE_ANALYSIS_OPERAND(insn, n, op)	/* none */
@@ -112,7 +112,7 @@ error !
 /* for GCC 3.4.x */
 #define TC_DISPATCH(insn) \
   INSN_DISPATCH_SIG(insn); \
-  goto *GET_CURRENT_INSN(); \
+  goto *(void const *)GET_CURRENT_INSN(); \
   ;
 
 #else
@@ -136,7 +136,7 @@ error !
   {
 
 #define END_INSNS_DISPATCH()    \
-      rb_bug("unknown insn: %ld", GET_CURRENT_INSN());   \
+      rb_bug("unknown insn: %"PRIdVALUE, GET_CURRENT_INSN());   \
   }   /* end of while loop */   \
 
 #define NEXT_INSN() TC_DISPATCH(__NEXT_INSN__)

@@ -4,9 +4,9 @@
 # or we don't have the right version of Tcl/Tk
 #
 # To use this automatically within tile, the tile-using application should
-# use tile::availableThemes and tile::setTheme 
+# use tile::availableThemes and tile::setTheme
 #
-# $Id: pkgIndex.tcl 25189 2009-10-02 12:04:37Z akr $
+# $Id: pkgIndex.tcl 31689 2011-05-22 09:26:02Z nobu $
 
 if {![file isdirectory [file join $dir kroc]]} { return }
 if {![package vsatisfies [package provide Tcl] 8.4]} { return }

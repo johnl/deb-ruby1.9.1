@@ -4,6 +4,7 @@
 #include "ruby/ruby.h"
 #include "ruby/io.h"
 #include "ruby/util.h"
+#include "internal.h"
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -197,6 +198,7 @@ int Rconnect();
 #include "constdefs.h"
 
 #define BLOCKING_REGION(func, arg) (long)rb_thread_blocking_region((func), (arg), RUBY_UBF_IO, 0)
+#define BLOCKING_REGION_FD(func, arg) (long)rb_thread_io_blocking_region((func), (arg), (arg)->fd)
 
 #define SockAddrStringValue(v) rsock_sockaddr_string_value(&(v))
 #define SockAddrStringValuePtr(v) rsock_sockaddr_string_value_ptr(&(v))
@@ -286,7 +288,7 @@ VALUE rsock_bsock_recvmsg_nonblock(int argc, VALUE *argv, VALUE sock);
 #endif
 
 #ifdef HAVE_ST_MSG_CONTROL
-void rsock_discard_cmsg_resource(struct msghdr *mh);
+void rsock_discard_cmsg_resource(struct msghdr *mh, int msg_peek_p);
 #endif
 
 void rsock_init_basicsocket(void);

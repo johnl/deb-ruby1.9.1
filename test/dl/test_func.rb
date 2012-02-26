@@ -58,7 +58,7 @@ module DL
       assert_equal("123", str.to_s)
     ensure
       GC.stress = stress
-    end   
+    end
 
     def test_isdigit()
       f = Function.new(CFunc.new(@libc['isdigit'], TYPE_INT, 'isdigit'),
@@ -95,6 +95,11 @@ module DL
       buff = "9341"
       qsort.call(buff, buff.size, 1, cb)
       assert_equal("1349", buff)
+
+      bug4929 = '[ruby-core:37395]'
+      buff = "9341"
+      EnvUtil.under_gc_stress {qsort.call(buff, buff.size, 1, cb)}
+      assert_equal("1349", buff, bug4929)
     end
 
     def test_qsort2()

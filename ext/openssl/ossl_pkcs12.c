@@ -1,23 +1,23 @@
 /*
  * This program is licenced under the same licence as Ruby.
  * (See the file 'LICENCE'.)
- * $Id: ossl_pkcs12.c 27437 2010-04-22 08:04:13Z nobu $
+ * $Id: ossl_pkcs12.c 32199 2011-06-22 08:41:08Z emboss $
  */
 #include "ossl.h"
 
 #define WrapPKCS12(klass, obj, p12) do { \
-    if(!p12) ossl_raise(rb_eRuntimeError, "PKCS12 wasn't initialized."); \
-    obj = Data_Wrap_Struct(klass, 0, PKCS12_free, p12); \
+    if(!(p12)) ossl_raise(rb_eRuntimeError, "PKCS12 wasn't initialized."); \
+    (obj) = Data_Wrap_Struct((klass), 0, PKCS12_free, (p12)); \
 } while (0)
 
 #define GetPKCS12(obj, p12) do { \
-    Data_Get_Struct(obj, PKCS12, p12); \
-    if(!p12) ossl_raise(rb_eRuntimeError, "PKCS12 wasn't initialized."); \
+    Data_Get_Struct((obj), PKCS12, (p12)); \
+    if(!(p12)) ossl_raise(rb_eRuntimeError, "PKCS12 wasn't initialized."); \
 } while (0)
 
 #define SafeGetPKCS12(obj, p12) do { \
-    OSSL_Check_Kind(obj, cPKCS12); \
-    GetPKCS12(obj, p12); \
+    OSSL_Check_Kind((obj), cPKCS12); \
+    GetPKCS12((obj), (p12)); \
 } while (0)
 
 #define ossl_pkcs12_set_key(o,v)      rb_iv_set((o), "@key", (v))
@@ -91,11 +91,11 @@ ossl_pkcs12_s_create(int argc, VALUE *argv, VALUE self)
 /* TODO: make a VALUE to nid function */
     if (!NIL_P(key_nid)) {
         if ((nkey = OBJ_txt2nid(StringValuePtr(key_nid))) == NID_undef)
-            rb_raise(rb_eArgError, "Unknown PBE algorithm %s", StringValuePtr(key_nid));
+            ossl_raise(rb_eArgError, "Unknown PBE algorithm %s", StringValuePtr(key_nid));
     }
     if (!NIL_P(cert_nid)) {
         if ((ncert = OBJ_txt2nid(StringValuePtr(cert_nid))) == NID_undef)
-            rb_raise(rb_eArgError, "Unknown PBE algorithm %s", StringValuePtr(cert_nid));
+            ossl_raise(rb_eArgError, "Unknown PBE algorithm %s", StringValuePtr(cert_nid));
     }
     if (!NIL_P(key_iter))
         kiter = NUM2INT(key_iter);
