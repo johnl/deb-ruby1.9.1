@@ -2,13 +2,13 @@
 
   readline.c - GNU Readline module
 
-  $Author: drbrain $
+  $Author: nobu $
   created at: Wed Jan 20 13:59:32 JST 1999
 
   Copyright (C) 1997-2008  Shugo Maeda
   Copyright (C) 2008-2009  TAKAO Kouji
 
-  $Id: readline.c 32613 2011-07-22 04:54:09Z drbrain $
+  $Id: readline.c 34505 2012-02-09 03:25:07Z nobu $
 
   Contact:
    - TAKAO Kouji <kouji at takao7 dot net> (current maintainer)
@@ -40,6 +40,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
 static VALUE mReadline;
 
 #define EDIT_LINE_LIBRARY_VERSION "EditLine wrapper"
@@ -69,6 +73,10 @@ static ID id_orig_prompt, id_last_prompt;
 #endif
 
 static int (*history_get_offset_func)(int);
+static int (*history_replace_offset_func)(int);
+#ifdef HAVE_RL_COMPLETION_APPEND_CHARACTER
+static int readline_completion_append_character;
+#endif
 
 static char **readline_attempted_completion_function(const char *text,
                                                      int start, int end);
@@ -158,7 +166,7 @@ readline_getc(FILE *input)
             }
         }
     }
-#endif    
+#endif
     c = rb_funcall(readline_instream, id_getbyte, 0, 0);
     if (NIL_P(c)) return EOF;
     return NUM2CHR(c);
@@ -257,6 +265,9 @@ insert_ignore_escape(VALUE self, VALUE prompt)
 static VALUE
 readline_get(VALUE prompt)
 {
+#ifdef HAVE_RL_COMPLETION_APPEND_CHARACTER
+    readline_completion_append_character = rl_completion_append_character;
+#endif
     return (VALUE)readline((char *)prompt);
 }
 
@@ -365,6 +376,13 @@ readline_readline(int argc, VALUE *argv, VALUE self)
     }
 
     if (!isatty(fileno(rl_instream)) && errno == EBADF) rb_raise(rb_eIOError, "closed stdin");
+    if (rl_outstream) {
+	struct stat stbuf;
+	int fd = fileno(rl_outstream);
+	if (fd < 0 || fstat(fd, &stbuf) != 0) {
+	    rb_raise(rb_eIOError, "closed stdout");
+	}
+    }
 
 #ifdef _WIN32
     rl_prep_terminal(1);
@@ -637,24 +655,34 @@ readline_attempted_completion_function(const char *text, int start, int end)
     char **result;
     int case_fold;
     long i, matches;
+    rb_encoding *enc;
+    VALUE encobj;
 
     proc = rb_attr_get(mReadline, completion_proc);
     if (NIL_P(proc))
 	return NULL;
+#ifdef HAVE_RL_COMPLETION_APPEND_CHARACTER
+    rl_completion_append_character = readline_completion_append_character;
+#endif
 #ifdef HAVE_RL_ATTEMPTED_COMPLETION_OVER
     rl_attempted_completion_over = 1;
 #endif
     case_fold = RTEST(rb_attr_get(mReadline, completion_case_fold));
     ary = rb_funcall(proc, rb_intern("call"), 1, rb_locale_str_new_cstr(text));
-    if (TYPE(ary) != T_ARRAY)
+    if (!RB_TYPE_P(ary, T_ARRAY))
 	ary = rb_Array(ary);
     matches = RARRAY_LEN(ary);
-    if (matches == 0)
-	return NULL;
-    result = ALLOC_N(char *, matches + 2);
+    if (matches == 0) return NULL;
+    result = (char**)malloc((matches + 2)*sizeof(char*));
+    if (result == NULL) rb_raise(rb_eNoMemError, "failed to allocate memory");
+    enc = rb_locale_encoding();
+    encobj = rb_enc_from_encoding(enc);
     for (i = 0; i < matches; i++) {
 	temp = rb_obj_as_string(RARRAY_PTR(ary)[i]);
-	result[i + 1] = ALLOC_N(char, RSTRING_LEN(temp) + 1);
+	StringValueCStr(temp);	/* must be NUL-terminated */
+	rb_enc_check(encobj, temp);
+	result[i + 1] = (char*)malloc(RSTRING_LEN(temp) + 1);
+	if (result[i + 1]  == NULL) rb_memerror();
 	strcpy(result[i + 1], RSTRING_PTR(temp));
     }
     result[matches + 1] = NULL;
@@ -663,28 +691,27 @@ readline_attempted_completion_function(const char *text, int start, int end)
         result[0] = strdup(result[1]);
     }
     else {
-	register int i = 1;
-	int low = 100000;
+	const char *result1 = result[1];
+	long low = strlen(result1);
 
-	while (i < matches) {
-	    register int c1, c2, si;
+	for (i = 1; i < matches; ++i) {
+	    register int c1, c2;
+	    long i1, i2, l2;
+	    int n1, n2;
+	    const char *p2 = result[i + 1];
 
-	    if (case_fold) {
-		for (si = 0;
-		     (c1 = TOLOWER(result[i][si])) &&
-			 (c2 = TOLOWER(result[i + 1][si]));
-		     si++)
-		    if (c1 != c2) break;
-	    } else {
-		for (si = 0;
-		     (c1 = result[i][si]) &&
-			 (c2 = result[i + 1][si]);
-		     si++)
-		    if (c1 != c2) break;
+	    l2 = strlen(p2);
+	    for (i1 = i2 = 0; i1 < low && i2 < l2; i1 += n1, i2 += n2) {
+		c1 = rb_enc_codepoint_len(result1 + i1, result1 + low, &n1, enc);
+		c2 = rb_enc_codepoint_len(p2 + i2, p2 + l2, &n2, enc);
+		if (case_fold) {
+		    c1 = rb_tolower(c1);
+		    c2 = rb_tolower(c2);
+		}
+		if (c1 != c2) break;
 	    }
 
-	    if (low > si) low = si;
-	    i++;
+	    low = i1;
 	}
 	result[0] = ALLOC_N(char, low + 1);
 	strncpy(result[0], result[1], low);
@@ -1299,7 +1326,7 @@ hist_set(VALUE self, VALUE index, VALUE str)
         i += history_length;
     }
     if (i >= 0) {
-	entry = replace_history_entry(i, RSTRING_PTR(str), NULL);
+	entry = replace_history_entry(history_replace_offset_func(i), RSTRING_PTR(str), NULL);
     }
     if (entry == NULL) {
 	rb_raise(rb_eIndexError, "invalid index");
@@ -1494,6 +1521,16 @@ Init_readline()
     /* Allow conditional parsing of the ~/.inputrc file. */
     rl_readline_name = (char *)"Ruby";
 
+#if defined HAVE_RL_GETC_FUNCTION
+    /* libedit check rl_getc_function only when rl_initialize() is called, */
+    /* and using_history() call rl_initialize(). */
+    /* This assignment should be placed before using_history() */
+    rl_getc_function = readline_getc;
+    id_getbyte = rb_intern_const("getbyte");
+#elif defined HAVE_RL_EVENT_HOOK
+    rl_event_hook = readline_event;
+#endif
+
     using_history();
 
     completion_proc = rb_intern(COMPLETION_PROC);
@@ -1604,6 +1641,7 @@ Init_readline()
      */
     rb_define_const(mReadline, "USERNAME_COMPLETION_PROC", ucomp);
     history_get_offset_func = history_get_offset_history_base;
+    history_replace_offset_func = history_get_offset_0;
 #if defined HAVE_RL_LIBRARY_VERSION
     version = rb_str_new_cstr(rl_library_version);
 #if defined HAVE_CLEAR_HISTORY || defined HAVE_REMOVE_HISTORY
@@ -1613,7 +1651,12 @@ Init_readline()
 	if (history_get(history_get_offset_func(0)) == NULL) {
 	    history_get_offset_func = history_get_offset_0;
 	}
-#if !defined HAVE_CLEAR_HISTORY
+#ifdef HAVE_REPLACE_HISTORY_ENTRY
+	if (replace_history_entry(0, "a", NULL) == NULL) {
+	    history_replace_offset_func = history_get_offset_history_base;
+	}
+#endif
+#ifdef HAVE_CLEAR_HISTORY
 	clear_history();
 #else
 	{
@@ -1633,12 +1676,6 @@ Init_readline()
     rb_define_const(mReadline, "VERSION", version);
 
     rl_attempted_completion_function = readline_attempted_completion_function;
-#if defined HAVE_RL_GETC_FUNCTION
-    rl_getc_function = readline_getc;
-    id_getbyte = rb_intern_const("getbyte");
-#elif defined HAVE_RL_EVENT_HOOK
-    rl_event_hook = readline_event;
-#endif
 #ifdef HAVE_RL_CATCH_SIGNALS
     rl_catch_signals = 0;
 #endif

@@ -2,7 +2,7 @@
 
   cont.c -
 
-  $Author: kosaki $
+  $Author: naruse $
   created at: Thu May 23 09:03:43 2007
 
   Copyright (C) 2007 Koichi Sasada
@@ -15,7 +15,7 @@
 #include "gc.h"
 #include "eval_intern.h"
 
-#if ((defined(_WIN32) && _WIN32_WINNT >= 0x0400) || defined(HAVE_SETCONTEXT)) && !defined(__NetBSD__) && !defined(sun) && !defined(FIBER_USE_NATIVE)
+#if ((defined(_WIN32) && _WIN32_WINNT >= 0x0400) || (defined(HAVE_GETCONTEXT) && defined(HAVE_SETCONTEXT))) && !defined(__NetBSD__) && !defined(sun) && !defined(FIBER_USE_NATIVE)
 #define FIBER_USE_NATIVE 1
 
 /* FIBER_USE_NATIVE enables Fiber performance improvement using system
@@ -139,6 +139,7 @@ cont_mark(void *ptr)
 	rb_context_t *cont = ptr;
 	rb_gc_mark(cont->value);
 	rb_thread_mark(&cont->saved_thread);
+	rb_gc_mark(cont->saved_thread.self);
 
 	if (cont->vm_stack) {
 #ifdef CAPTURE_JUST_VALID_VM_STACK
@@ -321,6 +322,17 @@ fiber_memsize(const void *ptr)
 	size += cont_memsize(&fib->cont);
     }
     return size;
+}
+
+VALUE
+rb_obj_is_fiber(VALUE obj)
+{
+    if (rb_typeddata_is_kind_of(obj, &fiber_data_type)) {
+	return Qtrue;
+    }
+    else {
+	return Qfalse;
+    }
 }
 
 static void
@@ -645,6 +657,17 @@ fiber_setcontext(rb_fiber_t *newfib, rb_fiber_t *oldfib)
     /* swap machine context */
 #ifdef _WIN32
     SwitchToFiber(newfib->fib_handle);
+#elif defined(__FreeBSD__) /* FreeBSD 9 doesn't work with swapcontext */
+    if (!ruby_setjmp(oldfib->cont.jmpbuf)) {
+	if (newfib->status != RUNNING) {
+	    if (setcontext(&newfib->context) < 0) {
+		rb_bug("context switch between fiber failed");
+	    }
+	}
+	else {
+	    ruby_longjmp(newfib->cont.jmpbuf, 1);
+	}
+    }
 #else
     swapcontext(&oldfib->context, &newfib->context);
 #endif
@@ -669,10 +692,9 @@ cont_restore_1(rb_context_t *cont)
     }
 #endif
     if (cont->machine_stack_src) {
-	size_t i;
 	FLUSH_REGISTER_WINDOWS;
-	for (i = 0; i < cont->machine_stack_size; i++)
-	    cont->machine_stack_src[i] = cont->machine_stack[i];
+	MEMCPY(cont->machine_stack_src, cont->machine_stack,
+		VALUE, cont->machine_stack_size);
     }
 
 #ifdef __ia64
@@ -742,7 +764,7 @@ cont_restore_0(rb_context_t *cont, VALUE *addr_in_prev_frame)
 	    if (&space[0] > end) {
 # ifdef HAVE_ALLOCA
 		volatile VALUE *sp = ALLOCA_N(VALUE, &space[0] - end);
-		(void)sp;
+		space[0] = *sp;
 # else
 		cont_restore_0(cont, &space[0]);
 # endif
@@ -758,7 +780,7 @@ cont_restore_0(rb_context_t *cont, VALUE *addr_in_prev_frame)
 	    if (&space[STACK_PAD_SIZE] < end) {
 # ifdef HAVE_ALLOCA
 		volatile VALUE *sp = ALLOCA_N(VALUE, end - &space[STACK_PAD_SIZE]);
-		(void)sp;
+		space[0] = *sp;
 # else
 		cont_restore_0(cont, &space[STACK_PAD_SIZE-1]);
 # endif
@@ -1329,6 +1351,19 @@ VALUE
 rb_fiber_yield(int argc, VALUE *argv)
 {
     return rb_fiber_transfer(return_fiber(), argc, argv);
+}
+
+void
+rb_fiber_reset_root_local_storage(VALUE thval)
+{
+    rb_thread_t *th;
+    rb_fiber_t	*fib;
+
+    GetThreadPtr(thval, th);
+    if (th->root_fiber && th->root_fiber != th->fiber) {
+	GetFiberPtr(th->root_fiber, fib);
+	th->local_storage = fib->cont.saved_thread.local_storage;
+    }
 }
 
 /*

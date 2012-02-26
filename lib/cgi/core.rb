@@ -15,7 +15,7 @@ class CGI
   # Standard internet newline sequence
   EOL = CR + LF
 
-  REVISION = '$Id: core.rb 32469 2011-07-09 05:32:19Z xibbar $' #:nodoc:
+  REVISION = '$Id: core.rb 34187 2012-01-03 01:22:28Z kosaki $' #:nodoc:
 
   # Whether processing will be required in binary vs text
   NEEDS_BINMODE = File::BINARY != 0
@@ -462,7 +462,7 @@ class CGI
     #
     def read_multipart(boundary, content_length)
       ## read first boundary
-      stdin = $stdin
+      stdin = stdinput
       first_line = "--#{boundary}#{EOL}"
       content_length -= first_line.bytesize
       status = stdin.read(first_line.bytesize)

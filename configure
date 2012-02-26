@@ -1469,7 +1469,8 @@ Optional Features:
   --enable-pthread        obsolete, and ignored
   --enable-setreuid       use setreuid()/setregid() according to need even if
                           obsolete
-  --disable-rpath         embed run path into extension libraries
+  --enable-rpath          embed run path into extension libraries. enabled by
+                          default on ELF platforms
   --enable-shared         build a shared library for Ruby
   --disable-install-doc   do not install neither rdoc indexes nor C API
                           documents during install
@@ -6507,6 +6508,58 @@ fi
     test "$visibility_option" = no || OBJCOPY=:
 fi
 
+if test "$GCC" = yes; then
+    case "$target_os" in #(
+  mingw*) :
+
+
+    save_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS -fno-omit-frame-pointer"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -fno-omit-frame-pointer is accepted" >&5
+$as_echo_n "checking whether -fno-omit-frame-pointer is accepted... " >&6; }
+    if test "${ac_c_werror_flag+set}"; then
+  rb_c_werror_flag="$ac_c_werror_flag"
+else
+  unset rb_c_werror_flag
+fi
+ac_c_werror_flag=yes
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  optflags="${optflags+$optflags }-fno-omit-frame-pointer"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+if test "${rb_c_werror_flag+set}"; then
+  ac_c_werror_flag="$rb_c_werror_flag"
+else
+  unset ac_c_werror_flag
+fi
+    CFLAGS="$save_CFLAGS"
+    save_CFLAGS=
+
+     ;; #(
+  *) :
+     ;;
+esac
+fi
+
 test -z "${ac_env_CFLAGS_set}" -a -n "${cflags+set}" && eval CFLAGS="\"$cflags $ARCH_FLAG\""
 test -z "${ac_env_CXXFLAGS_set}" -a -n "${cxxflags+set}" && eval CXXFLAGS="\"$cxxflags $ARCH_FLAG\""
 
@@ -10749,6 +10802,13 @@ case "$target_cpu" in #(
   *) :
      ;;
 esac ;; #(
+  sparc*) :
+    case " $LIBOBJS " in
+  *" sparc.$ac_objext "* ) ;;
+  *) LIBOBJS="$LIBOBJS sparc.$ac_objext"
+ ;;
+esac
+ ;; #(
   *) :
      ;;
 esac
@@ -14227,7 +14287,7 @@ fi
 
 # for missing/setproctitle.c
 case "$target_os" in #(
-  aix* | k*bsd*-gnu | kopensolaris*-gnu | linux*) :
+  aix* | k*bsd*-gnu | kopensolaris*-gnu | linux* | darwin*) :
     $as_echo "#define SPT_TYPE SPT_REUSEARGV" >>confdefs.h
  ;; #(
   hpux*) :
@@ -14281,7 +14341,7 @@ for ac_func in fmod killpg wait4 waitpid fork spawnv syscall __syscall chroot ge
 	      truncate ftruncate ftello chsize times utimes utimensat fcntl lockf lstat\
 	      truncate64 ftruncate64 ftello64 fseeko fseeko64 \
 	      link symlink readlink readdir_r fsync fdatasync fchown posix_fadvise\
-	      setitimer setruid seteuid setreuid setresuid setproctitle socketpair\
+	      setitimer setruid seteuid setreuid setresuid socketpair\
 	      setrgid setegid setregid setresgid issetugid pause lchown lchmod\
 	      getpgrp setpgrp getpgid setpgid initgroups getgroups setgroups\
 	      getpriority getrlimit setrlimit sysconf close getgrnam_r\
@@ -15576,7 +15636,12 @@ done
   c_r) :
     MAINLIBS="-pthread $MAINLIBS" ;; #(
   *) :
+    case "$target_os" in #(
+  openbsd*) :
+    LIBS="-pthread $LIBS" ;; #(
+  *) :
     LIBS="-l$pthread_lib $LIBS" ;;
+esac ;;
 esac
     else
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: \"Don't know how to find pthread library on your system -- thread support disabled\"" >&5
@@ -16821,7 +16886,7 @@ esac
  ;;
 esac
 
-    	CFLAGS="$CFLAGS -DOS2"
+	CFLAGS="$CFLAGS -DOS2"
 	LIBRUBY_A=`echo $LIBRUBY_A | sed 's/^lib//'`
 	LIBRUBY_SO=`echo $LIBRUBY_SO | sed 's/^lib//'`
 	LIBRUBY_ALIASES=`for i in $LIBRUBY_ALIASES; do echo "$i"; done | sed 's/^lib//'`
@@ -17094,9 +17159,9 @@ if test -n "${cxxflags+set}"; then
 fi
 if test "${ARCH_FLAG}"; then
     archflagpat=`eval echo '"'"${ARCH_FLAG}"'"' | sed 's/[][|.*]/\\&/g'`
-    CFLAGS=`echo "$CFLAGS" | sed "s|$archflagpat"'|$(ARCH_FLAG)|'`
-    CXXFLAGS=`echo "$CXXFLAGS" | sed "s|$archflagpat"'|$(ARCH_FLAG)|'`
-    LDFLAGS=`echo "$LDFLAGS" | sed "s|$archflagpat"'|$(ARCH_FLAG)|'`
+    CFLAGS=`echo "$CFLAGS" | sed "s| *$archflagpat"'||'`
+    CXXFLAGS=`echo "$CXXFLAGS" | sed "s| *$archflagpat"'||'`
+    LDFLAGS=`echo "$LDFLAGS" | sed "s| *$archflagpat"'||'`
 fi
 warnflags="$rb_cv_warnflags"
 cflags="$orig_cflags "'${optflags} ${debugflags} ${warnflags}'

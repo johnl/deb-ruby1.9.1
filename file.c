@@ -2,7 +2,7 @@
 
   file.c -
 
-  $Author: akr $
+  $Author: usa $
   created at: Mon Nov 15 12:24:34 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -3176,6 +3176,7 @@ file_expand_path(VALUE fname, VALUE dname, int abs_mode, VALUE result)
     if (tainted) OBJ_TAINT(result);
     rb_str_set_len(result, p - buf);
     rb_enc_check(fname, result);
+    ENC_CODERANGE_CLEAR(result);
     return result;
 }
 

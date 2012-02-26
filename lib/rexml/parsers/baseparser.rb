@@ -114,22 +114,10 @@ module REXML
 
       def initialize( source )
         self.stream = source
+        @listeners = []
       end
 
       def add_listener( listener )
-        if !defined?(@listeners) or !@listeners
-          @listeners = []
-          instance_eval <<-EOL
-            alias :_old_pull :pull
-            def pull
-              event = _old_pull
-              @listeners.each do |listener|
-                listener.receive event
-              end
-              event
-            end
-          EOL
-        end
         @listeners << listener
       end
 
@@ -192,6 +180,14 @@ module REXML
 
       # Returns the next event.  This is a +PullEvent+ object.
       def pull
+        pull_event.tap do |event|
+          @listeners.each do |listener|
+            listener.receive event
+          end
+        end
+      end
+
+      def pull_event
         if @closed
           x, @closed = @closed, nil
           return [ :end_element, x ]
@@ -440,6 +436,7 @@ module REXML
         end
         return [ :dummy ]
       end
+      private :pull_event
 
       def entity( reference, entities )
         value = nil
