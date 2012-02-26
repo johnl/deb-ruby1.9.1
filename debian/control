@@ -12,7 +12,7 @@ Vcs-Browser: http://git.debian.org/?p=collab-maint/ruby1.9.1.git;a=summary
 Package: ruby1.9.1
 Architecture: any
 Depends: libruby1.9.1 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev
+Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev, ruby-switch
 Conflicts: rdoc1.9.1 (<< 1.9.1.378-2~), irb1.9.1 (<< 1.9.1.378-2~), rubygems1.9.1, ri1.9.1 (<< 1.9.2.180-3~), ruby (<= 4.5), ri (<= 4.5)
 Replaces: rdoc1.9.1, irb1.9.1, rubygems1.9.1
 Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby-interpreter
