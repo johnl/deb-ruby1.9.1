@@ -7,8 +7,13 @@ ruby1.9.1 (1.9.3.125-1) unstable; urgency=low
   * New upstream release: 1.9.3p125.
   * Removed debian/patches/debian/patches/sparc-continuations.diff,
     which the upstream has applied.
-  * debian/rules: Bumped up tcltk_ver to 8.5.
-  * debian/control: Suggests ruby-switch. (Closes: #654312)
+  * debian/rules:
+    - Bumped up tcltk_ver to 8.5.
+    - Used chrpath for tcltklib.so to fix a lintian error,
+      binary-or-shlib-defines-rpath.
+  * debian/control:
+    - Suggests ruby-switch. (Closes: #654312)
+    - Build-Depends: chrpath.
 
  -- Daigo Moriwaki <daigo@debian.org>  Sun, 26 Feb 2012 19:25:55 +0900
 

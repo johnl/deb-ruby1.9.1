@@ -140,6 +140,7 @@ binary-install/libtcltk-ruby$(ruby_ver)::
 	dh_movefiles -p$(cdbs_curpkg) \
 	    $(ruby_archdir)/tcltklib.so \
 	    $(ruby_archdir)/tkutil.so
+	chrpath --delete $(CURDIR)/debian/$(cdbs_curpkg)/$(ruby_archdir)/tcltklib.so
 	sh $(CURDIR)/debian/extfixup_rubylibs.sh $(ruby_libdir) $(cdbs_curpkg) \
 	    $(DEB_SRCDIR)/ext/tk
 
