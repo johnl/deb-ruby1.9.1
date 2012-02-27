@@ -14,6 +14,8 @@ ruby1.9.1 (1.9.3.125-1) unstable; urgency=low
   * debian/control:
     - Suggests ruby-switch. (Closes: #654312)
     - Build-Depends: chrpath.
+  * debian/libruby1.9.1.symbols: Added a new symbol for
+    rb_str_modify_expand@Base.
 
  -- Daigo Moriwaki <daigo@debian.org>  Sun, 26 Feb 2012 19:25:55 +0900
 
