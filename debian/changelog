@@ -16,7 +16,9 @@ ruby1.9.1 (1.9.3.125-1) unstable; urgency=low
     - Build-Depends: chrpath.
   * debian/libruby1.9.1.symbols: Added a new symbol for
     rb_str_modify_expand@Base.
-  * debian/run-test-suites.bash: Corrected options for test-all.
+  * debian/run-test-suites.bash:
+    - Corrected options for test-all.
+    - Enabled timeout to allow hang tests to be aborted.
 
  -- Daigo Moriwaki <daigo@debian.org>  Sun, 26 Feb 2012 19:25:55 +0900
 

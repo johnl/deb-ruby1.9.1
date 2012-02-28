@@ -3,7 +3,7 @@ Section: ruby
 Priority: optional
 Maintainer: akira yamada <akira@debian.org>
 Uploaders: Daigo Moriwaki <daigo@debian.org>, Lucas Nussbaum <lucas@debian.org>
-Build-Depends: debhelper (>= 8.9.7), cdbs, quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline6-dev, tcl-dev, tk-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev, openssl, chrpath
+Build-Depends: debhelper (>= 8.9.7), cdbs, quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline6-dev, tcl-dev, tk-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev, openssl, chrpath, coreutils
 Standards-Version: 3.9.2
 Homepage: http://www.ruby-lang.org/
 Vcs-Git: git://git.debian.org/collab-maint/ruby1.9.1.git
