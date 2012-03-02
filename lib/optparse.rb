@@ -209,7 +209,7 @@
 #
 class OptionParser
   # :stopdoc:
-  RCSID = %w$Id: optparse.rb 31600 2011-05-16 21:57:22Z drbrain $[1..-1].each {|s| s.freeze}.freeze
+  RCSID = %w$Id: optparse.rb 34316 2012-01-16 07:42:01Z nobu $[1..-1].each {|s| s.freeze}.freeze
   Version = (RCSID[1].split('.').collect {|s| s.to_i}.extend(Comparable).freeze if RCSID[1])
   LastModified = (Time.gm(*RCSID[2, 2].join('-').scan(/\d+/).collect {|s| s.to_i}) if RCSID[2])
   Release = RCSID[2]
@@ -1709,7 +1709,8 @@ XXX
       f |= Regexp::IGNORECASE if /i/ =~ o
       f |= Regexp::MULTILINE if /m/ =~ o
       f |= Regexp::EXTENDED if /x/ =~ o
-      k = o.delete("^imx")
+      k = o.delete("imx")
+      k = nil if k.empty?
     end
     Regexp.new(s || all, f, k)
   end

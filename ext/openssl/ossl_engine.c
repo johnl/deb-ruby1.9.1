@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_engine.c 32605 2011-07-22 00:19:32Z emboss $
+ * $Id: ossl_engine.c 34505 2012-02-09 03:25:07Z nobu $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2003  GOTOU Yuuzou <gotoyuzo@notwork.org>
  * All rights reserved.
@@ -118,7 +118,7 @@ ossl_engine_s_engines(VALUE klass)
 	/* Need a ref count of two here because of ENGINE_free being
 	 * called internally by OpenSSL when moving to the next ENGINE
 	 * and by us when releasing the ENGINE reference */
-	ENGINE_up_ref(e); 
+	ENGINE_up_ref(e);
 	WrapEngine(klass, obj, e);
         rb_ary_push(ary, obj);
     }

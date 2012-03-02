@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_asn1.c 33347 2011-09-27 04:06:02Z kosaki $
+ * $Id: ossl_asn1.c 34505 2012-02-09 03:25:07Z nobu $
  * 'OpenSSL for Ruby' team members
  * Copyright (C) 2003
  * All rights reserved.
@@ -869,7 +869,7 @@ int_ossl_asn1_decode0_cons(unsigned char **pp, long max_len, long length,
 	rb_ary_push(ary, value);
 	if (length > 0)
 	    length -= inner_read;
-	
+
 	if (infinite &&
 	    NUM2INT(ossl_asn1_get_tag(value)) == V_ASN1_EOC &&
 	    SYM2ID(ossl_asn1_get_tag_class(value)) == sUNIVERSAL) {
@@ -1932,7 +1932,7 @@ do{\
     rb_hash_aset(class_tag_map, cASN1GeneralizedTime, INT2NUM(V_ASN1_GENERALIZEDTIME));
     rb_hash_aset(class_tag_map, cASN1GraphicString, INT2NUM(V_ASN1_GRAPHICSTRING));
     rb_hash_aset(class_tag_map, cASN1ISO64String, INT2NUM(V_ASN1_ISO64STRING));
-    rb_hash_aset(class_tag_map, cASN1GeneralString, INT2NUM(INT2NUM(V_ASN1_GENERALSTRING)));
+    rb_hash_aset(class_tag_map, cASN1GeneralString, INT2NUM(V_ASN1_GENERALSTRING));
     rb_hash_aset(class_tag_map, cASN1UniversalString, INT2NUM(V_ASN1_UNIVERSALSTRING));
     rb_hash_aset(class_tag_map, cASN1BMPString, INT2NUM(V_ASN1_BMPSTRING));
     rb_global_variable(&class_tag_map);

@@ -1,7 +1,7 @@
 #
 # tempfile - manipulates temporary files
 #
-# $Id: tempfile.rb 33089 2011-08-26 23:54:49Z drbrain $
+# $Id: tempfile.rb 34572 2012-02-12 07:54:28Z knu $
 #
 
 require 'delegate'
@@ -162,9 +162,12 @@ class Tempfile < DelegateClass(File)
   end
 
   def _close    # :nodoc:
-    @tmpfile.close if @tmpfile
-    @tmpfile = nil
-    @data[1] = nil if @data
+    begin
+      @tmpfile.close if @tmpfile
+    ensure
+      @tmpfile = nil
+      @data[1] = nil if @data
+    end
   end
   protected :_close
 
@@ -224,18 +227,17 @@ class Tempfile < DelegateClass(File)
   #                    # to do so again.
   #   end
   def unlink
-    # keep this order for thread safeness
     return unless @tmpname
     begin
-      if File.exist?(@tmpname)
-        File.unlink(@tmpname)
-      end
-      # remove tmpname from remover
-      @data[0] = @data[2] = nil
-      @tmpname = nil
+      File.unlink(@tmpname)
+    rescue Errno::ENOENT
     rescue Errno::EACCES
       # may not be able to unlink on Windows; just ignore
+      return
     end
+    # remove tmpname from remover
+    @data[0] = @data[1] = nil
+    @tmpname = nil
   end
   alias delete unlink
 
@@ -267,20 +269,22 @@ class Tempfile < DelegateClass(File)
     end
 
     def call(*args)
-      if @pid == $$
-        path, tmpfile = *@data
+      return if @pid != $$
 
-        STDERR.print "removing ", path, "..." if $DEBUG
+      path, tmpfile = *@data
 
-        tmpfile.close if tmpfile
+      STDERR.print "removing ", path, "..." if $DEBUG
 
-        # keep this order for thread safeness
-        if path
-          File.unlink(path) if File.exist?(path)
+      tmpfile.close if tmpfile
+
+      if path
+        begin
+          File.unlink(path)
+        rescue Errno::ENOENT
         end
-
-        STDERR.print "done\n" if $DEBUG
       end
+
+      STDERR.print "done\n" if $DEBUG
     end
   end
   # :startdoc:
