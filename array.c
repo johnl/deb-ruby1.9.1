@@ -2,7 +2,7 @@
 
   array.c -
 
-  $Author: kosaki $
+  $Author: marcandre $
   created at: Fri Aug  6 09:46:12 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -2339,7 +2339,7 @@ rb_ary_select(VALUE ary)
 
 /*
  *  call-seq:
- *     ary.select! {|item| block } -> new_ary or nil
+ *     ary.select! {|item| block } -> ary or nil
  *     ary.select!                 -> an_enumerator
  *
  *  Invokes the block passing in successive elements from
@@ -2606,6 +2606,8 @@ ary_reject_bang(VALUE ary)
  *  Equivalent to <code>Array#delete_if</code>, deleting elements from
  *  +self+ for which the block evaluates to true, but returns
  *  <code>nil</code> if no changes were made.
+ *  The array is changed instantly every time the block is called and
+ *  not after the iteration is over.
  *  See also <code>Enumerable#reject</code> and <code>Array#delete_if</code>.
  *
  *  If no block is given, an enumerator is returned instead.
@@ -2650,6 +2652,8 @@ rb_ary_reject(VALUE ary)
  *
  *  Deletes every element of +self+ for which <i>block</i> evaluates
  *  to true.
+ *  The array is changed instantly every time the block is called and
+ *  not after the iteration is over.
  *  See also <code>Array#reject!</code>
  *
  *  If no block is given, an enumerator is returned instead.
@@ -4420,7 +4424,7 @@ rb_ary_repeated_combination(VALUE ary, VALUE num)
  *     ary.product(other_ary, ...)                -> new_ary
  *     ary.product(other_ary, ...) { |p| block }  -> ary
  *
- *  Returns an array of all combinations of elements from all arrays,
+ *  Returns an array of all combinations of elements from all arrays.
  *  The length of the returned array is the product of the length
  *  of +self+ and the argument arrays.
  *  If given a block, <i>product</i> will yield all combinations

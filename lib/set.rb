@@ -9,7 +9,7 @@
 # All rights reserved.  You can redistribute and/or modify it under the same
 # terms as Ruby.
 #
-#   $Id: set.rb 31641 2011-05-19 00:07:25Z nobu $
+#   $Id: set.rb 34533 2012-02-10 08:28:48Z naruse $
 #
 # == Overview
 #
@@ -525,7 +525,6 @@ class SortedSet < Set
       module_eval {
         # a hack to shut up warning
         alias old_init initialize
-        remove_method :old_init
       }
       begin
         require 'rbtree'
@@ -605,6 +604,10 @@ class SortedSet < Set
           end
         }
       end
+      module_eval {
+        # a hack to shut up warning
+        remove_method :old_init
+      }
 
       @@setup = true
     end

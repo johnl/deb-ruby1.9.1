@@ -1,9 +1,8 @@
 Source: ruby1.9.1
 Section: ruby
 Priority: optional
-Maintainer: akira yamada <akira@debian.org>
-Uploaders: Daigo Moriwaki <daigo@debian.org>, Lucas Nussbaum <lucas@debian.org>
-Build-Depends: debhelper (>= 5), cdbs, quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline-gplv2-dev | libreadline5-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev, openssl, libgoogle-perftools-dev
+Maintainer: John Leach <john@brightbox.co.uk>
+Build-Depends: debhelper (>= 7), cdbs, quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline-gplv2-dev | libreadline5-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev, openssl, coreutils, libgoogle-perftools-dev
 Standards-Version: 3.9.2
 Homepage: http://www.ruby-lang.org/
 Vcs-Git: git://git.debian.org/collab-maint/ruby1.9.1.git
@@ -12,7 +11,7 @@ Vcs-Browser: http://git.debian.org/?p=collab-maint/ruby1.9.1.git;a=summary
 Package: ruby1.9.1
 Architecture: any
 Depends: libruby1.9.1 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev
+Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev, ruby-switch
 Conflicts: rdoc1.9.1 (<< 1.9.1.378-2~), irb1.9.1 (<< 1.9.1.378-2~), rubygems1.9.1, ri1.9.1 (<< 1.9.2.180-3~), ruby (<= 4.5), ri (<= 4.5)
 Replaces: rdoc1.9.1, irb1.9.1, rubygems1.9.1
 Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby-interpreter

@@ -1045,6 +1045,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_str_locktmp@Base 1.9.2.0
  rb_str_memsize@Base 1.9.2.0
  rb_str_modify@Base 1.9.2.0
+ rb_str_modify_expand@Base 1.9.3.125
  rb_str_new2@Base 1.9.2.0
  rb_str_new3@Base 1.9.2.0
  rb_str_new4@Base 1.9.2.0
