@@ -1,3 +1,10 @@
+ruby1.9.1 (1:1.9.3.125-1bbox1) lucid; urgency=low
+
+  * Updated funny-falcon's performance patches
+  * Added backported cow friendly gc
+
+ -- John Leach <john@brightbox.co.uk>  Tue, 03 Apr 2012 13:12:53 +0100
+
 ruby1.9.1 (1.9.3.125-1) unstable; urgency=low
 
   [ Lucas Nussbaum ]
@@ -22,7 +29,7 @@ ruby1.9.1 (1.9.3.125-1) unstable; urgency=low
 
  -- Daigo Moriwaki <daigo@debian.org>  Sun, 26 Feb 2012 19:25:55 +0900
 
-	ruby1.9.1 (1:1.9.3.0-4bbox2) lucid; urgency=low
+ruby1.9.1 (1:1.9.3.0-4bbox2) lucid; urgency=low
 
   * ruby1.9.1-dev depends on libgoogle-perftools-dev
 
