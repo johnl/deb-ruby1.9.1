@@ -12,7 +12,7 @@ echo
 echo "*******************************************************************"
 echo "Running 'make test-all'"
 echo
-timeout 1200 make TESTS=-v test-all 2>&1 |tee make-test-all.log || true
+make TESTS=-v test-all 2>&1 |tee make-test-all.log || true
 echo
 echo "'make test-all' finished. checking number of failures and errors."
 echo "max number allowed: failures:$MAXFAIL errors:$MAXERR"
