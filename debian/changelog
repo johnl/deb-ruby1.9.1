@@ -1,3 +1,9 @@
+ruby1.9.1 (1:1.9.3.125-1bbox3) lucid; urgency=low
+
+  * Don't use timeout for run-test-suites.bash
+
+ -- John Leach <john@brightbox.co.uk>  Tue, 03 Apr 2012 18:44:01 +0100
+
 ruby1.9.1 (1:1.9.3.125-1bbox2) lucid; urgency=low
 
   * Depend on timeout package when building for Lucid
