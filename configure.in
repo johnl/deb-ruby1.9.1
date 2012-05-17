@@ -104,11 +104,9 @@ then
 fi
 AS_CASE(["$build_os"],
   [darwin11.*], [
-    : ${CC:=gcc-4.2}
     AS_CASE(["x$CC"],
       [xgcc-4.2|x/usr/bin/gcc-4.2], [: ${CXX=g++-4.2}],
       [xgcc|x/usr/bin/gcc],         [: ${CXX=g++}],
-      [xcc-4.2|x/usr/bin/cc-4.2],   [: ${CXX=c++-4.2}],
       [xcc|x/usr/bin/cc],           [: ${CXX=c++}],
       [xclang|x/usr/bin/clang],     [: ${CXX=clang++}])
   ])
@@ -290,12 +288,10 @@ AC_SUBST(GCC)
 if test "$GCC" = yes; then
     linker_flag=-Wl,
     : ${optflags=-O3}
-    AS_CASE(["$target_os"], [linux*|darwin*], [: ${debugflags=-ggdb}])
     RUBY_APPEND_OPTIONS(XCFLAGS, ["-include ruby/config.h" "-include ruby/missing.h"])
 else
     linker_flag=
 fi
-test $ac_cv_prog_cc_g = yes && : ${debugflags=-g}
 
 RUBY_PROG_GNU_LD
 RUBY_CPPOUTFILE
@@ -369,11 +365,11 @@ fi
 MAKEDIRS="$MKDIR_P"
 AC_SUBST(MAKEDIRS)
 
-AC_CHECK_PROG(DOT, dot)
-AC_CHECK_PROG(DOXYGEN, doxygen)
+AC_CHECK_PROGS(DOT, dot)
+AC_CHECK_PROGS(DOXYGEN, doxygen)
 
-AC_CHECK_PROG(PKG_CONFIG, pkg-config, [], [], [],
-    [`$as_dir/$ac_word$ac_exec_ext --print-errors --version > /dev/null 2>&1 || continue`])
+AC_CHECK_PROG(PKG_CONFIG, pkg-config, [pkg-config], [], [],
+    [`"$as_dir/$ac_word$ac_exec_ext" --print-errors --version > /dev/null 2>&1 || echo "$as_dir/$ac_word$ac_exec_ext"`])
 
 # checks for UNIX variants that set C preprocessor variables
 AC_USE_SYSTEM_EXTENSIONS
@@ -489,6 +485,12 @@ if test "$GCC:${warnflags+set}:no" = yes::no; then
     rb_cv_warnflags="$warnflags"
     warnflags=
 fi
+if test "$GCC" = yes; then
+    test "${debugflags+set}" || {RUBY_TRY_CFLAGS(-ggdb, [debugflags=-ggdb])}
+    test "${debugflags+set}" || {RUBY_TRY_CFLAGS(-g3, [debugflags=-g3])}
+fi
+test $ac_cv_prog_cc_g = yes && : ${debugflags=-g}
+
 if test "$GCC" = ""; then
     AS_CASE(["$target_os"],[aix*],[warnflags="-qinfo=por"])
 fi
@@ -1757,7 +1759,8 @@ if test "$ac_cv_func_sysconf" = yes; then
 fi
 
 AC_DEFUN(RUBY_STACK_GROW_DIRECTION, [
-    AC_CACHE_CHECK(stack growing direction on $1, rb_cv_stack_grow_dir_$1, [
+    AS_VAR_PUSHDEF([stack_grow_dir], [rb_cv_stack_grow_dir_$1])
+    AC_CACHE_CHECK(stack growing direction on $1, stack_grow_dir, [
 AS_CASE(["$1"],
 [m68*|x86*|x64|i?86|ia64|ppc*|sparc*|alpha*], [ $2=-1],
 [hppa*], [ $2=+1],
@@ -1781,8 +1784,9 @@ int main()
 }
 ], $2=-1, $2=+1, $2=0)
   ])
-eval rb_cv_stack_grow_dir_$1=\$$2])
-eval $2=\$rb_cv_stack_grow_dir_$1])
+eval stack_grow_dir=\$$2])
+eval $2=\$stack_grow_dir
+AS_VAR_POPDEF([stack_grow_dir])])
 if test "${universal_binary-no}" = yes ; then
     archflagpat=`eval echo '"'"${ARCH_FLAG}"'"' | sed 's/[[][|.*]]/\\&/g'`
     save_CFLAGS="$CFLAGS" new_cflags=`echo "$CFLAGS" | sed "s|$archflagpat"'||'`
@@ -1803,7 +1807,7 @@ if test "${universal_binary-no}" = yes ; then
     if test x$stack_dir = xno; then
 	for archs in ${universal_archnames}; do
 	    archs=`echo $archs | sed 's/=.*//'`
-	    eval dir=\$rb_cv_stack_grow_dir_$archs
+	    eval dir=\$[rb_cv_stack_grow_dir_]AS_TR_SH([$archs])
 	    RUBY_DEFINE_IF([defined __${archs}__], STACK_GROW_DIRECTION, $dir)
 	done
     else
@@ -2093,7 +2097,7 @@ if test "$with_dln_a_out" != yes; then
 			# /usr/local/include is always searched for
 			# some reason, but /usr/local/lib is not.
 			hdr=`find /usr/local/include -name \*.h -type f | sed 's:^/usr/local/include/::;q'`
-			if test -n "$hdr" && $CC -E -include "$hdr" -xc /dev/null | fgrep -q "$hdr"; then
+			if test -n "$hdr" && $CC -E -include "$hdr" -xc /dev/null 2>/dev/null | fgrep -q "$hdr"; then
 			    $CC -print-search-dirs | grep -q '^libraries:.*:/usr/local/lib/*' ||
 			    echo " $LDFLAGS " | grep -q ' -L */usr/local/lib/* ' ||
 			    LDFLAGS="${LDFLAGS:+$LDFLAGS }-L/usr/local/lib"

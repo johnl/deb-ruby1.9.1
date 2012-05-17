@@ -2818,14 +2818,11 @@ fi
 case "$build_os" in #(
   darwin11.*) :
 
-    : ${CC:=gcc-4.2}
     case "x$CC" in #(
   xgcc-4.2|x/usr/bin/gcc-4.2) :
     : ${CXX=g++-4.2} ;; #(
   xgcc|x/usr/bin/gcc) :
     : ${CXX=g++} ;; #(
-  xcc-4.2|x/usr/bin/cc-4.2) :
-    : ${CXX=c++-4.2} ;; #(
   xcc|x/usr/bin/cc) :
     : ${CXX=c++} ;; #(
   xclang|x/usr/bin/clang) :
@@ -4432,12 +4429,6 @@ fi
 if test "$GCC" = yes; then
     linker_flag=-Wl,
     : ${optflags=-O3}
-    case "$target_os" in #(
-  linux*|darwin*) :
-    : ${debugflags=-ggdb} ;; #(
-  *) :
-     ;;
-esac
     { for rb_opt in "-include ruby/config.h" "-include ruby/missing.h"; do # RUBY_APPEND_OPTIONS(XCFLAGS, "-include ruby/config.h" "-include ruby/missing.h")
 	case " ${XCFLAGS-} " in #(
   *" ${rb_opt} "*) :
@@ -4451,7 +4442,6 @@ esac
 else
     linker_flag=
 fi
-test $ac_cv_prog_cc_g = yes && : ${debugflags=-g}
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether the linker is GNU ld" >&5
 $as_echo_n "checking whether the linker is GNU ld... " >&6; }
@@ -5859,8 +5849,10 @@ fi
 MAKEDIRS="$MKDIR_P"
 
 
-# Extract the first word of "dot", so it can be a program name with args.
-set dummy dot; ac_word=$2
+for ac_prog in dot
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
 if ${ac_cv_prog_DOT+:} false; then :
@@ -5876,7 +5868,7 @@ do
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
-    ac_cv_prog_DOT=""
+    ac_cv_prog_DOT="$ac_prog"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -5896,8 +5888,13 @@ $as_echo "no" >&6; }
 fi
 
 
-# Extract the first word of "doxygen", so it can be a program name with args.
-set dummy doxygen; ac_word=$2
+  test -n "$DOT" && break
+done
+
+for ac_prog in doxygen
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
 if ${ac_cv_prog_DOXYGEN+:} false; then :
@@ -5913,7 +5910,7 @@ do
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
-    ac_cv_prog_DOXYGEN=""
+    ac_cv_prog_DOXYGEN="$ac_prog"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -5932,6 +5929,9 @@ else
 $as_echo "no" >&6; }
 fi
 
+
+  test -n "$DOXYGEN" && break
+done
 
 
 # Extract the first word of "pkg-config", so it can be a program name with args.
@@ -5952,11 +5952,11 @@ do
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
-    if test "$as_dir/$ac_word$ac_exec_ext" = "`$as_dir/$ac_word$ac_exec_ext --print-errors --version > /dev/null 2>&1 || continue`"; then
+    if test "$as_dir/$ac_word$ac_exec_ext" = "`"$as_dir/$ac_word$ac_exec_ext" --print-errors --version > /dev/null 2>&1 || echo "$as_dir/$ac_word$ac_exec_ext"`"; then
        ac_prog_rejected=yes
        continue
      fi
-    ac_cv_prog_PKG_CONFIG=""
+    ac_cv_prog_PKG_CONFIG="pkg-config"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -6389,6 +6389,94 @@ fi
     rb_cv_warnflags="$warnflags"
     warnflags=
 fi
+if test "$GCC" = yes; then
+    test "${debugflags+set}" || {
+    save_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS -ggdb"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -ggdb is accepted" >&5
+$as_echo_n "checking whether -ggdb is accepted... " >&6; }
+    if test "${ac_c_werror_flag+set}"; then
+  rb_c_werror_flag="$ac_c_werror_flag"
+else
+  unset rb_c_werror_flag
+fi
+ac_c_werror_flag=yes
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  debugflags=-ggdb
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+if test "${rb_c_werror_flag+set}"; then
+  ac_c_werror_flag="$rb_c_werror_flag"
+else
+  unset ac_c_werror_flag
+fi
+    CFLAGS="$save_CFLAGS"
+    save_CFLAGS=
+}
+    test "${debugflags+set}" || {
+    save_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS -g3"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -g3 is accepted" >&5
+$as_echo_n "checking whether -g3 is accepted... " >&6; }
+    if test "${ac_c_werror_flag+set}"; then
+  rb_c_werror_flag="$ac_c_werror_flag"
+else
+  unset rb_c_werror_flag
+fi
+ac_c_werror_flag=yes
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  debugflags=-g3
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+if test "${rb_c_werror_flag+set}"; then
+  ac_c_werror_flag="$rb_c_werror_flag"
+else
+  unset ac_c_werror_flag
+fi
+    CFLAGS="$save_CFLAGS"
+    save_CFLAGS=
+}
+fi
+test $ac_cv_prog_cc_g = yes && : ${debugflags=-g}
+
 if test "$GCC" = ""; then
     case "$target_os" in #(
   aix*) :
@@ -15415,9 +15503,11 @@ if test "${universal_binary-no}" = yes ; then
 	CFLAGS="$new_cflags -arch $archs"
 	LDFLAGS="$new_ldflags -arch $archs"
 
+    as_stack_grow_dir=`$as_echo "rb_cv_stack_grow_dir_$archs" | $as_tr_sh`
+
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking stack growing direction on $archs" >&5
 $as_echo_n "checking stack growing direction on $archs... " >&6; }
-if eval \${rb_cv_stack_grow_dir_$archs+:} false; then :
+if eval \${$as_stack_grow_dir+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
@@ -15463,12 +15553,13 @@ fi
 
    ;;
 esac
-eval rb_cv_stack_grow_dir_$archs=\$dir
+eval $as_stack_grow_dir=\$dir
 fi
-eval ac_res=\$rb_cv_stack_grow_dir_$archs
+eval ac_res=\$$as_stack_grow_dir
 	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
 $as_echo "$ac_res" >&6; }
-eval dir=\$rb_cv_stack_grow_dir_$archs
+eval dir=\$$as_stack_grow_dir
+
 	if test x$stack_dir = x; then
 	    stack_dir=$dir
 	elif test x$stack_dir != x$dir; then
@@ -15479,7 +15570,7 @@ eval dir=\$rb_cv_stack_grow_dir_$archs
     if test x$stack_dir = xno; then
 	for archs in ${universal_archnames}; do
 	    archs=`echo $archs | sed 's/=.*//'`
-	    eval dir=\$rb_cv_stack_grow_dir_$archs
+	    eval dir=\$rb_cv_stack_grow_dir_`$as_echo "$archs" | $as_tr_sh`
 	        test "defined __${archs}__" && cat <<EOH >> confdefs.h
 #if defined __${archs}__
 EOH
@@ -15500,9 +15591,11 @@ _ACEOF
     fi
 else
 
+    as_stack_grow_dir=`$as_echo "rb_cv_stack_grow_dir_$target_cpu" | $as_tr_sh`
+
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking stack growing direction on $target_cpu" >&5
 $as_echo_n "checking stack growing direction on $target_cpu... " >&6; }
-if eval \${rb_cv_stack_grow_dir_$target_cpu+:} false; then :
+if eval \${$as_stack_grow_dir+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
@@ -15548,12 +15641,13 @@ fi
 
    ;;
 esac
-eval rb_cv_stack_grow_dir_$target_cpu=\$dir
+eval $as_stack_grow_dir=\$dir
 fi
-eval ac_res=\$rb_cv_stack_grow_dir_$target_cpu
+eval ac_res=\$$as_stack_grow_dir
 	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
 $as_echo "$ac_res" >&6; }
-eval dir=\$rb_cv_stack_grow_dir_$target_cpu
+eval dir=\$$as_stack_grow_dir
+
     cat >>confdefs.h <<_ACEOF
 #define STACK_GROW_DIRECTION $dir
 _ACEOF
@@ -16125,7 +16219,7 @@ esac ;; #(
 			# /usr/local/include is always searched for
 			# some reason, but /usr/local/lib is not.
 			hdr=`find /usr/local/include -name \*.h -type f | sed 's:^/usr/local/include/::;q'`
-			if test -n "$hdr" && $CC -E -include "$hdr" -xc /dev/null | fgrep -q "$hdr"; then
+			if test -n "$hdr" && $CC -E -include "$hdr" -xc /dev/null 2>/dev/null | fgrep -q "$hdr"; then
 			    $CC -print-search-dirs | grep -q '^libraries:.*:/usr/local/lib/*' ||
 			    echo " $LDFLAGS " | grep -q ' -L */usr/local/lib/* ' ||
 			    LDFLAGS="${LDFLAGS:+$LDFLAGS }-L/usr/local/lib"
