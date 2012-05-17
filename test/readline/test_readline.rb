@@ -129,20 +129,40 @@ class TestReadline < Test::Unit::TestCase
         actual_text = nil
         actual_line_buffer = nil
         actual_point = nil
-        Readline.completion_proc = proc { |text|
+        Readline.completion_proc = ->(text) {
           actual_text = text
           actual_point = Readline.point
-          actual_buffer_line = Readline.line_buffer
+          actual_line_buffer = Readline.line_buffer
           stdin.write(" finish\n")
           stdin.close
           stdout.close
           return ["complete"]
         }
+
         stdin.write("first second\t")
         stdin.flush
+        Readline.completion_append_character = " "
         line = replace_stdio(stdin.path, stdout.path) {
           Readline.readline("> ", false)
         }
+        assert_equal("second", actual_text)
+        assert_equal("first second", actual_line_buffer)
+        assert_equal(12, actual_point)
+        assert_equal("first complete  finish", Readline.line_buffer)
+        assert_equal(Encoding.find("locale"), Readline.line_buffer.encoding)
+        assert_equal(true, Readline.line_buffer.tainted?)
+        assert_equal(22, Readline.point)
+
+        stdin.open
+        stdout.open
+
+        stdin.write("first second\t")
+        stdin.flush
+        Readline.completion_append_character = nil
+        line = replace_stdio(stdin.path, stdout.path) {
+          Readline.readline("> ", false)
+        }
+        assert_equal("second", actual_text)
         assert_equal("first second", actual_line_buffer)
         assert_equal(12, actual_point)
         assert_equal("first complete finish", Readline.line_buffer)
@@ -187,12 +207,20 @@ class TestReadline < Test::Unit::TestCase
     with_temp_stdio do |stdin, stdout|
       stdin.write("first\t")
       stdin.flush
-      actual_text = nil
       Readline.completion_proc = ->(text) {[]}
-      line = replace_stdio(stdin.path, stdout.path) {
-        Readline.readline("> ")
+      line1 = line2 = nil
+      replace_stdio(stdin.path, stdout.path) {
+        assert_nothing_raised(NoMemoryError) {line1 = Readline.readline("> ")}
+        stdin.write("\n")
+        stdin.flush
+        assert_nothing_raised(NoMemoryError) {line2 = Readline.readline("> ")}
       }
-      assert_equal("first", line)
+      assert_equal("first", line1)
+      assert_equal("", line2)
+      begin
+        assert_equal("", Readline.line_buffer)
+      rescue NotimplementedError
+      end
     end
   end
 
