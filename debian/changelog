@@ -21,6 +21,7 @@ ruby1.9.1 (1.9.3.194-1) unstable; urgency=low
 
   [ James Healy ]
   * New upstream release: 1.9.3p194
+  * Enable hardened build flags (Closes: #667964)
 
  -- James Healy <jimmy@deefa.com>  Thu, 17 May 2012 14:55:55 +1000
 

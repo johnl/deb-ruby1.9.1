@@ -32,13 +32,8 @@ include /usr/share/cdbs/1/class/autotools.mk
 
 DEB_AUTO_UPDATE_AUTOCONF = YES
 
-CFLAGS := -fno-strict-aliasing -g
-CXXFLAGS := -fno-strict-aliasing -g
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -g -O0
-else
-	CFLAGS += -g -O2
-endif
+CFLAGS += -fno-strict-aliasing
+CXXFLAGS += -fno-strict-aliasing
 
 # Renesas SH(sh4) needs -mieee option. #591785
 ifeq (sh4,$(shell dpkg-architecture -qDEB_HOST_ARCH))
