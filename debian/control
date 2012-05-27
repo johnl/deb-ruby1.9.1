@@ -2,7 +2,7 @@ Source: ruby1.9.1
 Section: ruby
 Priority: optional
 Maintainer: akira yamada <akira@debian.org>
-Uploaders: Daigo Moriwaki <daigo@debian.org>, Lucas Nussbaum <lucas@debian.org>
+Uploaders: Daigo Moriwaki <daigo@debian.org>, Lucas Nussbaum <lucas@debian.org>, Antonio Terceiro <terceiro@debian.org>
 Build-Depends: debhelper (>= 9.0), cdbs (>= 0.4.106), quilt, patch, autoconf, m4, bison, libgdbm-dev, libncursesw5-dev, libncurses5-dev, libreadline6-dev, tcl-dev, tk-dev, zlib1g-dev, libssl-dev, procps, file, libffi-dev, ruby1.8, libyaml-dev, openssl, chrpath, coreutils (>= 7.5-1)
 Standards-Version: 3.9.3
 Homepage: http://www.ruby-lang.org/
