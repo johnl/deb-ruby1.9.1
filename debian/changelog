@@ -21,6 +21,7 @@ ruby1.9.1 (1.9.3.194-1) unstable; urgency=low
 
   [ James Healy ]
   * New upstream release: 1.9.3p194 (Closes: #669582)
+    + This release includes a fix for CVE-2011-0188 (Closes: #628451)
   * Enable hardened build flags (Closes: #667964)
   * debian/control:
     - depend on specific version on coreutils
