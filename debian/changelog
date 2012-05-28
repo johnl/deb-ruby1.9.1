@@ -22,6 +22,8 @@ ruby1.9.1 (1.9.3.194-1) UNRELEASED; urgency=low
   [ James Healy ]
   * New upstream release: 1.9.3p194 (Closes: #669582)
     + This release includes a fix for CVE-2011-0188 (Closes: #628451)
+    + This release also does not segfault when running the test suite under
+      amd64 (Closes: #674347)
   * Enable hardened build flags (Closes: #667964)
   * debian/control:
     - depend on specific version on coreutils
