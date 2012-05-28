@@ -5,7 +5,7 @@ set -e
 if [ "$1" = "configure" ]
 then
         update-alternatives --install /usr/bin/gem gem \
-            /usr/bin/gem1.9.1 51 \
+            /usr/bin/gem1.9.1 181 \
 	    --slave /usr/share/man/man1/gem.1.gz gem.1.gz /usr/share/man/man1/gem1.9.1.1.gz \
             --slave /etc/bash_completion.d/gem bash_completion_gem /etc/bash_completion.d/gem1.9.1
         RUBYVER=1.9.1

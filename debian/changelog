@@ -30,8 +30,12 @@ ruby1.9.1 (1.9.3.194-1) UNRELEASED; urgency=low
     - update policy version (no changes)
 
   [ Antonio Terceiro ]
-  * debian/ruby1.9.1.postinst: bump alternatives priority to 51 so that Ruby
-    1.9 has a higher priority than Ruby 1.8 (50).
+  * debian/ruby1.9.1.postinst:
+    + bump alternatives priority for `ruby` to 51 so that Ruby 1.9 has a
+      higher priority than Ruby 1.8 (50).
+    + bump alternatives priority for `gem` to 181 so that the Rubygems
+      provided by Ruby 1.9 has priority over the one provided by the rubygems
+      package.
   * debian/control: added myself to Uploaders:
   * debian/libruby1.9.1.symbols: update with new symbols added in 1.9.3p194
     upstream release.
