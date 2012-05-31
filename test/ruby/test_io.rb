@@ -1307,6 +1307,30 @@ class TestIO < Test::Unit::TestCase
     end
   end
 
+  def test_pos_with_getc
+    bug6179 = '[ruby-core:43497]'
+    t = make_tempfile
+    ["", "t", "b"].each do |mode|
+      open(t.path, "w#{mode}") do |f|
+        f.write "0123456789\n"
+      end
+
+      open(t.path, "r#{mode}") do |f|
+        assert_equal 0, f.pos, "mode=r#{mode}"
+        assert_equal '0', f.getc, "mode=r#{mode}"
+        assert_equal 1, f.pos, "mode=r#{mode}"
+        assert_equal '1', f.getc, "mode=r#{mode}"
+        assert_equal 2, f.pos, "mode=r#{mode}"
+        assert_equal '2', f.getc, "mode=r#{mode}"
+        assert_equal 3, f.pos, "mode=r#{mode}"
+        assert_equal '3', f.getc, "mode=r#{mode}"
+        assert_equal 4, f.pos, "mode=r#{mode}"
+        assert_equal '4', f.getc, "mode=r#{mode}"
+      end
+    end
+  end
+
+
   def test_sysseek
     t = make_tempfile
 
@@ -1555,6 +1579,16 @@ End
     IO.foreach(t.path, "b", 3) {|x| a << x }
     assert_equal(["foo", "\nb", "ar\n", "b", "az\n"], a)
 
+    bug = '[ruby-dev:31525]'
+    assert_raise(ArgumentError, bug) {IO.foreach}
+
+    a = nil
+    assert_nothing_raised(ArgumentError, bug) {a = IO.foreach(t.path).to_a}
+    assert_equal(["foo\n", "bar\n", "baz\n"], a, bug)
+
+    bug6054 = '[ruby-dev:45267]'
+    e = assert_raise(IOError, bug6054) {IO.foreach(t.path, mode:"w").next}
+    assert_match(/not opened for reading/, e.message, bug6054)
   end
 
   def test_s_readlines

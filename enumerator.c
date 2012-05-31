@@ -2,13 +2,13 @@
 
   enumerator.c - provides Enumerator class
 
-  $Author: drbrain $
+  $Author: marcandre $
 
   Copyright (C) 2001-2003 Akinori MUSHA
 
   $Idaemons: /home/cvs/rb/enumerator/enumerator.c,v 1.1.1.1 2001/07/15 10:12:48 knu Exp $
   $RoughId: enumerator.c,v 1.6 2003/07/27 11:03:24 nobu Exp $
-  $Id: enumerator.c 32466 2011-07-09 00:25:27Z drbrain $
+  $Id: enumerator.c 34713 2012-02-20 23:55:19Z marcandre $
 
 ************************************************/
 
@@ -755,7 +755,7 @@ enumerator_feed(VALUE obj, VALUE v)
  * call-seq:
  *   e.rewind   -> e
  *
- * Rewinds the enumeration sequence by one step.
+ * Rewinds the enumeration sequence to the beginning.
  *
  * If the enclosed object responds to a "rewind" method, it is called.
  */

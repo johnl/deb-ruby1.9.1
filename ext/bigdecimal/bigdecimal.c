@@ -210,7 +210,7 @@ again:
 	if (prec < 0) goto unable_to_coerce_without_prec;
 	if (prec > DBL_DIG+1)goto SomeOneMayDoIt;
 	v = rb_funcall(v, id_to_r, 0);
-	/* fall through */
+	goto again;
       case T_RATIONAL:
 	if (prec < 0) goto unable_to_coerce_without_prec;
 
@@ -1978,7 +1978,7 @@ is_even(VALUE x)
 static VALUE
 rmpd_power_by_big_decimal(Real const* x, Real const* exp, ssize_t const n)
 {
-    VALUE log_x, multiplied, y, vn;
+    VALUE log_x, multiplied, y;
 
     if (VpIsZero(exp)) {
 	return ToValue(VpCreateRbObject(n, "1"));
