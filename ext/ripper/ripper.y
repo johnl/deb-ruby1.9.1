@@ -2,7 +2,7 @@
 
   parse.y -
 
-  $Author: naruse $
+  $Author: nobu $
   created at: Fri May 28 18:02:42 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -5440,6 +5440,7 @@ parser_nextc(struct parser_params *parser)
 	    if (parser->tokp < lex_pend) {
 		if (NIL_P(parser->delayed)) {
 		    parser->delayed = rb_str_buf_new(1024);
+		    rb_enc_associate(parser->delayed, parser->enc);
 		    rb_str_buf_cat(parser->delayed,
 				   parser->tokp, lex_pend - parser->tokp);
 		    parser->delayed_line = ruby_sourceline;
@@ -5924,7 +5925,10 @@ parser_tokadd_string(struct parser_params *parser,
 
 	      default:
 		if (c == -1) return -1;
-		if (!ISASCII(c)) goto non_ascii;
+		if (!ISASCII(c)) {
+		    tokadd('\\');
+		    goto non_ascii;
+		}
 		if (func & STR_FUNC_REGEXP) {
 		    pushback(c);
 		    if ((c = tokadd_escape(&enc)) < 0)
@@ -7011,6 +7015,7 @@ parser_yylex(struct parser_params *parser)
             }
             else if (!lex_eol_p() && !(c = *lex_p, ISASCII(c))) {
                 nextc();
+		tokadd('\\');
                 if (tokadd_mbchar(c) == -1) return 0;
             }
             else {

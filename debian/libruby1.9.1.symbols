@@ -829,7 +829,9 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_mod_remove_const@Base 1.9.2.0
  rb_mod_remove_cvar@Base 1.9.2.0
  rb_mod_sys_fail@Base 1.9.2.0
+ rb_mod_sys_fail_str@Base 1.9.3.194-1
  rb_mod_syserr_fail@Base 1.9.3~rc1
+ rb_mod_syserr_fail_str@Base 1.9.3.194-1
  rb_module_new@Base 1.9.2.0
  rb_mutex_lock@Base 1.9.2.0
  rb_mutex_locked_p@Base 1.9.2.0
@@ -1096,9 +1098,12 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_sym_to_s@Base 1.9.2.0
  rb_symname_p@Base 1.9.2.0
  rb_sys_fail@Base 1.9.2.0
+ rb_sys_fail_str@Base 1.9.3.194-1
  rb_sys_warning@Base 1.9.2.0
  rb_syserr_fail@Base 1.9.3~rc1
+ rb_syserr_fail_str@Base 1.9.3.194-1
  rb_syserr_new@Base 1.9.3~rc1
+ rb_syserr_new_str@Base 1.9.3.194-1
  rb_syswait@Base 1.9.2.0
  rb_tainted_str_new2@Base 1.9.2.0
  rb_tainted_str_new@Base 1.9.2.0

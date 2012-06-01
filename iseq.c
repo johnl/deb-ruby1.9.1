@@ -2,7 +2,7 @@
 
   iseq.c -
 
-  $Author: marcandre $
+  $Author: naruse $
   created at: 2006-07-11(Tue) 09:00:03 +0900
 
   Copyright (C) 2006 Koichi Sasada
@@ -1313,7 +1313,7 @@ iseq_data_to_ary(rb_iseq_t *iseq)
 	}
 
 	rb_ary_push(body, ary);
-	pos += RARRAY_LEN(ary);
+	pos += RARRAY_LENINT(ary); /* reject too huge data */
     }
 
     st_free_table(labels_table);

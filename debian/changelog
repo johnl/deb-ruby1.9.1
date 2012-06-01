@@ -1,3 +1,48 @@
+ruby1.9.1 (1.9.3.194-1) UNRELEASED; urgency=low
+
+  [ Lucas Nussbaum ]
+  * Add hurd-path-max.diff. Fixes FTBFS on Hurd. (Closes: #648055)
+
+  [ Daigo Moriwaki ]
+  * Removed debian/patches/debian/patches/sparc-continuations.diff,
+    which the upstream has applied.
+  * debian/rules:
+    - Bumped up tcltk_ver to 8.5.
+    - Used chrpath for tcltklib.so to fix a lintian error,
+      binary-or-shlib-defines-rpath.
+  * debian/control:
+    - Suggests ruby-switch. (Closes: #654312)
+    - Build-Depends: chrpath.
+  * debian/libruby1.9.1.symbols: Added a new symbol for
+    rb_str_modify_expand@Base.
+  * debian/run-test-suites.bash:
+    - Corrected options for test-all.
+    - Enabled timeout to allow hang tests to be aborted.
+
+  [ James Healy ]
+  * New upstream release: 1.9.3p194 (Closes: #669582)
+    + This release includes a fix for CVE-2011-0188 (Closes: #628451)
+    + This release also does not segfault when running the test suite under
+      amd64 (Closes: #674347)
+  * Enable hardened build flags (Closes: #667964)
+  * debian/control:
+    - depend on specific version on coreutils
+    - update policy version (no changes)
+
+  [ Antonio Terceiro ]
+  * debian/ruby1.9.1.postinst:
+    + bump alternatives priority for `ruby` to 51 so that Ruby 1.9 has a
+      higher priority than Ruby 1.8 (50).
+    + bump alternatives priority for `gem` to 181 so that the Rubygems
+      provided by Ruby 1.9 has priority over the one provided by the rubygems
+      package.
+  * debian/control: added myself to Uploaders:
+  * debian/libruby1.9.1.symbols: update with new symbols added in 1.9.3p194
+    upstream release.
+  * debian/manpages/*: fix references to command names with s/1.9/1.9.1/
+
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 27 May 2012 19:50:32 -0300
+	
 ruby1.9.1 (1:1.9.3.125-1bbox3) lucid; urgency=low
 
   * Don't use timeout for run-test-suites.bash
@@ -16,30 +61,6 @@ ruby1.9.1 (1:1.9.3.125-1bbox1) lucid; urgency=low
   * Added backported cow friendly gc
 
  -- John Leach <john@brightbox.co.uk>  Tue, 03 Apr 2012 13:12:53 +0100
-
-ruby1.9.1 (1.9.3.125-1) unstable; urgency=low
-
-  [ Lucas Nussbaum ]
-  * Add hurd-path-max.diff. Fixes FTBFS on Hurd. (Closes: #648055)
-
-  [ Daigo Moriwaki ]
-  * New upstream release: 1.9.3p125.
-  * Removed debian/patches/debian/patches/sparc-continuations.diff,
-    which the upstream has applied.
-  * debian/rules:
-    - Bumped up tcltk_ver to 8.5.
-    - Used chrpath for tcltklib.so to fix a lintian error,
-      binary-or-shlib-defines-rpath.
-  * debian/control:
-    - Suggests ruby-switch. (Closes: #654312)
-    - Build-Depends: chrpath.
-  * debian/libruby1.9.1.symbols: Added a new symbol for
-    rb_str_modify_expand@Base.
-  * debian/run-test-suites.bash:
-    - Corrected options for test-all.
-    - Enabled timeout to allow hang tests to be aborted.
-
- -- Daigo Moriwaki <daigo@debian.org>  Sun, 26 Feb 2012 19:25:55 +0900
 
 ruby1.9.1 (1:1.9.3.0-4bbox2) lucid; urgency=low
 

@@ -2,7 +2,7 @@
 
   io.c -
 
-  $Author: nobu $
+  $Author: naruse $
   created at: Fri Oct 15 18:08:59 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -219,9 +219,10 @@ rb_update_max_fd(int fd)
 #  endif
 #endif
 
-#define rb_sys_fail_path(path) rb_sys_fail(NIL_P(path) ? 0 : RSTRING_PTR(path))
+#define rb_sys_fail_path(path) rb_sys_fail_str(path)
 
 static int io_fflush(rb_io_t *);
+static rb_io_t *flush_before_seek(rb_io_t *fptr);
 
 #define NEED_NEWLINE_DECORATOR_ON_READ(fptr) ((fptr)->mode & FMODE_TEXTMODE)
 #define NEED_NEWLINE_DECORATOR_ON_WRITE(fptr) ((fptr)->mode & FMODE_TEXTMODE)
@@ -257,46 +258,57 @@ static int io_fflush(rb_io_t *);
 	(ecflags) |= ECONV_UNIVERSAL_NEWLINE_DECORATOR;\
     }\
 } while(0)
+
 /*
- * We use io_seek to back cursor position when changing mode from text to binary,
- * but stdin and pipe cannot seek back. Stdin and pipe read should use encoding
- * conversion for working properly with mode change.
+ * IO unread with taking care of removed '\r' in text mode.
  */
-/*
- * Return previous translation mode.
- */
-inline static int set_binary_mode_with_seek_cur(rb_io_t *fptr) {
+static void
+io_unread(rb_io_t *fptr)
+{
     off_t r, pos;
     ssize_t read_size;
     long i;
     long newlines = 0;
     long extra_max;
     char *p;
+    char *buf;
 
-    if (!rb_w32_fd_is_text(fptr->fd)) return O_BINARY;
-
+    rb_io_check_closed(fptr);
     if (fptr->rbuf.len == 0 || fptr->mode & FMODE_DUPLEX) {
-	return setmode(fptr->fd, O_BINARY);
+	return;
     }
 
-    if (io_fflush(fptr) < 0) {
-	rb_sys_fail(0);
-    }
     errno = 0;
+    if (!rb_w32_fd_is_text(fptr->fd)) {
+	r = lseek(fptr->fd, -fptr->rbuf.len, SEEK_CUR);
+	if (r < 0 && errno) {
+	    if (errno == ESPIPE)
+		fptr->mode |= FMODE_DUPLEX;
+	    return;
+	}
+
+	fptr->rbuf.off = 0;
+	fptr->rbuf.len = 0;
+	return;
+    }
+
     pos = lseek(fptr->fd, 0, SEEK_CUR);
     if (pos < 0 && errno) {
 	if (errno == ESPIPE)
 	    fptr->mode |= FMODE_DUPLEX;
-	return setmode(fptr->fd, O_BINARY);
+	return;
     }
+
     /* add extra offset for removed '\r' in rbuf */
-    extra_max = pos - fptr->rbuf.len;
+    extra_max = (long)(pos - fptr->rbuf.len);
     p = fptr->rbuf.ptr + fptr->rbuf.off;
     for (i = 0; i < fptr->rbuf.len; i++) {
 	if (*p == '\n') newlines++;
 	if (extra_max == newlines) break;
 	p++;
     }
+
+    buf = ALLOC_N(char, fptr->rbuf.len + newlines);
     while (newlines >= 0) {
 	r = lseek(fptr->fd, pos - fptr->rbuf.len - newlines, SEEK_SET);
 	if (newlines == 0) break;
@@ -304,8 +316,9 @@ inline static int set_binary_mode_with_seek_cur(rb_io_t *fptr) {
 	    newlines--;
 	    continue;
 	}
-	read_size = _read(fptr->fd, fptr->rbuf.ptr, fptr->rbuf.len + newlines);
+	read_size = _read(fptr->fd, buf, fptr->rbuf.len + newlines);
 	if (read_size < 0) {
+	    free(buf);
 	    rb_sys_fail_path(fptr->pathv);
 	}
 	if (read_size == fptr->rbuf.len) {
@@ -316,8 +329,28 @@ inline static int set_binary_mode_with_seek_cur(rb_io_t *fptr) {
 	    newlines--;
 	}
     }
+    free(buf);
     fptr->rbuf.off = 0;
     fptr->rbuf.len = 0;
+    return;
+}
+
+/*
+ * We use io_seek to back cursor position when changing mode from text to binary,
+ * but stdin and pipe cannot seek back. Stdin and pipe read should use encoding
+ * conversion for working properly with mode change.
+ *
+ * Return previous translation mode.
+ */
+static inline int
+set_binary_mode_with_seek_cur(rb_io_t *fptr)
+{
+    if (!rb_w32_fd_is_text(fptr->fd)) return O_BINARY;
+
+    if (fptr->rbuf.len == 0 || fptr->mode & FMODE_DUPLEX) {
+	return setmode(fptr->fd, O_BINARY);
+    }
+    flush_before_seek(fptr);
     return setmode(fptr->fd, O_BINARY);
 }
 #define SET_BINARY_MODE_WITH_SEEK_CUR(fptr) set_binary_mode_with_seek_cur(fptr)
@@ -448,6 +481,7 @@ rb_io_s_try_convert(VALUE dummy, VALUE io)
     return rb_io_check_io(io);
 }
 
+#if !(defined(RUBY_TEST_CRLF_ENVIRONMENT) || defined(_WIN32))
 static void
 io_unread(rb_io_t *fptr)
 {
@@ -467,6 +501,7 @@ io_unread(rb_io_t *fptr)
     fptr->rbuf.len = 0;
     return;
 }
+#endif
 
 static rb_encoding *io_input_encoding(rb_io_t *fptr);
 
@@ -1409,6 +1444,11 @@ rb_io_eof(VALUE io)
     if (READ_CHAR_PENDING(fptr)) return Qfalse;
     if (READ_DATA_PENDING(fptr)) return Qfalse;
     READ_CHECK(fptr);
+#if defined(RUBY_TEST_CRLF_ENVIRONMENT) || defined(_WIN32)
+    if (!NEED_READCONV(fptr) && NEED_NEWLINE_DECORATOR_ON_READ(fptr)) {
+	return eof(fptr->fd) ? Qtrue : Qfalse;
+    }
+#endif
     if (io_fillbuf(fptr) < 0) {
 	return Qtrue;
     }
@@ -1618,31 +1658,29 @@ static VALUE
 rb_io_inspect(VALUE obj)
 {
     rb_io_t *fptr;
-    const char *cname;
-    char fd_desc[4+sizeof(int)*3];
-    const char *path;
-    const char *st = "";
+    VALUE result;
+    static const char closed[] = " (closed)";
 
     fptr = RFILE(rb_io_taint_check(obj))->fptr;
     if (!fptr) return rb_any_to_s(obj);
-    cname = rb_obj_classname(obj);
+    result = rb_str_new_cstr("#<");
+    rb_str_append(result, rb_class_name(CLASS_OF(obj)));
+    rb_str_cat2(result, ":");
     if (NIL_P(fptr->pathv)) {
         if (fptr->fd < 0) {
-            path = "";
-            st = "(closed)";
+	    rb_str_cat(result, closed+1, strlen(closed)-1);
         }
         else {
-            snprintf(fd_desc, sizeof(fd_desc), "fd %d", fptr->fd);
-            path = fd_desc;
+	    rb_str_catf(result, "fd %d", fptr->fd);
         }
     }
     else {
-        path = RSTRING_PTR(fptr->pathv);
+	rb_str_append(result, fptr->pathv);
         if (fptr->fd < 0) {
-            st = " (closed)";
+	    rb_str_cat(result, closed, strlen(closed));
         }
     }
-    return rb_sprintf("#<%s:%s%s>", cname, path, st);
+    return rb_str_cat2(result, ">");
 }
 
 /*
@@ -4797,7 +4835,7 @@ rb_sysopen(VALUE fname, int oflags, mode_t perm)
 	    fd = rb_sysopen_internal(&data);
 	}
 	if (fd < 0) {
-	    rb_sys_fail(RSTRING_PTR(fname));
+	    rb_sys_fail_path(fname);
 	}
     }
     rb_update_max_fd(fd);
@@ -5409,7 +5447,7 @@ pipe_open(struct rb_exec_arg *eargp, VALUE prog, const char *modestr, int fmode,
     fp = popen(cmd, modestr);
     if (eargp)
 	rb_run_exec_options(&sarg, NULL);
-    if (!fp) rb_sys_fail(RSTRING_PTR(prog));
+    if (!fp) rb_sys_fail_path(prog);
     fd = fileno(fp);
 #endif
 
@@ -8484,10 +8522,11 @@ static VALUE
 rb_io_s_foreach(int argc, VALUE *argv, VALUE self)
 {
     VALUE opt;
+    int orig_argc = argc;
     struct foreach_arg arg;
 
     argc = rb_scan_args(argc, argv, "13:", NULL, NULL, NULL, NULL, &opt);
-    RETURN_ENUMERATOR(self, argc, argv);
+    RETURN_ENUMERATOR(self, orig_argc, argv);
     open_key_args(argc, argv, opt, &arg);
     if (NIL_P(arg.io)) return Qnil;
     return rb_ensure(io_s_foreach, (VALUE)&arg, rb_io_close, arg.io);
@@ -10700,6 +10739,35 @@ argf_write(VALUE argf, VALUE str)
  *  command line (or STDIN if no files are mentioned). ARGF provides
  *  the methods <code>#path</code> and <code>#filename</code> to access
  *  the name of the file currently being read.
+ *
+ *  == io/console
+ *
+ *  The io/console extension provides methods for interacting with the
+ *  console.  The console can be accessed from <code>IO.console</code> or
+ *  the standard input/output/error IO objects.
+ *
+ *  Requiring io/console adds the following methods:
+ *
+ *  * IO::console
+ *  * IO#raw
+ *  * IO#raw!
+ *  * IO#cooked
+ *  * IO#cooked!
+ *  * IO#getch
+ *  * IO#echo=
+ *  * IO#echo?
+ *  * IO#noecho
+ *  * IO#winsize
+ *  * IO#winsize=
+ *  * IO#iflush
+ *  * IO#ioflush
+ *  * IO#oflush
+ *
+ *  Example:
+ *
+ *    require 'io/console'
+ *    rows, columns = $stdin.winsize
+ *    puts "You screen is #{columns} wide and #{rows} tall"
  */
 
 void

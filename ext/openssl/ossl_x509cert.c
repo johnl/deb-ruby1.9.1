@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_x509cert.c 32993 2011-08-16 21:46:32Z emboss $
+ * $Id: ossl_x509cert.c 35191 2012-03-31 03:12:47Z emboss $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -489,7 +489,7 @@ ossl_x509_get_not_after(VALUE self)
 
 /*
  * call-seq:
- *    cert.not_before = time => time
+ *    cert.not_after = time => time
  */
 static VALUE
 ossl_x509_set_not_after(VALUE self, VALUE time)
