@@ -41,8 +41,8 @@ ruby1.9.1 (1.9.3.194-1) unstable; urgency=low
     upstream release.
   * debian/manpages/*: fix references to command names with s/1.9/1.9.1/
   * debian/rules: skip running DRB tests, since they seem to make the build
-    hang (Closes: #647296). With this, we also do not need timeout the test
-    suite anymore.
+    hang. This should close #647296, but let's way and see. Also, with this do
+    not need to timeout the test suite anymore.
 
  -- Antonio Terceiro <terceiro@debian.org>  Sat, 02 Jun 2012 07:42:28 -0300
 
