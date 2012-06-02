@@ -40,6 +40,9 @@ ruby1.9.1 (1.9.3.194-1) UNRELEASED; urgency=low
   * debian/libruby1.9.1.symbols: update with new symbols added in 1.9.3p194
     upstream release.
   * debian/manpages/*: fix references to command names with s/1.9/1.9.1/
+  * debian/rules: skip running DRB tests, since they seem to make the build
+    hang (Closes: #647296). With this, we also do not need timeout the test
+    suite anymore.
 
  -- Antonio Terceiro <terceiro@debian.org>  Sun, 27 May 2012 19:50:32 -0300
 

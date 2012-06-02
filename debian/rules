@@ -127,7 +127,9 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 # Disable test suites on some broken architectures.
 # See http://lists.debian.org/debian-release/2011/10/msg00279.html
 ifeq (,$(filter $(DEB_BUILD_ARCH),ia64 kfreebsd-i386 kfreebsd-amd64))
+	mv test/drb _test_drb
 	debian/run-test-suites.bash
+	mv _test_drb test/drb
 endif
 endif
 
