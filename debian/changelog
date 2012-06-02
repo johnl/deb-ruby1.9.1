@@ -1,4 +1,4 @@
-ruby1.9.1 (1.9.3.194-1) UNRELEASED; urgency=low
+ruby1.9.1 (1.9.3.194-1) unstable; urgency=low
 
   [ Lucas Nussbaum ]
   * Add hurd-path-max.diff. Fixes FTBFS on Hurd. (Closes: #648055)
@@ -44,7 +44,7 @@ ruby1.9.1 (1.9.3.194-1) UNRELEASED; urgency=low
     hang (Closes: #647296). With this, we also do not need timeout the test
     suite anymore.
 
- -- Antonio Terceiro <terceiro@debian.org>  Sun, 27 May 2012 19:50:32 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Sat, 02 Jun 2012 07:42:28 -0300
 
 ruby1.9.1 (1.9.3.0-2) unstable; urgency=low
 
