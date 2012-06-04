@@ -12,7 +12,9 @@ echo
 echo "*******************************************************************"
 echo "Running 'make test-all'"
 echo
+mv test/drb _test_drb # DRB tests hang
 make TESTS=-v test-all 2>&1 |tee make-test-all.log || true
+mv _test_drb test/drb # DRB tests hang
 echo
 echo "'make test-all' finished. checking number of failures and errors."
 echo "max number allowed: failures:$MAXFAIL errors:$MAXERR"

@@ -1,3 +1,9 @@
+ruby1.9.1 (1.9.3.194-2) UNRELEASED; urgency=low
+
+  * move logic to skip DRB tests inside debian/run-test-suites.bash
+
+ -- Antonio Terceiro <terceiro@debian.org>  Mon, 04 Jun 2012 18:37:31 -0300
+
 ruby1.9.1 (1.9.3.194-1) unstable; urgency=low
 
   [ Lucas Nussbaum ]
