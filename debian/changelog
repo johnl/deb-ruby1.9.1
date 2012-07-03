@@ -1,3 +1,9 @@
+ruby1.9.1 (1:1.9.3.194-2bbox1) lucid; urgency=low
+
+  * Updated funny-falcon's performance patches to fix 100% cpu bug
+
+ -- John Leach <john@brightbox.co.uk>  Tue, 03 Jul 2012 17:21:14 +0100
+
 ruby1.9.1 (1:1.9.3.194-1bbox1) lucid; urgency=low
 
   * Updated funny-falcon's performance patches
