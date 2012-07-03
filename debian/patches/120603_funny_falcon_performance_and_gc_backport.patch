@@ -2973,7 +2973,7 @@ index 3c97d01..b9b9fd5 100644
      if (!(opt->disable & DISABLE_BIT(gems))) {
  #if defined DISABLE_RUBYGEMS && DISABLE_RUBYGEMS
 diff --git a/st.c b/st.c
-index fda5784..890bdca 100644
+index fda5784..20ec427 100644
 --- a/st.c
 +++ b/st.c
 @@ -7,6 +7,7 @@
@@ -3013,7 +3013,7 @@ index fda5784..890bdca 100644
      st_numcmp,
      st_numhash,
  };
-@@ -61,20 +72,127 @@ static void rehash(st_table *);
+@@ -61,20 +72,128 @@ static void rehash(st_table *);
  #ifdef RUBY
  #define malloc xmalloc
  #define calloc xcalloc
@@ -3062,8 +3062,9 @@ index fda5784..890bdca 100644
 +static inline st_table_entry**
 +st_realloc_bins(st_table_entry **bins, st_index_t newsize, st_index_t oldsize)
 +{
++    st_table_entry **new_bins = st_alloc_bins(newsize);
 +    st_free_bins(bins, oldsize);
-+    return st_alloc_bins(newsize);
++    return new_bins;
 +}
 +#else
 +#define st_alloc_entry() (st_table_entry *)malloc(sizeof(st_table_entry))
@@ -3146,7 +3147,7 @@ index fda5784..890bdca 100644
  /*
   * MINSIZE is the minimum size of a dictionary.
   */
-@@ -85,8 +203,8 @@ static void rehash(st_table *);
+@@ -85,8 +204,8 @@ static void rehash(st_table *);
  Table of prime numbers 2^n+a, 2<=n<=30.
  */
  static const unsigned int primes[] = {
@@ -3157,7 +3158,7 @@ index fda5784..890bdca 100644
  	32 + 5,
  	64 + 3,
  	128 + 3,
-@@ -161,8 +279,6 @@ stat_col(void)
+@@ -161,8 +280,6 @@ stat_col(void)
  }
  #endif
  
@@ -3166,7 +3167,7 @@ index fda5784..890bdca 100644
  st_table*
  st_init_table_with_size(const struct st_hash_type *type, st_index_t size)
  {
-@@ -181,14 +297,19 @@ st_init_table_with_size(const struct st_hash_type *type, st_index_t size)
+@@ -181,14 +298,19 @@ st_init_table_with_size(const struct st_hash_type *type, st_index_t size)
      }
  #endif
  
@@ -3190,7 +3191,7 @@ index fda5784..890bdca 100644
      tbl->head = 0;
      tbl->tail = 0;
  
-@@ -243,17 +364,23 @@ st_clear(st_table *table)
+@@ -243,17 +365,23 @@ st_clear(st_table *table)
      register st_table_entry *ptr, *next;
      st_index_t i;
  
@@ -3216,7 +3217,7 @@ index fda5784..890bdca 100644
  	    ptr = next;
  	}
      }
-@@ -266,14 +393,19 @@ void
+@@ -266,14 +394,19 @@ void
  st_free_table(st_table *table)
  {
      st_clear(table);
@@ -3239,7 +3240,7 @@ index fda5784..890bdca 100644
  	return table->num_bins * sizeof (void *) + sizeof(st_table);
      }
      else {
-@@ -306,46 +438,77 @@ count_collision(const struct st_hash_type *type)
+@@ -306,46 +439,77 @@ count_collision(const struct st_hash_type *type)
  #define FOUND_ENTRY
  #endif
  
@@ -3340,7 +3341,7 @@ index fda5784..890bdca 100644
  	return 1;
      }
  }
-@@ -353,22 +516,29 @@ st_lookup(st_table *table, register st_data_t key, st_data_t *value)
+@@ -353,22 +517,29 @@ st_lookup(st_table *table, register st_data_t key, st_data_t *value)
  int
  st_get_key(st_table *table, register st_data_t key, st_data_t *result)
  {
@@ -3380,7 +3381,7 @@ index fda5784..890bdca 100644
  
      if (ptr == 0) {
  	return 0;
-@@ -382,85 +552,151 @@ st_get_key(st_table *table, register st_data_t key, st_data_t *result)
+@@ -382,85 +553,151 @@ st_get_key(st_table *table, register st_data_t key, st_data_t *result)
  #undef collision_check
  #define collision_check 1
  
@@ -3588,7 +3589,7 @@ index fda5784..890bdca 100644
  	return 0;
      }
      else {
-@@ -473,34 +709,38 @@ int
+@@ -473,34 +710,38 @@ int
  st_insert2(register st_table *table, register st_data_t key, st_data_t value,
  	   st_data_t (*func)(st_data_t))
  {
@@ -3646,7 +3647,7 @@ index fda5784..890bdca 100644
  	return 0;
      }
      else {
-@@ -512,36 +752,30 @@ st_insert2(register st_table *table, register st_data_t key, st_data_t value,
+@@ -512,36 +753,30 @@ st_insert2(register st_table *table, register st_data_t key, st_data_t value,
  void
  st_add_direct(st_table *table, st_data_t key, st_data_t value)
  {
@@ -3695,7 +3696,7 @@ index fda5784..890bdca 100644
      table->num_bins = new_num_bins;
      table->bins = new_bins;
  
-@@ -558,34 +792,37 @@ st_table*
+@@ -558,34 +793,37 @@ st_table*
  st_copy(st_table *old_table)
  {
      st_table *new_table;
@@ -3741,7 +3742,7 @@ index fda5784..890bdca 100644
  	    if (entry == 0) {
  		st_free_table(new_table);
  		return 0;
-@@ -595,8 +832,8 @@ st_copy(st_table *old_table)
+@@ -595,8 +833,8 @@ st_copy(st_table *old_table)
  	    entry->next = new_table->bins[hash_val];
  	    new_table->bins[hash_val] = entry;
  	    entry->back = prev;
@@ -3752,7 +3753,7 @@ index fda5784..890bdca 100644
  	} while ((ptr = ptr->fore) != 0);
  	new_table->tail = prev;
      }
-@@ -604,21 +841,22 @@ st_copy(st_table *old_table)
+@@ -604,21 +842,22 @@ st_copy(st_table *old_table)
      return new_table;
  }
  
@@ -3790,7 +3791,7 @@ index fda5784..890bdca 100644
  
  int
  st_delete(register st_table *table, register st_data_t *key, st_data_t *value)
-@@ -627,30 +865,38 @@ st_delete(register st_table *table, register st_data_t *key, st_data_t *value)
+@@ -627,30 +866,38 @@ st_delete(register st_table *table, register st_data_t *key, st_data_t *value)
      st_table_entry **prev;
      register st_table_entry *ptr;
  
@@ -3843,7 +3844,7 @@ index fda5784..890bdca 100644
  	    return 1;
  	}
      }
-@@ -665,25 +911,36 @@ st_delete_safe(register st_table *table, register st_data_t *key, st_data_t *val
+@@ -665,25 +912,36 @@ st_delete_safe(register st_table *table, register st_data_t *key, st_data_t *val
      st_index_t hash_val;
      register st_table_entry *ptr;
  
@@ -3890,7 +3891,7 @@ index fda5784..890bdca 100644
  	    *key = ptr->key;
  	    if (value != 0) *value = ptr->record;
  	    ptr->key = ptr->record = never;
-@@ -701,17 +958,23 @@ st_cleanup_safe(st_table *table, st_data_t never)
+@@ -701,17 +959,23 @@ st_cleanup_safe(st_table *table, st_data_t never)
      st_table_entry *ptr, **last, *tmp;
      st_index_t i;
  
@@ -3920,7 +3921,7 @@ index fda5784..890bdca 100644
  	table->num_entries = j;
  	return;
      }
-@@ -722,7 +985,7 @@ st_cleanup_safe(st_table *table, st_data_t never)
+@@ -722,7 +986,7 @@ st_cleanup_safe(st_table *table, st_data_t never)
  	    if (ptr->key == never) {
  		tmp = ptr;
  		*last = ptr = ptr->next;
@@ -3929,7 +3930,7 @@ index fda5784..890bdca 100644
  	    }
  	    else {
  		ptr = *(last = &ptr->next);
-@@ -732,50 +995,78 @@ st_cleanup_safe(st_table *table, st_data_t never)
+@@ -732,50 +996,78 @@ st_cleanup_safe(st_table *table, st_data_t never)
  }
  
  int
@@ -4032,7 +4033,7 @@ index fda5784..890bdca 100644
      }
      else {
  	ptr = table->head;
-@@ -783,6 +1074,8 @@ st_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
+@@ -783,6 +1075,8 @@ st_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
  
      if (ptr != 0) {
  	do {
@@ -4041,7 +4042,7 @@ index fda5784..890bdca 100644
  	    i = ptr->hash % table->num_bins;
  	    retval = (*func)(ptr->key, ptr->record, arg);
  	  unpacked:
-@@ -808,10 +1101,100 @@ st_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
+@@ -808,10 +1102,100 @@ st_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
  		for (; (tmp = *last) != 0; last = &tmp->next) {
  		    if (ptr == tmp) {
  			tmp = ptr->fore;
@@ -4145,7 +4146,7 @@ index fda5784..890bdca 100644
  			ptr = tmp;
  			break;
  		    }
-@@ -834,13 +1217,13 @@ st_reverse_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
+@@ -834,13 +1218,13 @@ st_reverse_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
          for (i = table->num_entries-1; 0 <= i; i--) {
              int j;
              st_data_t key, val;
@@ -4162,7 +4163,7 @@ index fda5784..890bdca 100644
                          break;
                  }
                  if (j == table->num_entries) {
-@@ -854,9 +1237,7 @@ st_reverse_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
+@@ -854,9 +1238,7 @@ st_reverse_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
  	      case ST_STOP:
  		return 0;
  	      case ST_DELETE:
@@ -4173,7 +4174,7 @@ index fda5784..890bdca 100644
                  break;
              }
          }
-@@ -889,8 +1270,8 @@ st_reverse_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
+@@ -889,8 +1271,8 @@ st_reverse_foreach(st_table *table, int (*func)(ANYARGS), st_data_t arg)
  		    if (ptr == tmp) {
  			tmp = ptr->back;
  			*last = ptr->next;
