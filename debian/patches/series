@@ -16,3 +16,4 @@
 110829-hurd_dirent_usage.patch
 hurd-path-max.diff
 20120517-r35434.patch
+20120927-cve_2011_1005.patch
