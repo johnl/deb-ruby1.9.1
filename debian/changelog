@@ -1,11 +1,11 @@
-ruby1.9.1 (1.9.3.194-2) UNRELEASED; urgency=low
+ruby1.9.1 (1.9.3.194-2) unstable; urgency=low
 
   * debian/patches/20120927-cve_2011_1005.patch: patch sent by upstream;
     fixes CVE-2011-1005 which was thought of as not affecting the Ruby 1.9.x
     series (Closes: #689075). Thanks to Tyler Hicks <tyhicks@canonical.com>
     for reporting the issue.
 
- -- Antonio Terceiro <terceiro@debian.org>  Sun, 30 Sep 2012 17:53:19 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Sat, 06 Oct 2012 16:29:42 -0300
 
 ruby1.9.1 (1.9.3.194-1) unstable; urgency=low
 
