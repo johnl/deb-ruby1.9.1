@@ -1,5 +1,5 @@
 /* -*- C -*-
- * $Id: cfunc.c 34604 2012-02-14 20:09:27Z naruse $
+ * $Id: cfunc.c 37007 2012-09-21 10:53:50Z naruse $
  */
 
 #include <ruby.h>
@@ -324,7 +324,7 @@ rb_dlcfunc_inspect(VALUE self)
 }
 
 
-#if defined(_MSC_VER) && defined(_M_AMD64) && _MSC_VER == 1500
+#if defined(_MSC_VER) && defined(_M_AMD64) && _MSC_VER >= 1400 && _MSC_VER < 1600
 # pragma optimize("", off)
 #endif
 /*
@@ -366,7 +366,11 @@ rb_dlcfunc_call(VALUE self, VALUE ary)
 	    stack[i] = (DLSTACK_TYPE)FIX2LONG(arg);
 	}
 	else if (RB_TYPE_P(arg, T_BIGNUM)) {
+#if SIZEOF_VOIDP == SIZEOF_LONG
 	    stack[i] = (DLSTACK_TYPE)rb_big2ulong_pack(arg);
+#else
+	    stack[i] = (DLSTACK_TYPE)rb_big2ull(arg);
+#endif
 	}
 	else {
 	    Check_Type(arg, T_FIXNUM);
@@ -594,7 +598,7 @@ rb_dlcfunc_call(VALUE self, VALUE ary)
 
     return result;
 }
-#if defined(_MSC_VER) && defined(_M_AMD64) && _MSC_VER == 1500
+#if defined(_MSC_VER) && defined(_M_AMD64) && _MSC_VER >= 1400 && _MSC_VER < 1600
 # pragma optimize("", on)
 #endif
 
