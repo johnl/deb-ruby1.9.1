@@ -2,7 +2,7 @@
 
   proc.c - Proc, Binding, Env
 
-  $Author: kosaki $
+  $Author: naruse $
   created at: Wed Jan 17 12:13:14 2007
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -417,7 +417,6 @@ proc_new(VALUE klass, int is_lambda)
     }
 
     procval = rb_vm_make_proc(th, block, klass);
-    rb_vm_rewrite_dfp_in_errinfo(th, cfp);
 
     if (is_lambda) {
 	rb_proc_t *proc;
