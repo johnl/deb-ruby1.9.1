@@ -1,3 +1,11 @@
+ruby1.9.1 (1.9.3.194-3) unstable; urgency=high
+
+  * debian/patches/CVE-2012-4522.patch: avoid vulnerability with strings
+    containing NUL bytes passed to file creation methods. This fixes
+    CVE-2012-4522 (Closes: #690670).
+
+ -- Antonio Terceiro <terceiro@debian.org>  Tue, 16 Oct 2012 10:27:20 -0300
+
 ruby1.9.1 (1.9.3.194-2) unstable; urgency=low
 
   * debian/patches/20120927-cve_2011_1005.patch: patch sent by upstream;
