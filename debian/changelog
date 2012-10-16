@@ -1,4 +1,4 @@
-ruby1.9.1 (1:1.9.3.286-1bbox1) UNRELEASED; urgency=low
+ruby1.9.1 (1:1.9.3.286-1bbox1) precise; urgency=low
 
   [ Lucas Nussbaum ]
   * skip running DRB tests, since they seem to make the build hang. This
