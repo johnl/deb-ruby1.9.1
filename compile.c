@@ -2,7 +2,7 @@
 
   compile.c - ruby node tree -> VM instruction sequence
 
-  $Author: nobu $
+  $Author: naruse $
   created at: 04/01/01 03:42:15 JST
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -4629,7 +4629,7 @@ iseq_compile_each(rb_iseq_t *iseq, LINK_ANCHOR *ret, NODE * node, int poped)
       }
       case NODE_SPLAT:{
 	COMPILE(ret, "splat", node->nd_head);
-	ADD_INSN1(ret, nd_line(node), splatarray, Qfalse);
+	ADD_INSN1(ret, nd_line(node), splatarray, Qtrue);
 
 	if (poped) {
 	    ADD_INSN(ret, nd_line(node), pop);

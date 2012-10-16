@@ -2,7 +2,7 @@
 
   file.c -
 
-  $Author: naruse $
+  $Author: usa $
   created at: Mon Nov 15 12:24:34 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -138,8 +138,10 @@ file_path_convert(VALUE name)
     if (rb_default_internal_encoding() != NULL
 	    && rb_usascii_encoding() != fname_encoding
 	    && rb_ascii8bit_encoding() != fname_encoding
-	    && (fs_encoding = rb_filesystem_encoding()) != fname_encoding) {
+	    && (fs_encoding = rb_filesystem_encoding()) != fname_encoding
+	    && !rb_enc_str_asciionly_p(name)) {
 	/* Don't call rb_filesystem_encoding() before US-ASCII and ASCII-8BIT */
+	/* fs_encoding should be ascii compatible */
 	name = rb_str_conv_enc(name, fname_encoding, fs_encoding);
     }
 #endif
@@ -174,6 +176,9 @@ rb_get_path_check(VALUE obj, int level)
 	rb_raise(rb_eEncCompatError, "path name must be ASCII-compatible (%s): %s",
 		 rb_enc_name(enc), RSTRING_PTR(tmp));
     }
+
+    StringValueCStr(tmp);
+
     return rb_str_new4(tmp);
 }
 
@@ -3459,6 +3464,7 @@ rmext(const char *p, long l0, long l1, const char *e)
     if (!e) return 0;
 
     l2 = strlen(e);
+    if (!l2) return 0;
     if (l2 == 2 && e[1] == '*') {
 	unsigned char c = *e;
 	e = p + l1;

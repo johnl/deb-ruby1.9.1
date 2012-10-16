@@ -1,5 +1,5 @@
 # $RoughId: extconf.rb,v 1.3 2001/08/14 19:54:51 knu Exp $
-# $Id: extconf.rb 25189 2009-10-02 12:04:37Z akr $
+# $Id: extconf.rb 35653 2012-05-15 16:10:46Z tenderlove $
 
 require "mkmf"
 
@@ -9,6 +9,7 @@ $INCFLAGS << " -I$(srcdir)/.."
 $objs = [ "sha1init.#{$OBJEXT}" ]
 
 dir_config("openssl")
+pkg_config("openssl")
 
 if !with_config("bundled-sha1") &&
     have_library("crypto") && have_header("openssl/sha.h")

@@ -831,6 +831,7 @@ with_vendorhdrdir
 with_opt_dir
 with_mantype
 enable_rubygems
+with_ruby_pc
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1513,6 +1514,7 @@ Optional Packages:
                           [[RUBYHDRDIR/vendor_ruby]]
   --with-opt-dir=DIR      add optional headers and libraries DIR
   --with-mantype=TYPE     specify man page type; TYPE is one of man and doc
+  pc file basename
 
 Some influential environment variables:
   CC          C compiler command
@@ -6242,17 +6244,18 @@ if test "$GCC:${warnflags+set}:no" = yes::no; then
 	fi
 	ok=no
 
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS $wflag"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $wflag is accepted" >&5
 $as_echo_n "checking whether $wflag is accepted... " >&6; }
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
 fi
 ac_c_werror_flag=yes
 
+    CFLAGS="$CFLAGS $wflag"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6275,30 +6278,31 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
   unset ac_c_werror_flag
 fi
-    CFLAGS="$save_CFLAGS"
-    save_CFLAGS=
 
 	case $ok:$wflag in #(
   no:-Werror=*) :
 
 	    wflag=`echo x$wflag | sed 's/^x-Werror=/-W/'`
 
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS $wflag"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $wflag is accepted" >&5
 $as_echo_n "checking whether $wflag is accepted... " >&6; }
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
 fi
 ac_c_werror_flag=yes
 
+    CFLAGS="$CFLAGS $wflag"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6324,13 +6328,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
   unset ac_c_werror_flag
 fi
-    CFLAGS="$save_CFLAGS"
-    save_CFLAGS=
 
 	 ;; #(
   *) :
@@ -6339,22 +6343,23 @@ esac
     done
     case " $warnflags " in #(
   *" -Wno-missing-field-initializers "*) :
-    wflag=-Wextra ;; #(
+    wflag="-Wall -Wextra" ;; #(
   *) :
     wflag=-Wall ;;
 esac
 
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS $wflag"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $wflag is accepted" >&5
 $as_echo_n "checking whether $wflag is accepted... " >&6; }
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
 fi
 ac_c_werror_flag=yes
 
+    CFLAGS="$CFLAGS $wflag"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6377,13 +6382,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
   unset ac_c_werror_flag
 fi
-    CFLAGS="$save_CFLAGS"
-    save_CFLAGS=
 
     # Disable warnflags while conftest. -Werror=* flags might make bad OS capability guess.
     rb_cv_warnflags="$warnflags"
@@ -6391,17 +6396,18 @@ fi
 fi
 if test "$GCC" = yes; then
     test "${debugflags+set}" || {
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS -ggdb"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -ggdb is accepted" >&5
 $as_echo_n "checking whether -ggdb is accepted... " >&6; }
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
 fi
 ac_c_werror_flag=yes
 
+    CFLAGS="$CFLAGS -ggdb"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6424,26 +6430,27 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
   unset ac_c_werror_flag
 fi
-    CFLAGS="$save_CFLAGS"
-    save_CFLAGS=
 }
     test "${debugflags+set}" || {
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS -g3"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -g3 is accepted" >&5
 $as_echo_n "checking whether -g3 is accepted... " >&6; }
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
 fi
 ac_c_werror_flag=yes
 
+    CFLAGS="$CFLAGS -g3"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6466,13 +6473,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
   unset ac_c_werror_flag
 fi
-    CFLAGS="$save_CFLAGS"
-    save_CFLAGS=
 }
 fi
 test $ac_cv_prog_cc_g = yes && : ${debugflags=-g}
@@ -6487,17 +6494,18 @@ esac
 fi
 if test "$GCC" = yes; then
 
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS -fvisibility=hidden"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -fvisibility=hidden is accepted" >&5
 $as_echo_n "checking whether -fvisibility=hidden is accepted... " >&6; }
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
 fi
 ac_c_werror_flag=yes
 
+    CFLAGS="$CFLAGS -fvisibility=hidden"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6528,13 +6536,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
   unset ac_c_werror_flag
 fi
-    CFLAGS="$save_CFLAGS"
-    save_CFLAGS=
 
     WERRORFLAG="-Werror"
 
@@ -6554,7 +6562,9 @@ esac
     LDFLAGS="$LDFLAGS -Wl,-unexported_symbol,_Init_*"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -Wl,-unexported_symbol,_Init_* is accepted" >&5
 $as_echo_n "checking whether -Wl,-unexported_symbol,_Init_* is accepted... " >&6; }
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
@@ -6584,6 +6594,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -6601,17 +6613,18 @@ if test "$GCC" = yes; then
   mingw*) :
 
 
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS -fno-omit-frame-pointer"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -fno-omit-frame-pointer is accepted" >&5
 $as_echo_n "checking whether -fno-omit-frame-pointer is accepted... " >&6; }
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
 fi
 ac_c_werror_flag=yes
 
+    CFLAGS="$CFLAGS -fno-omit-frame-pointer"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6634,13 +6647,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
   unset ac_c_werror_flag
 fi
-    CFLAGS="$save_CFLAGS"
-    save_CFLAGS=
 
      ;; #(
   *) :
@@ -8551,7 +8564,9 @@ if ${rb_cv_pri_prefix_long_long+:} false; then :
 else
 
     rb_cv_pri_prefix_long_long=NONE
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
@@ -8583,6 +8598,8 @@ if ac_fn_c_try_compile "$LINENO"; then :
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     done
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -8607,7 +8624,9 @@ if ${rb_cv_pri_prefix___int64+:} false; then :
 else
 
     rb_cv_pri_prefix___int64=NONE
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
@@ -8639,6 +8658,8 @@ if ac_fn_c_try_compile "$LINENO"; then :
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     done
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -9615,6 +9636,8 @@ if ${rb_cv_func_noreturn+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   rb_cv_func_noreturn=x
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
 if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
@@ -9644,6 +9667,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 done
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -9675,6 +9700,8 @@ if ${rb_cv_func_deprecated+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   rb_cv_func_deprecated=x
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
 if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
@@ -9704,6 +9731,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 done
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -9735,6 +9764,8 @@ if ${rb_cv_func_noinline+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   rb_cv_func_noinline=x
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
 if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
@@ -9764,6 +9795,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 done
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -9797,6 +9830,8 @@ if ${rb_cv_func_stdcall+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   rb_cv_func_stdcall=x
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
 if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
@@ -9828,6 +9863,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 done
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -9859,6 +9896,8 @@ if ${rb_cv_func_cdecl+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   rb_cv_func_cdecl=x
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
 if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
@@ -9890,6 +9929,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 done
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -9921,6 +9962,8 @@ if ${rb_cv_func_fastcall+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   rb_cv_func_fastcall=x
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
 if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
@@ -9952,6 +9995,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 done
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -10061,6 +10106,8 @@ if ${rb_cv_func_exported+:} false; then :
 else
 
 rb_cv_func_exported=no
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
 if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
@@ -10087,6 +10134,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 done
 
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -11493,7 +11542,9 @@ if ${rb_cv_pri_prefix_size_t+:} false; then :
 else
 
     rb_cv_pri_prefix_size_t=NONE
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
@@ -11525,6 +11576,8 @@ if ac_fn_c_try_compile "$LINENO"; then :
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     done
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -11548,7 +11601,9 @@ if ${rb_cv_pri_prefix_ptrdiff_t+:} false; then :
 else
 
     rb_cv_pri_prefix_ptrdiff_t=NONE
-    if test "${ac_c_werror_flag+set}"; then
+    save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
+if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
   unset rb_c_werror_flag
@@ -11580,6 +11635,8 @@ if ac_fn_c_try_compile "$LINENO"; then :
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     done
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -13790,6 +13847,8 @@ else
 # ifdef _MSC_VER
 #  include <malloc.h>
 #  define alloca _alloca
+# elif defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
+#   include <stdlib.h>
 # else
 #  ifdef HAVE_ALLOCA_H
 #   include <alloca.h>
@@ -16690,6 +16749,21 @@ case "$enable_shared" in #(
   if test "$rb_cv_binary_elf" = yes; then
     SOLIBS='$(LIBS)'
   fi
+  # libdir can be overridden in config.site file (on OpenSUSE at least).
+  libdir_basename=lib
+  if test "$bindir" = '${exec_prefix}/bin'; then
+    case "$libdir" in #(
+  '${exec_prefix}/'*) :
+    libdir_basename=`basename "$libdir"` ;; #(
+  *) :
+     ;;
+esac
+  fi
+  cat >>confdefs.h <<_ACEOF
+#define LIBDIR_BASENAME "${libdir_basename}"
+_ACEOF
+
+
   case "$target_os" in #(
   sunos4*) :
 
@@ -16700,7 +16774,7 @@ case "$enable_shared" in #(
 	LIBRUBY_DLDFLAGS='-Wl,-soname,lib$(RUBY_SO_NAME).so.$(MAJOR).$(MINOR)'
 	LIBRUBY_ALIASES='lib$(RUBY_SO_NAME).so.$(MAJOR).$(MINOR) lib$(RUBY_SO_NAME).so'
 	if test "$load_relative" = yes; then
-	    LIBRUBY_RPATHFLAGS="'-Wl,-rpath,\$\${ORIGIN}/../lib'"
+	    LIBRUBY_RPATHFLAGS="'-Wl,-rpath,\$\${ORIGIN}/../${libdir_basename}'"
 	    LIBRUBY_RELATIVE=yes
 	fi
 	 ;; #(
@@ -16769,7 +16843,7 @@ esac
 	RUBY_SO_NAME="$RUBY_SO_NAME"'.$(MAJOR).$(MINOR).$(TEENY)'
 	LIBRUBY_LDSHARED='$(CC) -dynamiclib'
 	if test "$load_relative" = yes; then
-	    libprefix='@executable_path/../lib'
+	    libprefix="@executable_path/../${libdir_basename}"
 	    LIBRUBY_RELATIVE=yes
 	fi
 	LIBRUBY_DLDFLAGS="$LIBRUBY_DLDFLAGS "'-install_name '${libprefix}'/$(LIBRUBY_SO)'
@@ -17752,7 +17826,14 @@ ac_config_files="$ac_config_files $FIRSTMAKEFILE"
 ac_config_files="$ac_config_files Makefile"
 
 
-ruby_pc="${RUBY_BASE_NAME}-${MAJOR}.${MINOR}.pc"
+
+# Check whether --with-ruby-pc was given.
+if test "${with_ruby_pc+set}" = set; then :
+  withval=$with_ruby_pc; ruby_pc="$withval"
+else
+  ruby_pc="${RUBY_BASE_NAME}-${MAJOR}.${MINOR}.pc"
+fi
+
 
 exec=exec
 

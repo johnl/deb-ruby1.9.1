@@ -126,6 +126,7 @@ extern DWORD rb_w32_osid(void);
 #undef fputchar
 #undef utime
 #undef lseek
+#undef stat
 #undef fstat
 #define getc(_stream)		rb_w32_getc(_stream)
 #define getchar()		rb_w32_getc(stdin)
@@ -149,6 +150,7 @@ extern DWORD rb_w32_osid(void);
 #define getppid()		rb_w32_getppid()
 #define sleep(x)		rb_w32_Sleep((x)*1000)
 #define Sleep(msec)		(void)rb_w32_Sleep(msec)
+#define fstati64(fd,st) 	rb_w32_fstati64(fd,st)
 #ifdef __BORLANDC__
 #define creat(p, m)		_creat(p, m)
 #define eof()			_eof()
@@ -157,7 +159,6 @@ extern DWORD rb_w32_osid(void);
 #define tell(h)			_tell(h)
 #define _open			_sopen
 #define sopen			_sopen
-#define _fstati64(fd,st)	rb_w32_fstati64(fd,st)
 #undef fopen
 #define fopen(p, m)		rb_w32_fopen(p, m)
 #undef fdopen
@@ -184,7 +185,7 @@ extern DWORD rb_w32_osid(void);
 #if SIZEOF_OFF_T == 8
 #define off_t __int64
 #define stat stati64
-#define fstat(fd,st)		_fstati64(fd,st)
+#define fstat(fd,st)		fstati64(fd,st)
 #if defined(__BORLANDC__)
 #define stati64(path, st) rb_w32_stati64(path, st)
 #elif !defined(_MSC_VER) || RT_VER < 80
@@ -195,7 +196,6 @@ extern DWORD rb_w32_osid(void);
 #else
 #define stati64 _stat64
 #define _stat64(path, st) rb_w32_stati64(path, st)
-#define _fstati64 _fstat64
 #endif
 #else
 #define stat(path,st)		rb_w32_stat(path,st)
@@ -234,7 +234,7 @@ struct msghdr {
 extern int    rb_w32_cmdvector(const char *, char ***);
 extern rb_pid_t  rb_w32_pipe_exec(const char *, const char *, int, int *, int *);
 extern int    flock(int fd, int oper);
-extern int    rb_w32_has_cancel_io(void);
+extern int    rb_w32_io_cancelable_p(int);
 extern int    rb_w32_is_socket(int);
 extern int    WSAAPI rb_w32_accept(int, struct sockaddr *, int *);
 extern int    WSAAPI rb_w32_bind(int, const struct sockaddr *, int);
@@ -305,9 +305,9 @@ extern int rb_w32_ustati64(const char *, struct stati64 *);
 extern int rb_w32_access(const char *, int);
 extern int rb_w32_uaccess(const char *, int);
 extern char rb_w32_fd_is_text(int);
+extern int rb_w32_fstati64(int, struct stati64 *);
 
 #ifdef __BORLANDC__
-extern int rb_w32_fstati64(int, struct stati64 *);
 extern off_t _lseeki64(int, off_t, int);
 extern FILE *rb_w32_fopen(const char *, const char *);
 extern FILE *rb_w32_fdopen(int, const char *);
@@ -575,7 +575,22 @@ extern char *rb_w32_strerror(int);
 #define O_NONBLOCK 1
 
 #undef FD_SET
-#define FD_SET(f, s)		rb_w32_fdset(f, s)
+#define FD_SET(fd, set)	do {\
+    unsigned int i;\
+    SOCKET s = _get_osfhandle(fd);\
+\
+    for (i = 0; i < (set)->fd_count; i++) {\
+        if ((set)->fd_array[i] == s) {\
+            break;\
+        }\
+    }\
+    if (i == (set)->fd_count) {\
+        if ((set)->fd_count < FD_SETSIZE) {\
+            (set)->fd_array[i] = s;\
+            (set)->fd_count++;\
+        }\
+    }\
+} while(0)
 
 #undef FD_CLR
 #define FD_CLR(f, s)		rb_w32_fdclr(f, s)
@@ -739,6 +754,20 @@ uintptr_t rb_w32_asynchronize(asynchronous_func_t func, uintptr_t self, int argc
 { /* satisfy cc-mode */
 #endif
 }  /* extern "C" { */
+#endif
+
+#ifdef __MINGW64__
+/*
+ * Use powl() instead of broken pow() of x86_64-w64-mingw32.
+ * This workaround will fix test failures in test_bignum.rb,
+ * test_fixnum.rb and test_float.rb etc.
+ */
+static inline double
+rb_w32_pow(double x, double y)
+{
+    return powl(x, y);
+}
+#define pow rb_w32_pow
 #endif
 
 #endif /* RUBY_WIN32_H */
