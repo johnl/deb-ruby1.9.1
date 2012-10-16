@@ -1,3 +1,12 @@
+ruby1.9.1 (1:1.9.3.194-2bbox2) UNRELEASED; urgency=low
+
+  [ Lucas Nussbaum ]
+  * skip running DRB tests, since they seem to make the build hang. This
+    should close #647296, but let's way and see. Also, with this do not
+    need to timeout the test suite anymore (
+
+ -- John Leach <john@brightbox.co.uk>  Tue, 16 Oct 2012 18:57:58 +0100
+
 ruby1.9.1 (1:1.9.3.194-2bbox1) lucid; urgency=low
 
   * Updated funny-falcon's performance patches to fix 100% cpu bug
