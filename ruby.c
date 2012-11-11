@@ -476,12 +476,15 @@ static void
 add_modules(VALUE *req_list, const char *mod)
 {
     VALUE list = *req_list;
+    VALUE feature;
 
     if (!list) {
 	*req_list = list = rb_ary_new();
 	RBASIC(list)->klass = 0;
     }
-    rb_ary_push(list, rb_obj_freeze(rb_str_new2(mod)));
+    feature = rb_str_new2(mod);
+    RBASIC(feature)->klass = 0;
+    rb_ary_push(list, feature);
 }
 
 static void
@@ -492,6 +495,7 @@ require_libraries(VALUE *req_list)
     ID require;
     rb_thread_t *th = GET_THREAD();
     rb_block_t *prev_base_block = th->base_block;
+    rb_encoding *extenc = rb_default_external_encoding();
     int prev_parse_in_eval = th->parse_in_eval;
     th->base_block = 0;
     th->parse_in_eval = 0;
@@ -500,6 +504,9 @@ require_libraries(VALUE *req_list)
     CONST_ID(require, "require");
     while (list && RARRAY_LEN(list) > 0) {
 	VALUE feature = rb_ary_shift(list);
+	rb_enc_associate(feature, extenc);
+	RBASIC(feature)->klass = rb_cString;
+	OBJ_FREEZE(feature);
 	rb_funcall2(self, require, 1, &feature);
     }
     *req_list = 0;
@@ -1171,7 +1178,7 @@ rb_f_sub(argc, argv)
     int argc;
     VALUE *argv;
 {
-    VALUE str = rb_funcall3(uscore_get(), rb_intern("sub"), argc, argv);
+    VALUE str = rb_funcall_passing_block(uscore_get(), rb_intern("sub"), argc, argv);
     rb_lastline_set(str);
     return str;
 }
@@ -1192,7 +1199,7 @@ rb_f_gsub(argc, argv)
     int argc;
     VALUE *argv;
 {
-    VALUE str = rb_funcall3(uscore_get(), rb_intern("gsub"), argc, argv);
+    VALUE str = rb_funcall_passing_block(uscore_get(), rb_intern("gsub"), argc, argv);
     rb_lastline_set(str);
     return str;
 }
@@ -1210,7 +1217,7 @@ rb_f_gsub(argc, argv)
 static VALUE
 rb_f_chop(void)
 {
-    VALUE str = rb_funcall3(uscore_get(), rb_intern("chop"), 0, 0);
+    VALUE str = rb_funcall_passing_block(uscore_get(), rb_intern("chop"), 0, 0);
     rb_lastline_set(str);
     return str;
 }
@@ -1232,7 +1239,7 @@ rb_f_chomp(argc, argv)
     int argc;
     VALUE *argv;
 {
-    VALUE str = rb_funcall3(uscore_get(), rb_intern("chomp"), argc, argv);
+    VALUE str = rb_funcall_passing_block(uscore_get(), rb_intern("chomp"), argc, argv);
     rb_lastline_set(str);
     return str;
 }
