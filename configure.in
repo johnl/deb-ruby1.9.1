@@ -496,7 +496,15 @@ if test "$GCC" = ""; then
     AS_CASE(["$target_os"],[aix*],[warnflags="-qinfo=por"])
 fi
 if test "$GCC" = yes; then
-    RUBY_TRY_CFLAGS(-fvisibility=hidden, [RUBY_APPEND_OPTION(XCFLAGS, -fvisibility=hidden)])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+	@%:@if !(defined __GNUC__ && __GNUC__ >= 4)
+	@%:@error not GCC 4 or later
+	>>>not GCC 4 or later<<<
+	@%:@endif])],
+	[visibility_option=yes], [visibility_option=no])
+    if test "$visibility_option" = yes; then
+	RUBY_TRY_CFLAGS(-fvisibility=hidden, [visibility_option=yes], [visibility_option=no])
+    fi
     AC_SUBST(WERRORFLAG, "-Werror")
     if test "$visibility_option" = yes; then
 	RUBY_APPEND_OPTION(XCFLAGS, -fvisibility=hidden)
@@ -1060,7 +1068,7 @@ main()
 		AC_CHECK_FUNCS(cygwin_conv_path)
 		AC_LIBOBJ([langinfo])
 		],
-[mingw*], [	LIBS="-lshell32 -lws2_32 -limagehlp $LIBS"
+[mingw*], [	LIBS="-lshell32 -lws2_32 -limagehlp -lshlwapi $LIBS"
 		ac_cv_header_a_out_h=no
 		ac_cv_header_pwd_h=no
 		ac_cv_header_utime_h=no
@@ -2586,11 +2594,13 @@ AS_CASE(["$target_os"],
 	    fi
 	    EXPORT_PREFIX=' '
 	    DLDFLAGS="${DLDFLAGS}"' $(DEFFILE)'
-	    AC_LIBOBJ([win32])
+	    AC_LIBOBJ([win32/win32])
+	    AC_LIBOBJ([win32/file])
 	    COMMON_LIBS=m
 #	    COMMON_MACROS="WIN32_LEAN_AND_MEAN="
 	    COMMON_HEADERS="winsock2.h windows.h"
 	    THREAD_MODEL=win32
+	    PLATFORM_DIR=win32
 	    ])
 	LIBRUBY_ALIASES=''
 	FIRSTMAKEFILE=GNUmakefile:cygwin/GNUmakefile.in
@@ -2743,6 +2753,7 @@ AC_SUBST(EXPORT_PREFIX)
 AC_SUBST(SYMBOL_PREFIX)
 AC_SUBST(MINIOBJS)
 AC_SUBST(THREAD_MODEL)
+AC_SUBST(PLATFORM_DIR)
 
 MAKEFILES="Makefile `echo $FIRSTMAKEFILE | sed 's/:.*//'`"
 MAKEFILES="`echo $MAKEFILES`"
@@ -2945,7 +2956,20 @@ AC_SUBST(sitehdrdir)dnl
 AC_SUBST(vendorhdrdir)dnl
 
 AC_ARG_WITH(opt-dir,
-	AS_HELP_STRING([--with-opt-dir=DIR], [add optional headers and libraries DIR]))
+	AS_HELP_STRING([--with-opt-dir=DIR-LIST],
+		       [add optional headers and libraries directories separated by $PATH_SEPARATOR]),
+	[
+		CPPFLAGS="$CPPFLAGS `echo \"$PATH_SEPARATOR$withval\" | sed \"s|$PATH_SEPARATOR\([[^$PATH_SEPARATOR]*]\)| -I\1/include|g;s/^ //\"`"
+		set -x
+		val=`IFS="$PATH_SEPARATOR"
+		    for dir in $withval; do
+			echo x ${LIBPATHFLAG} ${RPATHFLAG} |
+			sed -E 's/^x *//;s'"${PATH_SEPARATOR}"'%1\\$-s|%s'"${IFS}${dir}/lib${IFS}g"
+		    done | tr '\012' ' '`
+		set +x
+		LDFLAGS="$LDFLAGS${LDFLAGS:+ }$val"
+		DLDFLAGS="$DLDFLAGS${DLDFLAGS:+ }$val"
+	])
 
 AC_ARG_WITH(mantype,
 	AS_HELP_STRING([--with-mantype=TYPE], [specify man page type; TYPE is one of man and doc]),
