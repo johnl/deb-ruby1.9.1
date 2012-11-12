@@ -1,7 +1,7 @@
 #
 # extconf.rb
 #
-# $Id: extconf.rb 36939 2012-09-09 14:01:53Z naruse $
+# $Id: extconf.rb 37561 2012-11-08 08:34:18Z usa $
 #
 
 require 'mkmf'
@@ -10,7 +10,7 @@ require 'rbconfig'
 dir_config 'zlib'
 
 
-if %w'z libz zlib1 zlib zdll'.find {|z| have_library(z, 'deflateReset')} and
+if %w'z libz zlib1 zlib zdll zlibwapi'.find {|z| have_library(z, 'deflateReset')} and
     have_header('zlib.h') then
 
   defines = []

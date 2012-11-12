@@ -623,6 +623,7 @@ RI_BASE_NAME
 ridir
 rubylibprefix
 MAKEFILES
+PLATFORM_DIR
 THREAD_MODEL
 MINIOBJS
 SYMBOL_PREFIX
@@ -1512,7 +1513,8 @@ Optional Packages:
   --with-sitehdrdir=DIR   core site headers in DIR [[RUBYHDRDIR/site_ruby]]
   --with-vendorhdrdir=DIR core vendor headers in DIR
                           [[RUBYHDRDIR/vendor_ruby]]
-  --with-opt-dir=DIR      add optional headers and libraries DIR
+  --with-opt-dir=DIR-LIST add optional headers and libraries directories
+                          separated by $PATH_SEPARATOR
   --with-mantype=TYPE     specify man page type; TYPE is one of man and doc
   pc file basename
 
@@ -6493,6 +6495,28 @@ if test "$GCC" = ""; then
 esac
 fi
 if test "$GCC" = yes; then
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+	#if !(defined __GNUC__ && __GNUC__ >= 4)
+	#error not GCC 4 or later
+	>>>not GCC 4 or later<<<
+	#endif
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  visibility_option=yes
+else
+  visibility_option=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    if test "$visibility_option" = yes; then
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether -fvisibility=hidden is accepted" >&5
 $as_echo_n "checking whether -fvisibility=hidden is accepted... " >&6; }
@@ -6518,19 +6542,11 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  # RUBY_APPEND_OPTION(XCFLAGS, -fvisibility=hidden)
-	case " ${XCFLAGS-} " in #(
-  *' -fvisibility=hidden '*) :
-     ;; #(
-  '  ') :
-     XCFLAGS="-fvisibility=hidden" ;; #(
-  *) :
-     XCFLAGS="$XCFLAGS -fvisibility=hidden" ;;
-esac
+  visibility_option=yes
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
-
+  visibility_option=no
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 fi
@@ -6544,6 +6560,7 @@ else
   unset ac_c_werror_flag
 fi
 
+    fi
     WERRORFLAG="-Werror"
 
     if test "$visibility_option" = yes; then
@@ -10580,7 +10597,7 @@ esac
 
 		 ;; #(
   mingw*) :
-    	LIBS="-lshell32 -lws2_32 -limagehlp $LIBS"
+    	LIBS="-lshell32 -lws2_32 -limagehlp -lshlwapi $LIBS"
 		ac_cv_header_a_out_h=no
 		ac_cv_header_pwd_h=no
 		ac_cv_header_utime_h=no
@@ -17113,8 +17130,14 @@ esac
 	    EXPORT_PREFIX=' '
 	    DLDFLAGS="${DLDFLAGS}"' $(DEFFILE)'
 	    case " $LIBOBJS " in
-  *" win32.$ac_objext "* ) ;;
-  *) LIBOBJS="$LIBOBJS win32.$ac_objext"
+  *" win32/win32.$ac_objext "* ) ;;
+  *) LIBOBJS="$LIBOBJS win32/win32.$ac_objext"
+ ;;
+esac
+
+	    case " $LIBOBJS " in
+  *" win32/file.$ac_objext "* ) ;;
+  *) LIBOBJS="$LIBOBJS win32/file.$ac_objext"
  ;;
 esac
 
@@ -17122,6 +17145,7 @@ esac
 #	    COMMON_MACROS="WIN32_LEAN_AND_MEAN="
 	    COMMON_HEADERS="winsock2.h windows.h"
 	    THREAD_MODEL=win32
+	    PLATFORM_DIR=win32
 	     ;; #(
   *) :
      ;;
@@ -17334,6 +17358,7 @@ fi
 warnflags="$rb_cv_warnflags"
 cflags="$orig_cflags "'${optflags} ${debugflags} ${warnflags}'
 cxxflags="$orig_cxxflags "'${optflags} ${debugflags} ${warnflags}'
+
 
 
 
@@ -17688,6 +17713,17 @@ fi
 # Check whether --with-opt-dir was given.
 if test "${with_opt_dir+set}" = set; then :
   withval=$with_opt_dir;
+		CPPFLAGS="$CPPFLAGS `echo \"$PATH_SEPARATOR$withval\" | sed \"s|$PATH_SEPARATOR\([^$PATH_SEPARATOR]*\)| -I\1/include|g;s/^ //\"`"
+		set -x
+		val=`IFS="$PATH_SEPARATOR"
+		    for dir in $withval; do
+			echo x ${LIBPATHFLAG} ${RPATHFLAG} |
+			sed -E 's/^x *//;s'"${PATH_SEPARATOR}"'%1\\$-s|%s'"${IFS}${dir}/lib${IFS}g"
+		    done | tr '\012' ' '`
+		set +x
+		LDFLAGS="$LDFLAGS${LDFLAGS:+ }$val"
+		DLDFLAGS="$DLDFLAGS${DLDFLAGS:+ }$val"
+
 fi
 
 

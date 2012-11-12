@@ -2,7 +2,7 @@
 
   string.c -
 
-  $Author: naruse $
+  $Author: usa $
   created at: Mon Aug  9 17:12:58 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -2155,12 +2155,6 @@ rb_str_prepend(VALUE str, VALUE str2)
     StringValue(str);
     rb_str_update(str, 0L, 0L, str2);
     return str;
-}
-
-st_index_t
-rb_memhash(const void *ptr, long len)
-{
-    return st_hash(ptr, len, rb_hash_start((st_index_t)len));
 }
 
 st_index_t
