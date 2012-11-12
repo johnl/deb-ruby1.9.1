@@ -16,4 +16,3 @@
 110829-hurd_dirent_usage.patch
 hurd-path-max.diff
 20120914_funny_falcon_performance_and_gc_backport.patch
-110916_fix_ruby_debug19.patch
