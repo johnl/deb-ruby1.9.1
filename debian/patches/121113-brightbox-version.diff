@@ -1,0 +1,14 @@
+diff --git a/version.h b/version.h
+index b2b42e1..4c1a18e 100644
+--- a/version.h
++++ b/version.h
+@@ -44,7 +44,8 @@
+     RUBY_PATCHLEVEL_STR             \
+     " ("RUBY_RELEASE_DATE	    \
+     RUBY_REVISION_STR") "	    \
+-    "["RUBY_PLATFORM"]"
++    "["RUBY_PLATFORM"] "      \
++    "Brightbox"
+ # define RUBY_COPYRIGHT 	    \
+     "ruby - Copyright (C) "	    \
+     STRINGIZE(RUBY_BIRTH_YEAR)"-"   \
