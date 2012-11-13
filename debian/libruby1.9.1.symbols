@@ -481,6 +481,10 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_enc_get_index@Base 1.9.2.0
  rb_enc_mbclen@Base 1.9.2.0
  rb_enc_nth@Base 1.9.2.0
+ rb_enc_path_end@Base 1.9.3.327
+ rb_enc_path_last_separator@Base 1.9.3.327
+ rb_enc_path_next@Base 1.9.3.327
+ rb_enc_path_skip_prefix@Base 1.9.3.327
  rb_enc_precise_mbclen@Base 1.9.2.0
  rb_enc_reg_new@Base 1.9.2.0
  rb_enc_register@Base 1.9.2.0
@@ -798,6 +802,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_mark_generic_ivar@Base 1.9.2.0
  rb_mark_generic_ivar_tbl@Base 1.9.2.0
  rb_mark_hash@Base 1.9.2.0
+ rb_mark_sa_tbl@Base 1.9.3.327
  rb_mark_set@Base 1.9.2.0
  rb_mark_tbl@Base 1.9.2.0
  rb_marshal_define_compat@Base 1.9.2.0
@@ -914,10 +919,6 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_parser_while_loop@Base 1.9.2.0
  rb_path2class@Base 1.9.2.0
  rb_path_check@Base 1.9.2.0
- rb_path_end@Base 1.9.2.0
- rb_path_last_separator@Base 1.9.2.0
- rb_path_next@Base 1.9.2.0
- rb_path_skip_prefix@Base 1.9.2.0
  rb_path_to_class@Base 1.9.2.0
  rb_pipe@Base 1.9.2.0
  rb_proc_arity@Base 1.9.2.0
@@ -1199,12 +1200,12 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  ruby_default_signal@Base 1.9.2.0
  ruby_description@Base 1.9.2.0
  ruby_each_words@Base 1.9.2.0
+ ruby_enc_find_basename@Base 1.9.3.327
+ ruby_enc_find_extname@Base 1.9.3.327
  ruby_engine@Base 1.9.2.0
  ruby_exec_node@Base 1.9.2.0
  ruby_executable_node@Base 1.9.2.0
  ruby_finalize@Base 1.9.2.0
- ruby_find_basename@Base 1.9.2.0
- ruby_find_extname@Base 1.9.2.0
  ruby_getcwd@Base 1.9.2.0
  ruby_glob@Base 1.9.2.0
  ruby_incpush@Base 1.9.2.0
@@ -1252,6 +1253,18 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  ruby_xmalloc@Base 1.9.2.0
  ruby_xrealloc2@Base 1.9.2.0
  ruby_xrealloc@Base 1.9.2.0
+ sa_clear@Base 1.9.3.327
+ sa_clear_no_free@Base 1.9.3.327
+ sa_copy@Base 1.9.3.327
+ sa_copy_to@Base 1.9.3.327
+ sa_delete@Base 1.9.3.327
+ sa_foreach@Base 1.9.3.327
+ sa_free_table@Base 1.9.3.327
+ sa_init_table@Base 1.9.3.327
+ sa_insert@Base 1.9.3.327
+ sa_lookup@Base 1.9.3.327
+ sa_memsize@Base 1.9.3.327
+ sa_new_table@Base 1.9.3.327
  setproctitle@Base 1.9.3~rc1
  st_add_direct@Base 1.9.2.0
  st_cleanup_safe@Base 1.9.2.0
@@ -1260,6 +1273,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  st_delete@Base 1.9.2.0
  st_delete_safe@Base 1.9.2.0
  st_foreach@Base 1.9.2.0
+ st_foreach_check@Base 1.9.3.327
  st_foreach_safe@Base 1.9.2.0
  st_free_table@Base 1.9.2.0
  st_get_key@Base 1.9.2.0
