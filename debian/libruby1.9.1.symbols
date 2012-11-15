@@ -481,6 +481,10 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_enc_get_index@Base 1.9.2.0
  rb_enc_mbclen@Base 1.9.2.0
  rb_enc_nth@Base 1.9.2.0
+ rb_enc_path_end@Base 1.9.3.327
+ rb_enc_path_last_separator@Base 1.9.3.327
+ rb_enc_path_next@Base 1.9.3.327
+ rb_enc_path_skip_prefix@Base 1.9.3.327
  rb_enc_precise_mbclen@Base 1.9.2.0
  rb_enc_reg_new@Base 1.9.2.0
  rb_enc_register@Base 1.9.2.0
@@ -1199,6 +1203,8 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  ruby_default_signal@Base 1.9.2.0
  ruby_description@Base 1.9.2.0
  ruby_each_words@Base 1.9.2.0
+ ruby_enc_find_basename@Base 1.9.3.327
+ ruby_enc_find_extname@Base 1.9.3.327
  ruby_engine@Base 1.9.2.0
  ruby_exec_node@Base 1.9.2.0
  ruby_executable_node@Base 1.9.2.0

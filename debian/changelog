@@ -5,6 +5,8 @@ ruby1.9.1 (1.9.3.327-1) UNRELEASED; urgency=low
 
   [ James Healy ]
   * New upstream release: 1.9.3p327
+  * debian/libruby1.9.1.symbols: update with new symbols added in
+    1.9.3p1327 upstream release.
 
  -- James Healy <james@yob.id.au>  Sun, 11 Nov 2012 13:01:00 +0100
 
