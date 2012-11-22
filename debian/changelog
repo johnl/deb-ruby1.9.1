@@ -1,5 +1,6 @@
 ruby1.9.1 (1.9.3.194-4) UNRELEASED; urgency=high
 
+  [ James Healy ]
   * debian/patches/CVE-2012-5371.patch: avoid DOS vulnerability in hash
     implementation, this fixes CVE-2012-5371. (Closes: #693024).
 
