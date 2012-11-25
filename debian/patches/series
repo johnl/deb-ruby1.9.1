@@ -15,5 +15,5 @@
 110829-freebsd_assert_normal_exit.patch
 110829-hurd_dirent_usage.patch
 hurd-path-max.diff
-20120914_funny_falcon_performance_and_gc_backport.patch
+121125_funny_falcon_performance_no_gc_backport.patch
 121113-brightbox-version.diff

@@ -1,5 +1,5 @@
 diff --git a/array.c b/array.c
-index 781b788..9b0e8b6 100644
+index e427cb3..7e76227 100644
 --- a/array.c
 +++ b/array.c
 @@ -255,15 +255,24 @@ rb_ary_modify(VALUE ary)
@@ -67,7 +67,41 @@ index 781b788..9b0e8b6 100644
  VALUE
  rb_ary_freeze(VALUE ary)
  {
-@@ -430,8 +471,9 @@ ary_make_shared(VALUE ary)
+@@ -295,6 +336,33 @@ rb_ary_frozen_p(VALUE ary)
+     return Qfalse;
+ }
+ 
++/* This can be used to take a snapshot of an array (with
++   e.g. rb_ary_replace) and check later whether the array has been
++   modified from the snapshot.  The snapshot is cheap, though if
++   something does modify the array it will pay the cost of copying
++   it. */
++VALUE
++rb_ary_dup_of_p(VALUE ary1, VALUE ary2)
++{
++    VALUE *p1, *p2;
++    long len = RARRAY_LEN(ary1);
++
++    if (len != RARRAY_LEN(ary2)) return Qfalse;
++
++    p1 = RARRAY_PTR(ary1);
++    p2 = RARRAY_PTR(ary2);
++
++    if (ARY_EMBED_P(ary1) && ARY_EMBED_P(ary2)) {
++        for (; len; len--, p1++, p2++) {
++            if (*p1 != *p2) return Qfalse;
++        }
++        return Qtrue;
++    }
++
++    if (p1 == p2) return Qtrue;
++    return Qfalse;
++}
++
+ static VALUE
+ ary_alloc(VALUE klass)
+ {
+@@ -430,8 +498,9 @@ ary_make_shared(VALUE ary)
  	OBJSETUP(shared, 0, T_ARRAY);
          FL_UNSET_EMBED(shared);
  
@@ -78,7 +112,7 @@ index 781b788..9b0e8b6 100644
  	FL_SET_SHARED_ROOT(shared);
  	ARY_SET_SHARED_NUM((VALUE)shared, 1);
  	FL_SET_SHARED(ary);
-@@ -721,8 +763,6 @@ ary_take_first_or_last(int argc, VALUE *argv, VALUE ary, enum ary_take_pos_flags
+@@ -721,8 +790,6 @@ ary_take_first_or_last(int argc, VALUE *argv, VALUE ary, enum ary_take_pos_flags
      return ary_make_partial(ary, rb_cArray, offset, n);
  }
  
@@ -87,7 +121,7 @@ index 781b788..9b0e8b6 100644
  /*
   *  call-seq:
   *     ary << obj            -> ary
-@@ -739,8 +779,12 @@ static VALUE rb_ary_push_1(VALUE ary, VALUE item);
+@@ -739,8 +806,12 @@ static VALUE rb_ary_push_1(VALUE ary, VALUE item);
  VALUE
  rb_ary_push(VALUE ary, VALUE item)
  {
@@ -102,7 +136,7 @@ index 781b788..9b0e8b6 100644
  }
  
  static VALUE
-@@ -756,6 +800,18 @@ rb_ary_push_1(VALUE ary, VALUE item)
+@@ -756,6 +827,18 @@ rb_ary_push_1(VALUE ary, VALUE item)
      return ary;
  }
  
@@ -121,7 +155,7 @@ index 781b788..9b0e8b6 100644
  /*
   *  call-seq:
   *     ary.push(obj, ... )   -> ary
-@@ -772,11 +828,7 @@ rb_ary_push_1(VALUE ary, VALUE item)
+@@ -772,11 +855,7 @@ rb_ary_push_1(VALUE ary, VALUE item)
  static VALUE
  rb_ary_push_m(int argc, VALUE *argv, VALUE ary)
  {
@@ -134,7 +168,7 @@ index 781b788..9b0e8b6 100644
  }
  
  VALUE
-@@ -904,6 +956,55 @@ rb_ary_shift_m(int argc, VALUE *argv, VALUE ary)
+@@ -904,6 +983,55 @@ rb_ary_shift_m(int argc, VALUE *argv, VALUE ary)
      return result;
  }
  
@@ -190,7 +224,7 @@ index 781b788..9b0e8b6 100644
  /*
   *  call-seq:
   *     ary.unshift(obj, ...)  -> ary
-@@ -919,19 +1020,16 @@ rb_ary_shift_m(int argc, VALUE *argv, VALUE ary)
+@@ -919,19 +1047,16 @@ rb_ary_shift_m(int argc, VALUE *argv, VALUE ary)
  static VALUE
  rb_ary_unshift_m(int argc, VALUE *argv, VALUE ary)
  {
@@ -216,7 +250,7 @@ index 781b788..9b0e8b6 100644
      return ary;
  }
  
-@@ -1293,15 +1391,12 @@ rb_ary_splice(VALUE ary, long beg, long len, VALUE rpl)
+@@ -1293,15 +1418,12 @@ rb_ary_splice(VALUE ary, long beg, long len, VALUE rpl)
  	rpl = rb_ary_to_ary(rpl);
  	rlen = RARRAY_LEN(rpl);
      }
@@ -225,7 +259,7 @@ index 781b788..9b0e8b6 100644
  	if (beg > ARY_MAX_SIZE - rlen) {
  	    rb_raise(rb_eIndexError, "index %ld too big", beg);
  	}
-+	ary_ensure_room_for_push(ary, rlen);
++	ary_ensure_room_for_push(ary, rlen-len); /* len is 0 or negative */
  	len = beg + rlen;
 -	if (len >= ARY_CAPA(ary)) {
 -	    ary_double_capa(ary, len);
@@ -233,7 +267,7 @@ index 781b788..9b0e8b6 100644
  	rb_mem_clear(RARRAY_PTR(ary) + RARRAY_LEN(ary), beg - RARRAY_LEN(ary));
  	if (rlen > 0) {
  	    MEMCPY(RARRAY_PTR(ary) + beg, RARRAY_PTR(rpl), VALUE, rlen);
-@@ -1311,6 +1406,7 @@ rb_ary_splice(VALUE ary, long beg, long len, VALUE rpl)
+@@ -1311,6 +1433,7 @@ rb_ary_splice(VALUE ary, long beg, long len, VALUE rpl)
      else {
  	long alen;
  
@@ -241,7 +275,7 @@ index 781b788..9b0e8b6 100644
  	alen = RARRAY_LEN(ary) + rlen - len;
  	if (alen >= ARY_CAPA(ary)) {
  	    ary_double_capa(ary, alen);
-@@ -2100,12 +2196,13 @@ rb_ary_sort_bang(VALUE ary)
+@@ -2100,12 +2223,13 @@ rb_ary_sort_bang(VALUE ary)
      if (RARRAY_LEN(ary) > 1) {
  	VALUE tmp = ary_make_substitution(ary); /* only ary refers tmp */
  	struct ary_sort_data data;
@@ -256,7 +290,7 @@ index 781b788..9b0e8b6 100644
  		   rb_block_given_p()?sort_1:sort_2, &data);
  
          if (ARY_EMBED_P(tmp)) {
-@@ -2122,7 +2219,7 @@ rb_ary_sort_bang(VALUE ary)
+@@ -2122,7 +2246,7 @@ rb_ary_sort_bang(VALUE ary)
              if (ARY_HEAP_PTR(ary) == ARY_HEAP_PTR(tmp)) {
                  assert(!ARY_EMBED_P(ary));
                  FL_UNSET_SHARED(ary);
@@ -265,7 +299,7 @@ index 781b788..9b0e8b6 100644
              }
              else {
                  assert(!ARY_SHARED_P(tmp));
-@@ -2137,8 +2234,8 @@ rb_ary_sort_bang(VALUE ary)
+@@ -2137,8 +2261,8 @@ rb_ary_sort_bang(VALUE ary)
                      xfree(ARY_HEAP_PTR(ary));
                  }
                  ARY_SET_PTR(ary, RARRAY_PTR(tmp));
@@ -277,7 +311,7 @@ index 781b788..9b0e8b6 100644
              /* tmp was lost ownership for the ptr */
              FL_UNSET(tmp, FL_FREEZE);
 diff --git a/class.c b/class.c
-index 450c334..367ec74 100644
+index df19812..db6b3e5 100644
 --- a/class.c
 +++ b/class.c
 @@ -31,7 +31,7 @@
@@ -618,7 +652,7 @@ index 450c334..367ec74 100644
  
  static int
 -method_entry_i(st_data_t key, st_data_t value, st_data_t data)
-+method_entry_i(st_index_t key, st_data_t value, st_data_t data)
++method_entry_i(sa_index_t key, st_data_t value, st_data_t data)
  {
      const rb_method_entry_t *me = (const rb_method_entry_t *)value;
 -    st_table *list = (st_table *)data;
@@ -809,7 +843,7 @@ index e186cd4..53d9e1b 100644
  
  void
 diff --git a/ext/objspace/objspace.c b/ext/objspace/objspace.c
-index 65e0d84..891e058 100644
+index 66e33a3..4b31f92 100644
 --- a/ext/objspace/objspace.c
 +++ b/ext/objspace/objspace.c
 @@ -60,20 +60,10 @@ memsize_of(VALUE obj)
@@ -838,39 +872,107 @@ index 65e0d84..891e058 100644
        case T_STRING:
  	size += rb_str_memsize(obj);
 diff --git a/file.c b/file.c
-index ea12dc0..d3f2651 100644
+index c1db6d7..3f465e5 100644
 --- a/file.c
 +++ b/file.c
-@@ -166,6 +166,10 @@ rb_get_path_check(VALUE obj, int level)
+@@ -148,40 +148,60 @@ file_path_convert(VALUE name)
+     return name;
+ }
+ 
+-static VALUE
+-rb_get_path_check(VALUE obj, int level)
++static rb_encoding *
++check_path_encoding(VALUE str)
++{
++    rb_encoding *enc = rb_enc_get(str);
++    if (!rb_enc_asciicompat(enc)) {
++	rb_raise(rb_eEncCompatError, "path name must be ASCII-compatible (%s): %s",
++		 rb_enc_name(enc), RSTRING_PTR(rb_str_inspect(str)));
++    }
++    return enc;
++}
++
++VALUE
++rb_get_path_check_to_string(VALUE obj, int level)
+ {
+     VALUE tmp;
+     ID to_path;
+-    rb_encoding *enc;
+ 
+     if (insecure_obj_p(obj, level)) {
+ 	rb_insecure_operation();
+     }
+ 
++    if (RB_TYPE_P(obj, T_STRING)) {
++	return obj;
++    }
+     CONST_ID(to_path, "to_path");
+     tmp = rb_check_funcall(obj, to_path, 0, 0);
+     if (tmp == Qundef) {
+ 	tmp = obj;
      }
      StringValue(tmp);
++    return tmp;
++}
  
-+    if (RBASIC(obj)->klass == rb_cExpandedPath) {
-+        return obj;
-+    }
-+
++VALUE
++rb_get_path_check_convert(VALUE obj, VALUE tmp, int level)
++{
      tmp = file_path_convert(tmp);
      if (obj != tmp && insecure_obj_p(tmp, level)) {
  	rb_insecure_operation();
-@@ -2900,6 +2904,16 @@ rb_file_expand_path_internal(VALUE fname, VALUE dname, int abs_mode, int long_na
-     BUFINIT();
-     tainted = OBJ_TAINTED(fname);
+     }
+-    enc = rb_enc_get(tmp);
+-    if (!rb_enc_asciicompat(enc)) {
+-	tmp = rb_str_inspect(tmp);
+-	rb_raise(rb_eEncCompatError, "path name must be ASCII-compatible (%s): %s",
+-		 rb_enc_name(enc), RSTRING_PTR(tmp));
+-    }
  
-+    if (RBASIC(fname)->klass == rb_cExpandedPath) {
-+        size_t dlen = RSTRING_LEN(fname);
-+        BUFCHECK(dlen > buflen);
-+        strncpy(buf, RSTRING_PTR(fname), dlen + 1);
-+        rb_str_set_len(result, dlen);
-+        rb_enc_associate(result, rb_enc_check(result, fname));
-+        ENC_CODERANGE_CLEAR(result);
-+        return result;
-+    }
++    check_path_encoding(tmp);
+     StringValueCStr(tmp);
+ 
+     return rb_str_new4(tmp);
+ }
+ 
++static VALUE
++rb_get_path_check(VALUE obj, int level)
++{
++    VALUE tmp = rb_get_path_check_to_string(obj, level);
++    return rb_get_path_check_convert(obj, tmp, level);
++}
 +
-     if (s[0] == '~' && abs_mode == 0) {      /* execute only if NOT absolute_path() */
- 	long userlen = 0;
- 	tainted = 1;
+ VALUE
+ rb_get_path_no_checksafe(VALUE obj)
+ {
+@@ -3249,7 +3269,6 @@ rb_file_expand_path(VALUE fname, VALUE dname)
+ VALUE
+ rb_file_expand_path_fast(VALUE fname, VALUE dname)
+ {
+-    check_expand_path_args(fname, dname);
+     return rb_file_expand_path_internal(fname, dname, 0, 0, EXPAND_PATH_BUFFER());
+ }
+ 
+@@ -5237,7 +5256,7 @@ rb_find_file_ext_safe(VALUE *filep, const char *const *ext, int safe_level)
+ 	rb_raise(rb_eSecurityError, "loading from non-absolute path %s", f);
+     }
+ 
+-    RB_GC_GUARD(load_path) = rb_get_load_path();
++    RB_GC_GUARD(load_path) = rb_get_expanded_load_path();
+     if (!load_path) return 0;
+ 
+     fname = rb_str_dup(*filep);
+@@ -5302,7 +5321,7 @@ rb_find_file_safe(VALUE path, int safe_level)
+ 	rb_raise(rb_eSecurityError, "loading from non-absolute path %s", f);
+     }
+ 
+-    RB_GC_GUARD(load_path) = rb_get_load_path();
++    RB_GC_GUARD(load_path) = rb_get_expanded_load_path();
+     if (load_path) {
+ 	long i;
+ 
 diff --git a/gc.c b/gc.c
-index 064f9a8..682d390 100644
+index e65d0ec..ee183be 100644
 --- a/gc.c
 +++ b/gc.c
 @@ -20,10 +20,12 @@
@@ -899,65 +1001,10 @@ index 064f9a8..682d390 100644
  
  #ifdef HAVE_VALGRIND_MEMCHECK_H
  # include <valgrind/memcheck.h>
-@@ -84,10 +91,12 @@ typedef struct {
-     unsigned int initial_malloc_limit;
-     unsigned int initial_heap_min_slots;
-     unsigned int initial_free_min;
-+#if defined(ENABLE_VM_OBJSPACE) && ENABLE_VM_OBJSPACE
-     int gc_stress;
-+#endif
- } ruby_gc_params_t;
+@@ -321,6 +328,24 @@ struct gc_list {
  
--ruby_gc_params_t initial_params = {
-+static ruby_gc_params_t initial_params = {
-     GC_MALLOC_LIMIT,
-     HEAP_MIN_SLOTS,
-     FREE_MIN,
-@@ -103,7 +112,10 @@ ruby_gc_params_t initial_params = {
- int ruby_gc_debug_indent = 0;
- 
- /* for GC profile */
-+#ifndef GC_PROFILE_MORE_DETAIL
- #define GC_PROFILE_MORE_DETAIL 0
-+#endif
-+
- typedef struct gc_profile_record {
-     double gc_time;
-     double gc_mark_time;
-@@ -301,17 +313,20 @@ typedef struct RVALUE {
- #endif
- 
- struct heaps_slot {
--    void *membase;
--    RVALUE *slot;
--    size_t limit;
-+    struct heaps_header *membase;
-+    RVALUE *freelist;
-     struct heaps_slot *next;
-     struct heaps_slot *prev;
-+    struct heaps_slot *free_next;
-+    uintptr_t bits[1];
- };
- 
--struct sorted_heaps_slot {
-+struct heaps_header {
-+    struct heaps_slot *base;
-+    uintptr_t *bits;
-     RVALUE *start;
-     RVALUE *end;
--    struct heaps_slot *slot;
-+    size_t limit;
- };
- 
- struct gc_list {
-@@ -319,7 +334,27 @@ struct gc_list {
-     struct gc_list *next;
- };
- 
-+#ifndef CALC_EXACT_MALLOC_SIZE
  #define CALC_EXACT_MALLOC_SIZE 0
-+#endif
-+
+ 
 +#ifdef POOL_ALLOC_API
 +/* POOL ALLOC API */
 +#define POOL_ALLOC_PART 1
@@ -975,10 +1022,11 @@ index 064f9a8..682d390 100644
 +};
 +static void pool_finalize_header(pool_header *header);
 +#endif
- 
++
  typedef struct rb_objspace {
      struct {
-@@ -330,16 +365,19 @@ typedef struct rb_objspace {
+ 	size_t limit;
+@@ -330,6 +355,9 @@ typedef struct rb_objspace {
  	size_t allocations;
  #endif
      } malloc_params;
@@ -988,28 +1036,7 @@ index 064f9a8..682d390 100644
      struct {
  	size_t increment;
  	struct heaps_slot *ptr;
- 	struct heaps_slot *sweep_slots;
--	struct sorted_heaps_slot *sorted;
-+	struct heaps_slot *free_slots;
-+	struct heaps_header **sorted;
- 	size_t length;
- 	size_t used;
--	RVALUE *freelist;
-+        struct heaps_slot *reserve_slots;
- 	RVALUE *range[2];
--	RVALUE *freed;
- 	size_t live_num;
- 	size_t free_num;
- 	size_t free_min;
-@@ -350,6 +388,7 @@ typedef struct rb_objspace {
- 	int dont_gc;
- 	int dont_lazy_sweep;
- 	int during_gc;
-+	rb_atomic_t finalizing;
-     } flags;
-     struct {
- 	st_table *table;
-@@ -377,7 +416,11 @@ typedef struct rb_objspace {
+@@ -377,7 +405,11 @@ typedef struct rb_objspace {
  #define ruby_initial_gc_stress	initial_params.gc_stress
  int *ruby_initial_gc_stress_ptr = &ruby_initial_gc_stress;
  #else
@@ -1021,39 +1048,7 @@ index 064f9a8..682d390 100644
  int *ruby_initial_gc_stress_ptr = &rb_objspace.gc_stress;
  #endif
  #define malloc_limit		objspace->malloc_params.limit
-@@ -385,13 +428,12 @@ int *ruby_initial_gc_stress_ptr = &rb_objspace.gc_stress;
- #define heaps			objspace->heap.ptr
- #define heaps_length		objspace->heap.length
- #define heaps_used		objspace->heap.used
--#define freelist		objspace->heap.freelist
- #define lomem			objspace->heap.range[0]
- #define himem			objspace->heap.range[1]
- #define heaps_inc		objspace->heap.increment
--#define heaps_freed		objspace->heap.freed
- #define dont_gc 		objspace->flags.dont_gc
- #define during_gc		objspace->flags.during_gc
-+#define finalizing		objspace->flags.finalizing
- #define finalizer_table 	objspace->final.table
- #define deferred_final_list	objspace->final.deferred
- #define mark_stack		objspace->markstack.buffer
-@@ -403,7 +445,16 @@ int *ruby_initial_gc_stress_ptr = &rb_objspace.gc_stress;
- #define initial_heap_min_slots	initial_params.initial_heap_min_slots
- #define initial_free_min	initial_params.initial_free_min
- 
-+#define is_lazy_sweeping(objspace) ((objspace)->heap.sweep_slots != 0)
-+
-+#define nonspecial_obj_id(obj) (VALUE)((SIGNED_VALUE)(obj)|FIXNUM_FLAG)
-+
-+#define HEAP_HEADER(p) ((struct heaps_header *)(p))
-+
- static void rb_objspace_call_finalizer(rb_objspace_t *objspace);
-+static VALUE define_final0(VALUE obj, VALUE block);
-+VALUE rb_define_final(VALUE obj, VALUE block);
-+VALUE rb_undefine_final(VALUE obj);
- 
- #if defined(ENABLE_VM_OBJSPACE) && ENABLE_VM_OBJSPACE
- rb_objspace_t *
-@@ -413,6 +464,10 @@ rb_objspace_alloc(void)
+@@ -413,6 +445,10 @@ rb_objspace_alloc(void)
      memset(objspace, 0, sizeof(*objspace));
      malloc_limit = initial_malloc_limit;
      ruby_gc_stress = ruby_initial_gc_stress;
@@ -1064,30 +1059,7 @@ index 064f9a8..682d390 100644
  
      return objspace;
  }
-@@ -478,42 +533,62 @@ rb_objspace_free(rb_objspace_t *objspace)
- 	struct gc_list *list, *next;
- 	for (list = global_List; list; list = next) {
- 	    next = list->next;
--	    free(list);
-+	    xfree(list);
- 	}
-     }
-+    if (objspace->heap.reserve_slots) {
-+        struct heaps_slot *list, *next;
-+        for (list = objspace->heap.reserve_slots; list; list = next) {
-+            next = list->free_next;
-+            free(list);
-+        }
-+    }
-     if (objspace->heap.sorted) {
- 	size_t i;
- 	for (i = 0; i < heaps_used; ++i) {
--	    free(objspace->heap.sorted[i].slot->membase);
--	    free(objspace->heap.sorted[i].slot);
-+            free(objspace->heap.sorted[i]->base);
-+	    aligned_free(objspace->heap.sorted[i]);
- 	}
- 	free(objspace->heap.sorted);
+@@ -491,6 +527,13 @@ rb_objspace_free(rb_objspace_t *objspace)
  	heaps_used = 0;
  	heaps = 0;
      }
@@ -1101,68 +1073,16 @@ index 064f9a8..682d390 100644
      free(objspace);
  }
  #endif
+@@ -513,7 +556,7 @@ rb_objspace_free(rb_objspace_t *objspace)
  
--/* tiny heap size */
--/* 32KB */
--/*#define HEAP_SIZE 0x8000 */
--/* 128KB */
--/*#define HEAP_SIZE 0x20000 */
--/* 64KB */
--/*#define HEAP_SIZE 0x10000 */
--/* 16KB */
--#define HEAP_SIZE 0x4000
--/* 8KB */
--/*#define HEAP_SIZE 0x2000 */
--/* 4KB */
--/*#define HEAP_SIZE 0x1000 */
--/* 2KB */
--/*#define HEAP_SIZE 0x800 */
--
--#define HEAP_OBJ_LIMIT (unsigned int)(HEAP_SIZE / sizeof(struct RVALUE))
--
+ #define HEAP_OBJ_LIMIT (unsigned int)(HEAP_SIZE / sizeof(struct RVALUE))
+ 
 -extern st_table *rb_class_tbl;
-+#ifndef HEAP_ALIGN_LOG
-+/* default tiny heap size: 16KB */
-+#define HEAP_ALIGN_LOG 14
-+#endif
-+#define HEAP_ALIGN (1UL << HEAP_ALIGN_LOG)
-+#define HEAP_ALIGN_MASK (~(~0UL << HEAP_ALIGN_LOG))
-+#define REQUIRED_SIZE_BY_MALLOC (sizeof(size_t) * 5)
-+#define HEAP_SIZE (HEAP_ALIGN - REQUIRED_SIZE_BY_MALLOC)
-+#define CEILDIV(i, mod) (((i) + (mod) - 1)/(mod))
-+
-+#define HEAP_OBJ_LIMIT (unsigned int)((HEAP_SIZE - sizeof(struct heaps_header))/sizeof(struct RVALUE))
-+#define HEAP_BITMAP_LIMIT CEILDIV(CEILDIV(HEAP_SIZE, sizeof(struct RVALUE)), sizeof(uintptr_t)*8)
-+#define HEAP_SLOT_SIZE (sizeof(struct heaps_slot) + (HEAP_BITMAP_LIMIT-1) * sizeof(uintptr_t))
-+
-+#define GET_HEAP_HEADER(x) (HEAP_HEADER(((uintptr_t)x) & ~(HEAP_ALIGN_MASK)))
-+#define GET_HEAP_SLOT(x) (GET_HEAP_HEADER(x)->base)
-+#define GET_HEAP_BITMAP(x) (GET_HEAP_HEADER(x)->bits)
-+#define NUM_IN_SLOT(p) (((uintptr_t)p & HEAP_ALIGN_MASK)/sizeof(RVALUE))
-+#define BITMAP_INDEX(p) (NUM_IN_SLOT(p) / (sizeof(uintptr_t) * 8))
-+#define BITMAP_OFFSET(p) (NUM_IN_SLOT(p) & ((sizeof(uintptr_t) * 8)-1))
-+#define MARKED_IN_BITMAP(bits, p) (bits[BITMAP_INDEX(p)] & ((uintptr_t)1 << BITMAP_OFFSET(p)))
-+#define MARK_IN_BITMAP(bits, p) (bits[BITMAP_INDEX(p)] = bits[BITMAP_INDEX(p)] | ((uintptr_t)1 << BITMAP_OFFSET(p)))
-+#define CLEAR_IN_BITMAP(bits, p) (bits[BITMAP_INDEX(p)] &= ~((uintptr_t)1 << BITMAP_OFFSET(p)))
-+
 +extern sa_table rb_class_tbl;
  
  int ruby_disable_gc_stress = 0;
  
-@@ -823,8 +898,10 @@ vm_xfree(rb_objspace_t *objspace, void *ptr)
-     size_t size;
-     ptr = ((size_t *)ptr) - 1;
-     size = ((size_t*)ptr)[0];
--    objspace->malloc_params.allocated_size -= size;
--    objspace->malloc_params.allocations--;
-+    if (size) {
-+	objspace->malloc_params.allocated_size -= size;
-+	objspace->malloc_params.allocations--;
-+    }
- #endif
- 
-     free(ptr);
-@@ -894,6 +971,27 @@ ruby_xfree(void *x)
+@@ -894,6 +937,27 @@ ruby_xfree(void *x)
  	vm_xfree(&rb_objspace, x);
  }
  
@@ -1190,52 +1110,10 @@ index 064f9a8..682d390 100644
  
  /*
   *  call-seq:
-@@ -984,70 +1082,140 @@ rb_gc_unregister_address(VALUE *addr)
-     }
+@@ -1008,6 +1072,55 @@ allocate_sorted_heaps(rb_objspace_t *objspace, size_t next_heaps_length)
+     heaps_length = next_heaps_length;
  }
  
--
- static void
- allocate_sorted_heaps(rb_objspace_t *objspace, size_t next_heaps_length)
- {
--    struct sorted_heaps_slot *p;
--    size_t size;
-+    struct heaps_header **p;
-+    struct heaps_slot *slot;
-+    size_t size, add, i;
- 
--    size = next_heaps_length*sizeof(struct sorted_heaps_slot);
-+    size = next_heaps_length*sizeof(struct heaps_header *);
-+    add = next_heaps_length - heaps_used;
- 
-     if (heaps_used > 0) {
--	p = (struct sorted_heaps_slot *)realloc(objspace->heap.sorted, size);
-+	p = (struct heaps_header **)realloc(objspace->heap.sorted, size);
- 	if (p) objspace->heap.sorted = p;
-     }
-     else {
--	p = objspace->heap.sorted = (struct sorted_heaps_slot *)malloc(size);
-+	p = objspace->heap.sorted = (struct heaps_header **)malloc(size);
-     }
- 
-     if (p == 0) {
- 	during_gc = 0;
- 	rb_memerror();
-     }
--    heaps_length = next_heaps_length;
-+
-+    for (i = 0; i < add; i++) {
-+        slot = (struct heaps_slot *)malloc(HEAP_SLOT_SIZE);
-+        if (slot == 0) {
-+            during_gc = 0;
-+            rb_memerror();
-+            return;
-+        }
-+        slot->free_next = objspace->heap.reserve_slots;
-+        objspace->heap.reserve_slots = slot;
-+    }
-+}
-+
 +static void *
 +aligned_malloc(size_t alignment, size_t size)
 +{
@@ -1285,232 +1163,10 @@ index 064f9a8..682d390 100644
 +#endif
 +}
 +
-+static void
-+link_free_heap_slot(rb_objspace_t *objspace, struct heaps_slot *slot)
-+{
-+    slot->free_next = objspace->heap.free_slots;
-+    objspace->heap.free_slots = slot;
-+}
-+
-+static void
-+unlink_free_heap_slot(rb_objspace_t *objspace, struct heaps_slot *slot)
-+{
-+    objspace->heap.free_slots = slot->free_next;
-+    slot->free_next = NULL;
- }
- 
  static void
  assign_heap_slot(rb_objspace_t *objspace)
  {
--    RVALUE *p, *pend, *membase;
-+    RVALUE *p, *pend;
-+    struct heaps_header *membase;
-     struct heaps_slot *slot;
-     size_t hi, lo, mid;
-     size_t objs;
- 
-     objs = HEAP_OBJ_LIMIT;
--    p = (RVALUE*)malloc(HEAP_SIZE);
--    if (p == 0) {
--	during_gc = 0;
--	rb_memerror();
--    }
--    slot = (struct heaps_slot *)malloc(sizeof(struct heaps_slot));
--    if (slot == 0) {
--	xfree(p);
-+    membase = (struct heaps_header*)aligned_malloc(HEAP_ALIGN, HEAP_SIZE);
-+    if (membase == 0) {
- 	during_gc = 0;
- 	rb_memerror();
-     }
-+    assert(objspace->heap.reserve_slots != NULL);
-+    slot = objspace->heap.reserve_slots;
-+    objspace->heap.reserve_slots = slot->free_next;
-     MEMZERO((void*)slot, struct heaps_slot, 1);
- 
-     slot->next = heaps;
-     if (heaps) heaps->prev = slot;
-     heaps = slot;
- 
--    membase = p;
-+    p = (RVALUE*)((VALUE)membase + sizeof(struct heaps_header));
-     if ((VALUE)p % sizeof(RVALUE) != 0) {
--	p = (RVALUE*)((VALUE)p + sizeof(RVALUE) - ((VALUE)p % sizeof(RVALUE)));
--	if ((HEAP_SIZE - HEAP_OBJ_LIMIT * sizeof(RVALUE)) < (size_t)((char*)p - (char*)membase)) {
--	    objs--;
--	}
-+       p = (RVALUE*)((VALUE)p + sizeof(RVALUE) - ((VALUE)p % sizeof(RVALUE)));
-+       objs = (HEAP_SIZE - (size_t)((VALUE)p - (VALUE)membase))/sizeof(RVALUE);
-     }
- 
-     lo = 0;
-     hi = heaps_used;
-     while (lo < hi) {
--	register RVALUE *mid_membase;
-+	register struct heaps_header *mid_membase;
- 	mid = (lo + hi) / 2;
--	mid_membase = objspace->heap.sorted[mid].slot->membase;
-+        mid_membase = objspace->heap.sorted[mid];
- 	if (mid_membase < membase) {
- 	    lo = mid + 1;
- 	}
-@@ -1059,14 +1227,16 @@ assign_heap_slot(rb_objspace_t *objspace)
- 	}
-     }
-     if (hi < heaps_used) {
--	MEMMOVE(&objspace->heap.sorted[hi+1], &objspace->heap.sorted[hi], struct sorted_heaps_slot, heaps_used - hi);
--    }
--    objspace->heap.sorted[hi].slot = slot;
--    objspace->heap.sorted[hi].start = p;
--    objspace->heap.sorted[hi].end = (p + objs);
-+	MEMMOVE(&objspace->heap.sorted[hi+1], &objspace->heap.sorted[hi], struct heaps_header*, heaps_used - hi);
-+    }
-+    objspace->heap.sorted[hi] = membase;
-+    membase->start = p;
-+    membase->end = (p + objs);
-+    membase->base = heaps;
-+    membase->bits = heaps->bits;
-+    membase->limit = objs;
-     heaps->membase = membase;
--    heaps->slot = p;
--    heaps->limit = objs;
-+    memset(heaps->bits, 0, HEAP_BITMAP_LIMIT * sizeof(uintptr_t));
-     objspace->heap.free_num += objs;
-     pend = p + objs;
-     if (lomem == 0 || lomem > p) lomem = p;
-@@ -1075,19 +1245,24 @@ assign_heap_slot(rb_objspace_t *objspace)
- 
-     while (p < pend) {
- 	p->as.free.flags = 0;
--	p->as.free.next = freelist;
--	freelist = p;
-+	p->as.free.next = heaps->freelist;
-+	heaps->freelist = p;
- 	p++;
-     }
-+    link_free_heap_slot(objspace, heaps);
- }
- 
- static void
- add_heap_slots(rb_objspace_t *objspace, size_t add)
- {
-     size_t i;
-+    size_t next_heaps_length;
-+
-+    next_heaps_length = heaps_used + add;
- 
--    if ((heaps_used + add) > heaps_length) {
--        allocate_sorted_heaps(objspace, heaps_used + add);
-+    if (next_heaps_length > heaps_length) {
-+        allocate_sorted_heaps(objspace, next_heaps_length);
-+        heaps_length = next_heaps_length;
-     }
- 
-     for (i = 0; i < add; i++) {
-@@ -1137,6 +1312,7 @@ set_heaps_increment(rb_objspace_t *objspace)
- 
-     if (next_heaps_length > heaps_length) {
- 	allocate_sorted_heaps(objspace, next_heaps_length);
-+        heaps_length = next_heaps_length;
-     }
- }
- 
-@@ -1159,6 +1335,7 @@ rb_during_gc(void)
- }
- 
- #define RANY(o) ((RVALUE*)(o))
-+#define has_free_object (objspace->heap.free_slots && objspace->heap.free_slots->freelist)
- 
- VALUE
- rb_newobj(void)
-@@ -1179,15 +1356,18 @@ rb_newobj(void)
- 	}
-     }
- 
--    if (UNLIKELY(!freelist)) {
-+    if (UNLIKELY(!has_free_object)) {
- 	if (!gc_lazy_sweep(objspace)) {
- 	    during_gc = 0;
- 	    rb_memerror();
- 	}
-     }
- 
--    obj = (VALUE)freelist;
--    freelist = freelist->as.free.next;
-+    obj = (VALUE)objspace->heap.free_slots->freelist;
-+    objspace->heap.free_slots->freelist = RANY(obj)->as.free.next;
-+    if (objspace->heap.free_slots->freelist == NULL) {
-+        unlink_free_heap_slot(objspace, objspace->heap.free_slots);
-+    }
- 
-     MEMZERO((void*)obj, RVALUE, 1);
- #ifdef GC_DEBUG
-@@ -1356,10 +1536,10 @@ gc_mark_all(rb_objspace_t *objspace)
- 
-     init_mark_stack(objspace);
-     for (i = 0; i < heaps_used; i++) {
--	p = objspace->heap.sorted[i].start; pend = objspace->heap.sorted[i].end;
-+	p = objspace->heap.sorted[i]->start; pend = objspace->heap.sorted[i]->end;
- 	while (p < pend) {
--	    if ((p->as.basic.flags & FL_MARK) &&
--		(p->as.basic.flags != FL_MARK)) {
-+	    if (MARKED_IN_BITMAP(GET_HEAP_BITMAP(p), p) &&
-+		p->as.basic.flags) {
- 		gc_mark_children(objspace, (VALUE)p, 0);
- 	    }
- 	    p++;
-@@ -1387,26 +1567,27 @@ static inline int
- is_pointer_to_heap(rb_objspace_t *objspace, void *ptr)
- {
-     register RVALUE *p = RANY(ptr);
--    register struct sorted_heaps_slot *heap;
-+    register struct heaps_header *heap;
-     register size_t hi, lo, mid;
- 
-     if (p < lomem || p > himem) return FALSE;
-     if ((VALUE)p % sizeof(RVALUE) != 0) return FALSE;
-+    heap = GET_HEAP_HEADER(p);
- 
-     /* check if p looks like a pointer using bsearch*/
-     lo = 0;
-     hi = heaps_used;
-     while (lo < hi) {
- 	mid = (lo + hi) / 2;
--	heap = &objspace->heap.sorted[mid];
--	if (heap->start <= p) {
--	    if (p < heap->end)
--		return TRUE;
--	    lo = mid + 1;
--	}
--	else {
--	    hi = mid;
--	}
-+        if (heap > objspace->heap.sorted[mid]) {
-+            lo = mid + 1;
-+        }
-+        else if (heap < objspace->heap.sorted[mid]) {
-+            hi = mid;
-+        }
-+        else {
-+            return (p >= heap->start && p < heap->end) ? TRUE : FALSE;
-+        }
-     }
-     return FALSE;
- }
-@@ -1449,10 +1630,10 @@ struct mark_tbl_arg {
- };
- 
- static int
--mark_entry(ID key, VALUE value, st_data_t data)
-+mark_entry(st_data_t key, st_data_t value, st_data_t data)
- {
-     struct mark_tbl_arg *arg = (void*)data;
--    gc_mark(arg->objspace, value, arg->lev);
-+    gc_mark(arg->objspace, (VALUE)value, arg->lev);
-     return ST_CONTINUE;
- }
- 
-@@ -1466,11 +1647,20 @@ mark_tbl(rb_objspace_t *objspace, st_table *tbl, int lev)
+@@ -1466,6 +1579,15 @@ mark_tbl(rb_objspace_t *objspace, st_table *tbl, int lev)
      st_foreach(tbl, mark_entry, (st_data_t)&arg);
  }
  
@@ -1524,31 +1180,9 @@ index 064f9a8..682d390 100644
 +}
 +
  static int
--mark_key(VALUE key, VALUE value, st_data_t data)
-+mark_key(st_data_t key, st_data_t value, st_data_t data)
+ mark_key(VALUE key, VALUE value, st_data_t data)
  {
-     struct mark_tbl_arg *arg = (void*)data;
--    gc_mark(arg->objspace, key, arg->lev);
-+    gc_mark(arg->objspace, (VALUE)key, arg->lev);
-     return ST_CONTINUE;
- }
- 
-@@ -1491,11 +1681,11 @@ rb_mark_set(st_table *tbl)
- }
- 
- static int
--mark_keyvalue(VALUE key, VALUE value, st_data_t data)
-+mark_keyvalue(st_data_t key, st_data_t value, st_data_t data)
- {
-     struct mark_tbl_arg *arg = (void*)data;
--    gc_mark(arg->objspace, key, arg->lev);
--    gc_mark(arg->objspace, value, arg->lev);
-+    gc_mark(arg->objspace, (VALUE)key, arg->lev);
-+    gc_mark(arg->objspace, (VALUE)value, arg->lev);
-     return ST_CONTINUE;
- }
- 
-@@ -1544,74 +1734,52 @@ rb_mark_method_entry(const rb_method_entry_t *me)
+@@ -1544,74 +1666,52 @@ rb_mark_method_entry(const rb_method_entry_t *me)
      mark_method_entry(&rb_objspace, me, 0);
  }
  
@@ -1648,55 +1282,7 @@ index 064f9a8..682d390 100644
  }
  
  void
-@@ -1622,6 +1790,16 @@ rb_gc_mark_maybe(VALUE obj)
-     }
- }
- 
-+static int
-+gc_mark_ptr(rb_objspace_t *objspace, VALUE ptr)
-+{
-+    register uintptr_t *bits = GET_HEAP_BITMAP(ptr);
-+    if (MARKED_IN_BITMAP(bits, ptr)) return 0;
-+    MARK_IN_BITMAP(bits, ptr);
-+    objspace->heap.live_num++;
-+    return 1;
-+}
-+
- static void
- gc_mark(rb_objspace_t *objspace, VALUE ptr, int lev)
- {
-@@ -1630,9 +1808,7 @@ gc_mark(rb_objspace_t *objspace, VALUE ptr, int lev)
-     obj = RANY(ptr);
-     if (rb_special_const_p(ptr)) return; /* special const not marked */
-     if (obj->as.basic.flags == 0) return;       /* free cell */
--    if (obj->as.basic.flags & FL_MARK) return;  /* already marked */
--    obj->as.basic.flags |= FL_MARK;
--    objspace->heap.live_num++;
-+    if (!gc_mark_ptr(objspace, ptr)) return;	/* already marked */
- 
-     if (lev > GC_LEVEL_MAX || (lev == 0 && stack_check(STACKFRAME_FOR_GC_MARK))) {
- 	if (!mark_stack_overflow) {
-@@ -1659,6 +1835,7 @@ static void
- gc_mark_children(rb_objspace_t *objspace, VALUE ptr, int lev)
- {
-     register RVALUE *obj = RANY(ptr);
-+    register uintptr_t *bits;
- 
-     goto marking;		/* skip */
- 
-@@ -1666,8 +1843,9 @@ gc_mark_children(rb_objspace_t *objspace, VALUE ptr, int lev)
-     obj = RANY(ptr);
-     if (rb_special_const_p(ptr)) return; /* special const not marked */
-     if (obj->as.basic.flags == 0) return;       /* free cell */
--    if (obj->as.basic.flags & FL_MARK) return;  /* already marked */
--    obj->as.basic.flags |= FL_MARK;
-+    bits = GET_HEAP_BITMAP(ptr);
-+    if (MARKED_IN_BITMAP(bits, ptr)) return;  /* already marked */
-+    MARK_IN_BITMAP(bits, ptr);
-     objspace->heap.live_num++;
- 
-   marking:
-@@ -1819,7 +1997,7 @@ gc_mark_children(rb_objspace_t *objspace, VALUE ptr, int lev)
+@@ -1819,7 +1919,7 @@ gc_mark_children(rb_objspace_t *objspace, VALUE ptr, int lev)
        case T_CLASS:
        case T_MODULE:
  	mark_m_tbl(objspace, RCLASS_M_TBL(obj), lev);
@@ -1705,314 +1291,7 @@ index 064f9a8..682d390 100644
  	mark_const_tbl(objspace, RCLASS_CONST_TBL(obj), lev);
  	ptr = RCLASS_SUPER(obj);
  	goto again;
-@@ -1929,15 +2107,22 @@ gc_mark_children(rb_objspace_t *objspace, VALUE ptr, int lev)
- 
- static int obj_free(rb_objspace_t *, VALUE);
- 
--static inline void
--add_freelist(rb_objspace_t *objspace, RVALUE *p)
-+static inline struct heaps_slot *
-+add_slot_local_freelist(rb_objspace_t *objspace, RVALUE *p)
- {
-+    struct heaps_slot *slot;
-+
-     VALGRIND_MAKE_MEM_UNDEFINED((void*)p, sizeof(RVALUE));
-     p->as.free.flags = 0;
--    p->as.free.next = freelist;
--    freelist = p;
-+    slot = GET_HEAP_SLOT(p);
-+    p->as.free.next = slot->freelist;
-+    slot->freelist = p;
-+
-+    return slot;
- }
- 
-+static void free_unused_heap(rb_objspace_t *objspace, struct heaps_header *heap);
-+
- static void
- finalize_list(rb_objspace_t *objspace, RVALUE *p)
- {
-@@ -1945,17 +2130,16 @@ finalize_list(rb_objspace_t *objspace, RVALUE *p)
- 	RVALUE *tmp = p->as.free.next;
- 	run_final(objspace, (VALUE)p);
- 	if (!FL_TEST(p, FL_SINGLETON)) { /* not freeing page */
--            if (objspace->heap.sweep_slots) {
--                p->as.free.flags = 0;
--            }
--            else {
-+            add_slot_local_freelist(objspace, p);
-+            if (!is_lazy_sweeping(objspace)) {
-                 GC_PROF_DEC_LIVE_NUM;
--                add_freelist(objspace, p);
-             }
- 	}
- 	else {
--	    struct heaps_slot *slot = (struct heaps_slot *)(VALUE)RDATA(p)->dmark;
--	    slot->limit--;
-+            struct heaps_header *heap = GET_HEAP_HEADER(p);
-+            if (--heap->limit == 0) {
-+                free_unused_heap(objspace, heap);
-+            }
- 	}
- 	p = tmp;
-     }
-@@ -1976,97 +2160,106 @@ unlink_heap_slot(rb_objspace_t *objspace, struct heaps_slot *slot)
-     slot->next = NULL;
- }
- 
--
- static void
--free_unused_heaps(rb_objspace_t *objspace)
-+free_unused_heap(rb_objspace_t *objspace, struct heaps_header *heap)
- {
--    size_t i, j;
--    RVALUE *last = 0;
--
--    for (i = j = 1; j < heaps_used; i++) {
--	if (objspace->heap.sorted[i].slot->limit == 0) {
--	    if (!last) {
--		last = objspace->heap.sorted[i].slot->membase;
--	    }
--	    else {
--		free(objspace->heap.sorted[i].slot->membase);
--	    }
--            free(objspace->heap.sorted[i].slot);
--	    heaps_used--;
--	}
--	else {
--	    if (i != j) {
--		objspace->heap.sorted[j] = objspace->heap.sorted[i];
--	    }
--	    j++;
--	}
--    }
--    if (last) {
--	if (last < heaps_freed) {
--	    free(heaps_freed);
--	    heaps_freed = last;
--	}
--	else {
--	    free(last);
--	}
-+    register size_t hi, lo, mid;
-+    lo = 0;
-+    hi = heaps_used;
-+    while (lo < hi) {
-+        mid = (lo + hi) / 2;
-+        if (heap > objspace->heap.sorted[mid]) {
-+            lo = mid + 1;
-+        }
-+        else if (heap < objspace->heap.sorted[mid]) {
-+            hi = mid;
-+        }
-+        else {
-+            /* remove unused heap */
-+            struct heaps_slot* h = objspace->heap.sorted[mid]->base;
-+            h->free_next = objspace->heap.reserve_slots;
-+            objspace->heap.reserve_slots = h;
-+            aligned_free(objspace->heap.sorted[mid]);
-+            heaps_used--;
-+            MEMMOVE(objspace->heap.sorted + mid, objspace->heap.sorted + mid + 1,
-+                    struct heaps_header *, heaps_used - mid);
-+            return;
-+        }
-     }
- }
- 
- static void
-+gc_clear_slot_bits(struct heaps_slot *slot)
-+{
-+    memset(slot->bits, 0, HEAP_BITMAP_LIMIT * sizeof(uintptr_t));
-+}
-+
-+static void
- slot_sweep(rb_objspace_t *objspace, struct heaps_slot *sweep_slot)
- {
-     size_t free_num = 0, final_num = 0;
-     RVALUE *p, *pend;
--    RVALUE *free = freelist, *final = deferred_final_list;
-+    RVALUE *final = deferred_final_list;
-     int deferred;
-+    uintptr_t *bits;
- 
--    p = sweep_slot->slot; pend = p + sweep_slot->limit;
-+    p = sweep_slot->membase->start; pend = sweep_slot->membase->end;
-+    bits = sweep_slot->bits;
-     while (p < pend) {
--        if (!(p->as.basic.flags & FL_MARK)) {
--            if (p->as.basic.flags &&
--                ((deferred = obj_free(objspace, (VALUE)p)) ||
--		 (FL_TEST(p, FL_FINALIZE)))) {
--                if (!deferred) {
--                    p->as.free.flags = T_ZOMBIE;
--                    RDATA(p)->dfree = 0;
-+        if ((!(MARKED_IN_BITMAP(bits, p))) && BUILTIN_TYPE(p) != T_ZOMBIE) {
-+            if (p->as.basic.flags) {
-+                if ((deferred = obj_free(objspace, (VALUE)p)) ||
-+                    (FL_TEST(p, FL_FINALIZE))) {
-+                    if (!deferred) {
-+                        p->as.free.flags = T_ZOMBIE;
-+                        RDATA(p)->dfree = 0;
-+                    }
-+                    p->as.free.next = deferred_final_list;
-+                    deferred_final_list = p;
-+                    assert(BUILTIN_TYPE(p) == T_ZOMBIE);
-+                    final_num++;
-+                }
-+                else {
-+                    VALGRIND_MAKE_MEM_UNDEFINED((void*)p, sizeof(RVALUE));
-+                    p->as.free.flags = 0;
-+                    p->as.free.next = sweep_slot->freelist;
-+                    sweep_slot->freelist = p;
-+                    free_num++;
-                 }
--                p->as.free.flags |= FL_MARK;
--                p->as.free.next = deferred_final_list;
--                deferred_final_list = p;
--                final_num++;
-             }
-             else {
--                add_freelist(objspace, p);
-                 free_num++;
-             }
-         }
--        else if (BUILTIN_TYPE(p) == T_ZOMBIE) {
--            /* objects to be finalized */
--            /* do nothing remain marked */
--        }
--        else {
--            RBASIC(p)->flags &= ~FL_MARK;
--        }
-         p++;
-     }
--    if (final_num + free_num == sweep_slot->limit &&
-+    gc_clear_slot_bits(sweep_slot);
-+    if (final_num + free_num == sweep_slot->membase->limit &&
-         objspace->heap.free_num > objspace->heap.do_heap_free) {
-         RVALUE *pp;
- 
-         for (pp = deferred_final_list; pp != final; pp = pp->as.free.next) {
--	    RDATA(pp)->dmark = (void (*)(void *))(VALUE)sweep_slot;
-+	    RDATA(pp)->dmark = 0;
-             pp->as.free.flags |= FL_SINGLETON; /* freeing page mark */
-         }
--        sweep_slot->limit = final_num;
--        freelist = free;	/* cancel this page from freelist */
-+        sweep_slot->membase->limit = final_num;
-         unlink_heap_slot(objspace, sweep_slot);
-+        if (final_num == 0) {
-+            free_unused_heap(objspace, sweep_slot->membase);
-+        }
-     }
-     else {
-+        if (free_num > 0) {
-+            link_free_heap_slot(objspace, sweep_slot);
-+        }
-+        else {
-+            sweep_slot->free_next = NULL;
-+        }
-         objspace->heap.free_num += free_num;
-     }
-     objspace->heap.final_num += final_num;
- 
--    if (deferred_final_list) {
-+    if (deferred_final_list && !finalizing) {
-         rb_thread_t *th = GET_THREAD();
-         if (th) {
-             RUBY_VM_SET_FINALIZER_INTERRUPT(th);
-@@ -2078,7 +2271,7 @@ static int
- ready_to_gc(rb_objspace_t *objspace)
- {
-     if (dont_gc || during_gc) {
--	if (!freelist) {
-+	if (!has_free_object) {
-             if (!heaps_increment(objspace)) {
-                 set_heaps_increment(objspace);
-                 heaps_increment(objspace);
-@@ -2092,7 +2285,6 @@ ready_to_gc(rb_objspace_t *objspace)
- static void
- before_gc_sweep(rb_objspace_t *objspace)
- {
--    freelist = 0;
-     objspace->heap.do_heap_free = (size_t)((heaps_used * HEAP_OBJ_LIMIT) * 0.65);
-     objspace->heap.free_min = (size_t)((heaps_used * HEAP_OBJ_LIMIT)  * 0.2);
-     if (objspace->heap.free_min < initial_free_min) {
-@@ -2101,6 +2293,7 @@ before_gc_sweep(rb_objspace_t *objspace)
-     }
-     objspace->heap.sweep_slots = heaps;
-     objspace->heap.free_num = 0;
-+    objspace->heap.free_slots = NULL;
- 
-     /* sweep unlinked method entries */
-     if (GET_VM()->unlinked_method_entry_list) {
-@@ -2123,8 +2316,6 @@ after_gc_sweep(rb_objspace_t *objspace)
- 	if (malloc_limit < initial_malloc_limit) malloc_limit = initial_malloc_limit;
-     }
-     malloc_increase = 0;
--
--    free_unused_heaps(objspace);
- }
- 
- static int
-@@ -2137,7 +2328,7 @@ lazy_sweep(rb_objspace_t *objspace)
-         next = objspace->heap.sweep_slots->next;
- 	slot_sweep(objspace, objspace->heap.sweep_slots);
-         objspace->heap.sweep_slots = next;
--        if (freelist) {
-+        if (has_free_object) {
-             during_gc = 0;
-             return TRUE;
-         }
-@@ -2149,10 +2340,10 @@ static void
- rest_sweep(rb_objspace_t *objspace)
- {
-     if (objspace->heap.sweep_slots) {
--       while (objspace->heap.sweep_slots) {
--           lazy_sweep(objspace);
--       }
--       after_gc_sweep(objspace);
-+	while (objspace->heap.sweep_slots) {
-+	    lazy_sweep(objspace);
-+	}
-+	after_gc_sweep(objspace);
-     }
- }
- 
-@@ -2199,9 +2390,9 @@ gc_lazy_sweep(rb_objspace_t *objspace)
-     }
- 
-     GC_PROF_SWEEP_TIMER_START;
--    if(!(res = lazy_sweep(objspace))) {
-+    if (!(res = lazy_sweep(objspace))) {
-         after_gc_sweep(objspace);
--        if(freelist) {
-+        if (has_free_object) {
-             res = TRUE;
-             during_gc = 0;
-         }
-@@ -2234,12 +2425,17 @@ void
- rb_gc_force_recycle(VALUE p)
- {
-     rb_objspace_t *objspace = &rb_objspace;
--    GC_PROF_DEC_LIVE_NUM;
--    if (RBASIC(p)->flags & FL_MARK) {
--        RANY(p)->as.free.flags = 0;
-+    struct heaps_slot *slot;
-+
-+    if (MARKED_IN_BITMAP(GET_HEAP_BITMAP(p), p)) {
-+        add_slot_local_freelist(objspace, (RVALUE *)p);
-     }
-     else {
--        add_freelist(objspace, (RVALUE *)p);
-+        GC_PROF_DEC_LIVE_NUM;
-+        slot = add_slot_local_freelist(objspace, (RVALUE *)p);
-+        if (slot->free_next == NULL) {
-+            link_free_heap_slot(objspace, slot);
-+        }
-     }
- }
- 
-@@ -2286,15 +2482,11 @@ obj_free(rb_objspace_t *objspace, VALUE obj)
+@@ -2286,15 +2386,11 @@ obj_free(rb_objspace_t *objspace, VALUE obj)
        case T_CLASS:
  	rb_clear_cache_by_class((VALUE)obj);
  	rb_free_m_table(RCLASS_M_TBL(obj));
@@ -2033,7 +1312,7 @@ index 064f9a8..682d390 100644
          xfree(RANY(obj)->as.klass.ptr);
  	break;
        case T_STRING:
-@@ -2346,8 +2538,9 @@ obj_free(rb_objspace_t *objspace, VALUE obj)
+@@ -2346,8 +2442,9 @@ obj_free(rb_objspace_t *objspace, VALUE obj)
        case T_COMPLEX:
  	break;
        case T_ICLASS:
@@ -2044,7 +1323,7 @@ index 064f9a8..682d390 100644
  	break;
  
        case T_FLOAT:
-@@ -2458,7 +2651,7 @@ gc_marks(rb_objspace_t *objspace)
+@@ -2458,7 +2555,7 @@ gc_marks(rb_objspace_t *objspace)
      rb_mark_end_proc();
      rb_gc_mark_global_tbl();
  
@@ -2053,289 +1332,8 @@ index 064f9a8..682d390 100644
  
      /* mark generic instance variables for special constants */
      rb_mark_generic_ivar_tbl();
-@@ -2611,7 +2804,7 @@ static VALUE
- objspace_each_objects(VALUE arg)
- {
-     size_t i;
--    RVALUE *membase = 0;
-+    struct heaps_header *membase = 0;
-     RVALUE *pstart, *pend;
-     rb_objspace_t *objspace = &rb_objspace;
-     struct each_obj_args *args = (struct each_obj_args *)arg;
-@@ -2619,16 +2812,16 @@ objspace_each_objects(VALUE arg)
- 
-     i = 0;
-     while (i < heaps_used) {
--	while (0 < i && (uintptr_t)membase < (uintptr_t)objspace->heap.sorted[i-1].slot->membase)
-+	while (0 < i && membase < objspace->heap.sorted[i-1])
- 	    i--;
--	while (i < heaps_used && (uintptr_t)objspace->heap.sorted[i].slot->membase <= (uintptr_t)membase)
-+	while (i < heaps_used && objspace->heap.sorted[i] <= membase)
- 	    i++;
- 	if (heaps_used <= i)
- 	  break;
--	membase = objspace->heap.sorted[i].slot->membase;
-+	membase = objspace->heap.sorted[i];
- 
--	pstart = objspace->heap.sorted[i].slot->slot;
--	pend = pstart + objspace->heap.sorted[i].slot->limit;
-+	pstart = membase->start;
-+	pend = membase->end;
- 
- 	for (; pstart != pend; pstart++) {
- 	    if (pstart->as.basic.flags) {
-@@ -2642,6 +2835,7 @@ objspace_each_objects(VALUE arg)
- 	    }
- 	}
-     }
-+    RB_GC_GUARD(v);
- 
-     return Qnil;
- }
-@@ -2885,11 +3079,12 @@ run_single_final(VALUE arg)
- }
- 
- static void
--run_finalizer(rb_objspace_t *objspace, VALUE objid, VALUE table)
-+run_finalizer(rb_objspace_t *objspace, VALUE obj, VALUE table)
- {
-     long i;
-     int status;
-     VALUE args[3];
-+    VALUE objid = nonspecial_obj_id(obj);
- 
-     if (RARRAY_LEN(table) > 0) {
- 	args[1] = rb_obj_freeze(rb_ary_new3(1, objid));
-@@ -2913,13 +3108,11 @@ run_finalizer(rb_objspace_t *objspace, VALUE objid, VALUE table)
- static void
- run_final(rb_objspace_t *objspace, VALUE obj)
- {
--    VALUE objid;
-     RUBY_DATA_FUNC free_func = 0;
-     st_data_t key, table;
- 
-     objspace->heap.final_num--;
- 
--    objid = rb_obj_id(obj);	/* make obj into id */
-     RBASIC(obj)->klass = 0;
- 
-     if (RTYPEDDATA_P(obj)) {
-@@ -2934,7 +3127,7 @@ run_final(rb_objspace_t *objspace, VALUE obj)
- 
-     key = (st_data_t)obj;
-     if (st_delete(finalizer_table, &key, &table)) {
--	run_finalizer(objspace, objid, (VALUE)table);
-+	run_finalizer(objspace, obj, (VALUE)table);
-     }
- }
- 
-@@ -2952,16 +3145,20 @@ finalize_deferred(rb_objspace_t *objspace)
- void
- rb_gc_finalize_deferred(void)
- {
--    finalize_deferred(&rb_objspace);
-+    rb_objspace_t *objspace = &rb_objspace;
-+    if (ATOMIC_EXCHANGE(finalizing, 1)) return;
-+    finalize_deferred(objspace);
-+    ATOMIC_SET(finalizing, 0);
- }
- 
- static int
- chain_finalized_object(st_data_t key, st_data_t val, st_data_t arg)
- {
-     RVALUE *p = (RVALUE *)key, **final_list = (RVALUE **)arg;
--    if ((p->as.basic.flags & (FL_FINALIZE|FL_MARK)) == FL_FINALIZE) {
-+    if ((p->as.basic.flags & FL_FINALIZE) == FL_FINALIZE &&
-+        !MARKED_IN_BITMAP(GET_HEAP_BITMAP(p), p)) {
- 	if (BUILTIN_TYPE(p) != T_ZOMBIE) {
--	    p->as.free.flags = FL_MARK | T_ZOMBIE; /* remain marked */
-+	    p->as.free.flags = T_ZOMBIE;
- 	    RDATA(p)->dfree = 0;
- 	}
- 	p->as.free.next = *final_list;
-@@ -3004,6 +3201,8 @@ rb_objspace_call_finalizer(rb_objspace_t *objspace)
-     /* run finalizers */
-     rest_sweep(objspace);
- 
-+    if (ATOMIC_EXCHANGE(finalizing, 1)) return;
-+
-     do {
- 	/* XXX: this loop will make no sense */
- 	/* because mark will not be removed */
-@@ -3018,8 +3217,9 @@ rb_objspace_call_finalizer(rb_objspace_t *objspace)
- 	st_foreach(finalizer_table, force_chain_object, (st_data_t)&list);
- 	while (list) {
- 	    struct force_finalize_list *curr = list;
--	    run_finalizer(objspace, rb_obj_id(curr->obj), curr->table);
--	    st_delete(finalizer_table, (st_data_t*)&curr->obj, 0);
-+	    st_data_t obj = (st_data_t)curr->obj;
-+	    run_finalizer(objspace, curr->obj, curr->table);
-+	    st_delete(finalizer_table, &obj, 0);
- 	    list = curr->next;
- 	    xfree(curr);
- 	}
-@@ -3030,7 +3230,7 @@ rb_objspace_call_finalizer(rb_objspace_t *objspace)
- 
-     /* run data object's finalizers */
-     for (i = 0; i < heaps_used; i++) {
--	p = objspace->heap.sorted[i].start; pend = objspace->heap.sorted[i].end;
-+	p = objspace->heap.sorted[i]->start; pend = objspace->heap.sorted[i]->end;
- 	while (p < pend) {
- 	    if (BUILTIN_TYPE(p) == T_DATA &&
- 		DATA_PTR(p) && RANY(p)->as.data.dfree &&
-@@ -3066,6 +3266,7 @@ rb_objspace_call_finalizer(rb_objspace_t *objspace)
- 
-     st_free_table(finalizer_table);
-     finalizer_table = 0;
-+    ATOMIC_SET(finalizing, 0);
- }
- 
- void
-@@ -3073,8 +3274,39 @@ rb_gc(void)
- {
-     rb_objspace_t *objspace = &rb_objspace;
-     garbage_collect(objspace);
--    finalize_deferred(objspace);
--    free_unused_heaps(objspace);
-+    if (!finalizing) finalize_deferred(objspace);
-+}
-+
-+static inline int
-+is_id_value(rb_objspace_t *objspace, VALUE ptr)
-+{
-+    if (!is_pointer_to_heap(objspace, (void *)ptr)) return FALSE;
-+    if (BUILTIN_TYPE(ptr) > T_FIXNUM) return FALSE;
-+    if (BUILTIN_TYPE(ptr) == T_ICLASS) return FALSE;
-+    return TRUE;
-+}
-+
-+static inline int
-+is_dead_object(rb_objspace_t *objspace, VALUE ptr)
-+{
-+    struct heaps_slot *slot = objspace->heap.sweep_slots;
-+    if (!is_lazy_sweeping(objspace) || MARKED_IN_BITMAP(GET_HEAP_BITMAP(ptr), ptr))
-+	return FALSE;
-+    while (slot) {
-+	if ((VALUE)slot->membase->start <= ptr && ptr < (VALUE)(slot->membase->end))
-+	    return TRUE;
-+	slot = slot->next;
-+    }
-+    return FALSE;
-+}
-+
-+static inline int
-+is_live_object(rb_objspace_t *objspace, VALUE ptr)
-+{
-+    if (BUILTIN_TYPE(ptr) == 0) return FALSE;
-+    if (RBASIC(ptr)->klass == 0) return FALSE;
-+    if (is_dead_object(objspace, ptr)) return FALSE;
-+    return TRUE;
- }
- 
- /*
-@@ -3119,11 +3351,10 @@ id2ref(VALUE obj, VALUE objid)
- 	return ID2SYM(symid);
-     }
- 
--    if (!is_pointer_to_heap(objspace, (void *)ptr) ||
--	BUILTIN_TYPE(ptr) > T_FIXNUM || BUILTIN_TYPE(ptr) == T_ICLASS) {
-+    if (!is_id_value(objspace, ptr)) {
- 	rb_raise(rb_eRangeError, "%p is not id value", p0);
-     }
--    if (BUILTIN_TYPE(ptr) == 0 || RBASIC(ptr)->klass == 0) {
-+    if (!is_live_object(objspace, ptr)) {
- 	rb_raise(rb_eRangeError, "%p is recycled object", p0);
-     }
-     return (VALUE)ptr;
-@@ -3193,7 +3424,7 @@ rb_obj_id(VALUE obj)
-     if (SPECIAL_CONST_P(obj)) {
-         return LONG2NUM((SIGNED_VALUE)obj);
-     }
--    return (VALUE)((SIGNED_VALUE)obj|FIXNUM_FLAG);
-+    return nonspecial_obj_id(obj);
- }
- 
- static int
-@@ -3236,7 +3467,7 @@ count_objects(int argc, VALUE *argv, VALUE os)
-     VALUE hash;
- 
-     if (rb_scan_args(argc, argv, "01", &hash) == 1) {
--        if (TYPE(hash) != T_HASH)
-+        if (!RB_TYPE_P(hash, T_HASH))
-             rb_raise(rb_eTypeError, "non-hash given");
-     }
- 
-@@ -3247,7 +3478,7 @@ count_objects(int argc, VALUE *argv, VALUE os)
-     for (i = 0; i < heaps_used; i++) {
-         RVALUE *p, *pend;
- 
--        p = objspace->heap.sorted[i].start; pend = objspace->heap.sorted[i].end;
-+        p = objspace->heap.sorted[i]->start; pend = objspace->heap.sorted[i]->end;
-         for (;p < pend; p++) {
-             if (p->as.basic.flags) {
-                 counts[BUILTIN_TYPE(p)]++;
-@@ -3256,7 +3487,7 @@ count_objects(int argc, VALUE *argv, VALUE os)
-                 freed++;
-             }
-         }
--        total += objspace->heap.sorted[i].slot->limit;
-+        total += objspace->heap.sorted[i]->limit;
-     }
- 
-     if (hash == Qnil) {
-@@ -3355,7 +3586,7 @@ gc_stat(int argc, VALUE *argv, VALUE self)
-     VALUE hash;
- 
-     if (rb_scan_args(argc, argv, "01", &hash) == 1) {
--        if (TYPE(hash) != T_HASH)
-+        if (!RB_TYPE_P(hash, T_HASH))
-             rb_raise(rb_eTypeError, "non-hash given");
-     }
- 
-@@ -3410,6 +3641,33 @@ gc_malloc_allocations(VALUE self)
- }
- #endif
- 
-+/*
-+ *  call-seq:
-+ *     GC::Profiler.raw_data -> [Hash, ...]
-+ *
-+ *  Returns an Array of individual raw profile data Hashes ordered
-+ *  from earliest to latest by <tt>:GC_INVOKE_TIME</tt>.  For example:
-+ *
-+ *    [{:GC_TIME=>1.3000000000000858e-05,
-+ *      :GC_INVOKE_TIME=>0.010634999999999999,
-+ *      :HEAP_USE_SIZE=>289640,
-+ *      :HEAP_TOTAL_SIZE=>588960,
-+ *      :HEAP_TOTAL_OBJECTS=>14724,
-+ *      :GC_IS_MARKED=>false},
-+ *      ...
-+ *    ]
-+ *
-+ *  The keys mean:
-+ *
-+ *  +:GC_TIME+:: Time taken for this run in milliseconds
-+ *  +:GC_INVOKE_TIME+:: Time the GC was invoked since startup in seconds
-+ *  +:HEAP_USE_SIZE+:: Bytes of heap used
-+ *  +:HEAP_TOTAL_SIZE+:: Size of heap in bytes
-+ *  +:HEAP_TOTAL_OBJECTS+:: Number of objects
-+ *  +:GC_IS_MARKED+:: Is the GC in the mark phase
-+ *
-+ */
-+
- static VALUE
- gc_profile_record_get(void)
- {
-@@ -3602,6 +3860,7 @@ Init_GC(void)
-     rb_mProfiler = rb_define_module_under(rb_mGC, "Profiler");
-     rb_define_singleton_method(rb_mProfiler, "enabled?", gc_profile_enable_get, 0);
-     rb_define_singleton_method(rb_mProfiler, "enable", gc_profile_enable, 0);
-+    rb_define_singleton_method(rb_mProfiler, "raw_data", gc_profile_record_get, 0);
-     rb_define_singleton_method(rb_mProfiler, "disable", gc_profile_disable, 0);
-     rb_define_singleton_method(rb_mProfiler, "clear", gc_profile_clear, 0);
-     rb_define_singleton_method(rb_mProfiler, "result", gc_profile_result, 0);
 diff --git a/hash.c b/hash.c
-index 64c5d94..66023f5 100644
+index fbd8237..4cb2e2d 100644
 --- a/hash.c
 +++ b/hash.c
 @@ -44,7 +44,7 @@ rb_any_cmp(VALUE a, VALUE b)
@@ -2640,6 +1638,15 @@ index 64c5d94..66023f5 100644
      return hash;
  }
  
+@@ -1087,7 +1081,7 @@ clear_i(VALUE key, VALUE value, VALUE dummy)
+  *
+  */
+ 
+-static VALUE
++VALUE
+ rb_hash_clear(VALUE hash)
+ {
+     rb_hash_modify_check(hash);
 @@ -1144,9 +1138,7 @@ rb_hash_aset(VALUE hash, VALUE key, VALUE val)
  static int
  replace_i(VALUE key, VALUE val, VALUE hash)
@@ -2961,10 +1968,18 @@ index 64c5d94..66023f5 100644
  
  void
 diff --git a/include/ruby/intern.h b/include/ruby/intern.h
-index 876271f..7e4be31 100644
+index 927b536..9be68de 100644
 --- a/include/ruby/intern.h
 +++ b/include/ruby/intern.h
-@@ -413,6 +413,7 @@ size_t ruby_stack_length(VALUE**);
+@@ -56,6 +56,7 @@ VALUE rb_ary_tmp_new(long);
+ void rb_ary_free(VALUE);
+ void rb_ary_modify(VALUE);
+ VALUE rb_ary_freeze(VALUE);
++VALUE rb_ary_dup_of_p(VALUE, VALUE);
+ VALUE rb_ary_aref(int, VALUE*, VALUE);
+ VALUE rb_ary_subseq(VALUE, long, long);
+ void rb_ary_store(VALUE, long, VALUE);
+@@ -413,6 +414,7 @@ size_t ruby_stack_length(VALUE**);
  int rb_during_gc(void);
  void rb_gc_mark_locations(VALUE*, VALUE*);
  void rb_mark_tbl(struct st_table*);
@@ -2972,7 +1987,15 @@ index 876271f..7e4be31 100644
  void rb_mark_set(struct st_table*);
  void rb_mark_hash(struct st_table*);
  void rb_gc_mark_maybe(VALUE);
-@@ -843,7 +844,7 @@ VALUE rb_f_trace_var(int, VALUE*);
+@@ -440,6 +442,7 @@ VALUE rb_hash_lookup(VALUE, VALUE);
+ VALUE rb_hash_lookup2(VALUE, VALUE, VALUE);
+ VALUE rb_hash_fetch(VALUE, VALUE);
+ VALUE rb_hash_aset(VALUE, VALUE, VALUE);
++VALUE rb_hash_clear(VALUE);
+ VALUE rb_hash_delete_if(VALUE);
+ VALUE rb_hash_delete(VALUE,VALUE);
+ typedef VALUE rb_hash_update_func(VALUE newkey, VALUE oldkey, VALUE value);
+@@ -843,7 +846,7 @@ VALUE rb_f_trace_var(int, VALUE*);
  VALUE rb_f_untrace_var(int, VALUE*);
  VALUE rb_f_global_variables(void);
  void rb_alias_variable(ID, ID);
@@ -2982,7 +2005,7 @@ index 876271f..7e4be31 100644
  void rb_mark_generic_ivar(VALUE);
  void rb_mark_generic_ivar_tbl(void);
 diff --git a/include/ruby/ruby.h b/include/ruby/ruby.h
-index 3b72f8c..3fbb42d 100644
+index 2f97b33..1c84e14 100644
 --- a/include/ruby/ruby.h
 +++ b/include/ruby/ruby.h
 @@ -605,7 +605,7 @@ struct RObject {
@@ -3116,7 +2139,7 @@ index 50f2a75..aff94fc 100644
  #if 0
  { /* satisfy cc-mode */
 diff --git a/internal.h b/internal.h
-index 59c9284..69ac02e 100644
+index 59c9284..4af90b6 100644
 --- a/internal.h
 +++ b/internal.h
 @@ -24,18 +24,24 @@ struct rb_deprecated_classext_struct {
@@ -3152,129 +2175,372 @@ index 59c9284..69ac02e 100644
  
  struct vtm; /* defined by timev.h */
  
-@@ -119,6 +125,9 @@ VALUE rb_iseq_clone(VALUE iseqval, VALUE newcbase);
+@@ -94,6 +100,8 @@ VALUE rb_home_dir(const char *user, VALUE result);
+ VALUE rb_realpath_internal(VALUE basedir, VALUE path, int strict);
+ VALUE rb_file_expand_path_fast(VALUE, VALUE);
+ VALUE rb_file_expand_path_internal(VALUE, VALUE, int, int, VALUE);
++VALUE rb_get_path_check_to_string(VALUE, int);
++VALUE rb_get_path_check_convert(VALUE, VALUE, int);
+ void Init_File(void);
+ 
+ #ifdef _WIN32
+@@ -119,6 +127,7 @@ VALUE rb_iseq_clone(VALUE iseqval, VALUE newcbase);
  
  /* load.c */
  VALUE rb_get_load_path(void);
-+void rb_reset_expanded_cache();
-+void rb_load_path_ary_push(VALUE path);
-+extern VALUE rb_cExpandedPath;
++VALUE rb_get_expanded_load_path(void);
  
  /* math.c */
  VALUE rb_math_atan2(VALUE, VALUE);
 diff --git a/load.c b/load.c
-index 163ec4c..b5b0fde 100644
+index 163ec4c..68caebc 100644
 --- a/load.c
 +++ b/load.c
-@@ -4,6 +4,7 @@
- 
- #include "ruby/ruby.h"
- #include "ruby/util.h"
-+#include "ruby/encoding.h"
- #include "internal.h"
- #include "dln.h"
- #include "eval_intern.h"
-@@ -18,6 +19,7 @@ VALUE ruby_dln_librefs;
- #define IS_DLEXT(e) (strcmp((e), DLEXT) == 0)
- #endif
- 
-+static int sorted_loaded_features = 1;
- 
- static const char *const loadable_ext[] = {
-     ".rb", DLEXT,
-@@ -27,28 +29,45 @@ static const char *const loadable_ext[] = {
-     0
- };
+@@ -34,21 +34,120 @@ rb_get_load_path(void)
+     return load_path;
+ }
  
 -VALUE
--rb_get_load_path(void)
--{
--    VALUE load_path = GET_VM()->load_path;
--    return load_path;
--}
-+static VALUE rb_checked_expanded_cache(int*);
-+static void rb_set_expanded_cache(VALUE, int);
-+static VALUE rb_expand_load_paths(long, VALUE*, int*);
-+static int cached_expanded_load_path = 1;
-+VALUE rb_cExpandedPath;
- 
- VALUE
- rb_get_expanded_load_path(void)
+-rb_get_expanded_load_path(void)
++enum expand_type {
++    EXPAND_ALL,
++    EXPAND_RELATIVE,
++    EXPAND_HOME,
++    EXPAND_NON_CACHE
++};
++
++/* Construct expanded load path and store it to cache.
++   We rebuild load path partially if the cache is invalid.
++   We don't cache non string object and expand it every time. We ensure that
++   string objects in $LOAD_PATH are frozen.
++ */
++static void
++rb_construct_expanded_load_path(int type, int *has_relative, int *has_non_cache)
  {
 -    VALUE load_path = rb_get_load_path();
--    VALUE ary;
--    long i;
-+    VALUE expanded = rb_checked_expanded_cache(NULL);
++    rb_vm_t *vm = GET_VM();
++    VALUE load_path = vm->load_path;
++    VALUE expanded_load_path = vm->expanded_load_path;
+     VALUE ary;
+     long i;
++    int level = rb_safe_level();
  
--    ary = rb_ary_new2(RARRAY_LEN(load_path));
--    for (i = 0; i < RARRAY_LEN(load_path); ++i) {
+     ary = rb_ary_new2(RARRAY_LEN(load_path));
+     for (i = 0; i < RARRAY_LEN(load_path); ++i) {
 -	VALUE path = rb_file_expand_path_fast(RARRAY_PTR(load_path)[i], Qnil);
 -	rb_str_freeze(path);
 -	rb_ary_push(ary, path);
-+    if ( !RTEST(expanded) ) {
-+	VALUE load_path = GET_VM()->load_path;
-+	int has_relative = 0;
++	VALUE path, as_str, expanded_path;
++	int is_string, non_cache;
++	char *as_cstr;
++	as_str = path = RARRAY_PTR(load_path)[i];
++	is_string = RB_TYPE_P(path, T_STRING) ? 1 : 0;
++	non_cache = !is_string ? 1 : 0;
++	as_str = rb_get_path_check_to_string(path, level);
++	as_cstr = RSTRING_PTR(as_str);
 +
-+	if (!load_path) return 0;
-+
-+	expanded = rb_expand_load_paths(
-+			RARRAY_LEN(load_path), RARRAY_PTR(load_path),
-+			&has_relative);
-+	RB_GC_GUARD(load_path);
-+
-+	if (cached_expanded_load_path) {
-+	    rb_set_expanded_cache(expanded, has_relative);
++	if (!non_cache) {
++	    if ((type == EXPAND_RELATIVE &&
++		    rb_is_absolute_path(as_cstr)) ||
++		(type == EXPAND_HOME &&
++		    (!as_cstr[0] || as_cstr[0] != '~')) ||
++		(type == EXPAND_NON_CACHE)) {
++		    /* Use cached expanded path. */
++		    rb_ary_push(ary, RARRAY_PTR(expanded_load_path)[i]);
++		    continue;
++	    }
 +	}
-+    } else {
-+	expanded = rb_ary_dup(expanded);
++	if (!*has_relative && !rb_is_absolute_path(as_cstr))
++	    *has_relative = 1;
++	if (!*has_non_cache && non_cache)
++	    *has_non_cache = 1;
++	/* Freeze only string object. We expand other objects every time. */
++	if (is_string)
++	    rb_str_freeze(path);
++	as_str = rb_get_path_check_convert(path, as_str, level);
++	expanded_path = rb_file_expand_path_fast(as_str, Qnil);
++	rb_str_freeze(expanded_path);
++	rb_ary_push(ary, expanded_path);
      }
--    rb_obj_freeze(ary);
+     rb_obj_freeze(ary);
 -    return ary;
-+    return expanded;
++    vm->expanded_load_path = ary;
++    rb_ary_replace(vm->load_path_snapshot, vm->load_path);
++}
++
++static VALUE
++load_path_getcwd(void)
++{
++    char *cwd = my_getcwd();
++    VALUE cwd_str = rb_filesystem_str_new_cstr(cwd);
++    xfree(cwd);
++    return cwd_str;
 +}
 +
 +VALUE
-+rb_get_load_path(void)
++rb_get_expanded_load_path(void)
 +{
-+    VALUE load_path =
-+	cached_expanded_load_path ?
-+	    rb_get_expanded_load_path():
-+	    GET_VM()->load_path;
-+    return load_path;
++    rb_vm_t *vm = GET_VM();
++    const VALUE non_cache = Qtrue;
++
++    if (!rb_ary_dup_of_p(vm->load_path_snapshot, vm->load_path)) {
++	/* The load path was modified. Rebuild the expanded load path. */
++	int has_relative = 0, has_non_cache = 0;
++	rb_construct_expanded_load_path(EXPAND_ALL, &has_relative, &has_non_cache);
++	if (has_relative) {
++	    vm->load_path_check_cache = load_path_getcwd();
++	}
++	else if (has_non_cache) {
++	    /* Non string object. */
++	    vm->load_path_check_cache = non_cache;
++	}
++	else {
++	    vm->load_path_check_cache = 0;
++	}
++    }
++    else if (vm->load_path_check_cache == non_cache) {
++	int has_relative = 1, has_non_cache = 1;
++	/* Expand only non-cacheable objects. */
++	rb_construct_expanded_load_path(EXPAND_NON_CACHE,
++					&has_relative, &has_non_cache);
++    }
++    else if (vm->load_path_check_cache) {
++	int has_relative = 1, has_non_cache = 1;
++	VALUE cwd = load_path_getcwd();
++	if (!rb_str_equal(vm->load_path_check_cache, cwd)) {
++	    /* Current working directory or filesystem encoding was changed.
++	       Expand relative load path and non-cacheable objects again. */
++	    vm->load_path_check_cache = cwd;
++	    rb_construct_expanded_load_path(EXPAND_RELATIVE,
++					    &has_relative, &has_non_cache);
++	}
++	else {
++	    /* Expand only tilde (User HOME) and non-cacheable objects. */
++	    rb_construct_expanded_load_path(EXPAND_HOME,
++					    &has_relative, &has_non_cache);
++	}
++    }
++    return vm->expanded_load_path;
  }
  
  static VALUE
-@@ -129,6 +148,9 @@ loaded_feature_path_i(st_data_t v, st_data_t b, st_data_t f)
-     return ST_STOP;
+@@ -63,12 +162,121 @@ get_loaded_features(void)
+     return GET_VM()->loaded_features;
  }
  
-+static long rb_feature_first_equal_or_greater(VALUE, const char *, long);
-+static int  rb_stop_search_feature(VALUE, const char *, long);
++static void
++reset_loaded_features_snapshot(void)
++{
++    rb_vm_t *vm = GET_VM();
++    rb_ary_replace(vm->loaded_features_snapshot, vm->loaded_features);
++}
 +
++static VALUE
++get_loaded_features_index_raw(void)
++{
++    return GET_VM()->loaded_features_index;
++}
++
+ static st_table *
+ get_loading_table(void)
+ {
+     return GET_VM()->loading_table;
+ }
+ 
++static void
++features_index_add_single(VALUE short_feature, VALUE offset)
++{
++    VALUE features_index, this_feature_index;
++    features_index = get_loaded_features_index_raw();
++    if ((this_feature_index = rb_hash_lookup(features_index, short_feature)) == Qnil) {
++	this_feature_index = rb_ary_new();
++	rb_hash_aset(features_index, short_feature, this_feature_index);
++    }
++    rb_ary_push(this_feature_index, offset);
++}
++
++/* Add to the loaded-features index all the required entries for
++   `feature`, located at `offset` in $LOADED_FEATURES.  We add an
++   index entry at each string `short_feature` for which
++     feature == "#{prefix}#{short_feature}#{e}"
++   where `e` is empty or matches %r{^\.[^./]*$}, and `prefix` is empty
++   or ends in '/'.  This maintains the invariant that `rb_feature_p()`
++   relies on for its fast lookup.
++*/
++static void
++features_index_add(VALUE feature, VALUE offset)
++{
++    VALUE short_feature;
++    const char *feature_str, *feature_end, *ext, *p;
++
++    feature_str = StringValuePtr(feature);
++    feature_end = feature_str + RSTRING_LEN(feature);
++
++    for (ext = feature_end; ext > feature_str; ext--)
++      if (*ext == '.' || *ext == '/')
++	break;
++    if (*ext != '.')
++      ext = NULL;
++    /* Now `ext` points to the only string matching %r{^\.[^./]*$} that is
++       at the end of `feature`, or is NULL if there is no such string. */
++
++    p = ext ? ext : feature_end;
++    while (1) {
++	p--;
++	while (p >= feature_str && *p != '/')
++	    p--;
++	if (p < feature_str)
++	    break;
++	/* Now *p == '/'.  We reach this point for every '/' in `feature`. */
++	short_feature = rb_str_substr(feature, p + 1 - feature_str, feature_end - p - 1);
++	features_index_add_single(short_feature, offset);
++	if (ext) {
++	    short_feature = rb_str_substr(feature, p + 1 - feature_str, ext - p - 1);
++	    features_index_add_single(short_feature, offset);
++	}
++    }
++    features_index_add_single(feature, offset);
++    if (ext) {
++	short_feature = rb_str_substr(feature, 0, ext - feature_str);
++	features_index_add_single(short_feature, offset);
++    }
++}
++
++static VALUE
++get_loaded_features_index(void)
++{
++    VALUE features;
++    int i;
++    rb_vm_t *vm = GET_VM();
++
++    if (!rb_ary_dup_of_p(vm->loaded_features_snapshot, vm->loaded_features)) {
++	/* The sharing was broken; something (other than us in rb_provide_feature())
++	   modified loaded_features.  Rebuild the index. */
++	rb_hash_clear(vm->loaded_features_index);
++	features = vm->loaded_features;
++	for (i = 0; i < RARRAY_LEN(features); i++) {
++	    VALUE entry, as_str;
++	    as_str = entry = rb_ary_entry(features, i);
++	    StringValue(as_str);
++	    if (as_str != entry)
++		rb_ary_store(features, i, as_str);
++	    rb_str_freeze(as_str);
++	    features_index_add(as_str, INT2FIX(i));
++	}
++	reset_loaded_features_snapshot();
++    }
++    return vm->loaded_features_index;
++}
++
++/* This searches `load_path` for a value such that
++     name == "#{load_path[i]}/#{feature}"
++   if `feature` is a suffix of `name`, or otherwise
++     name == "#{load_path[i]}/#{feature}#{ext}"
++   for an acceptable string `ext`.  It returns
++   `load_path[i].to_str` if found, else 0.
++
++   If type is 's', then `ext` is acceptable only if IS_DLEXT(ext);
++   if 'r', then only if IS_RBEXT(ext); otherwise `ext` may be absent
++   or have any value matching `%r{^\.[^./]*$}`.
++*/
+ static VALUE
+ loaded_feature_path(const char *name, long vlen, const char *feature, long len,
+ 		    int type, VALUE load_path)
+@@ -88,23 +296,22 @@ loaded_feature_path(const char *name, long vlen, const char *feature, long len,
+ 	    return 0;
+ 	plen = e - name - len - 1;
+     }
++    if (type == 's' && !IS_DLEXT(&name[plen+len+1])
++     || type == 'r' && !IS_RBEXT(&name[plen+len+1])
++     || name[plen] != '/') {
++       return 0;
++    }
++    /* Now name == "#{prefix}/#{feature}#{ext}" where ext is acceptable
++       (possibly empty) and prefix is some string of length plen. */
++
+     for (i = 0; i < RARRAY_LEN(load_path); ++i) {
+ 	VALUE p = RARRAY_PTR(load_path)[i];
+ 	const char *s = StringValuePtr(p);
+ 	long n = RSTRING_LEN(p);
+ 
+-	if (n != plen ) continue;
+-	if (n && (strncmp(name, s, n) || name[n] != '/')) continue;
+-	switch (type) {
+-	  case 's':
+-	    if (IS_DLEXT(&name[n+len+1])) return p;
+-	    break;
+-	  case 'r':
+-	    if (IS_RBEXT(&name[n+len+1])) return p;
+-	    break;
+-	  default:
+-	    return p;
+-	}
++	if (n != plen) continue;
++	if (n && strncmp(name, s, n)) continue;
++	return p;
+     }
+     return 0;
+ }
+@@ -132,7 +339,7 @@ loaded_feature_path_i(st_data_t v, st_data_t b, st_data_t f)
  static int
  rb_feature_p(const char *feature, const char *ext, int rb, int expanded, const char **fn)
  {
-@@ -151,8 +173,10 @@ rb_feature_p(const char *feature, const char *ext, int rb, int expanded, const c
+-    VALUE v, features, p, load_path = 0;
++    VALUE features, features_index, feature_val, this_feature_index, v, p, load_path = 0;
+     const char *f, *e;
+     long i, len, elen, n;
+     st_table *loading_tbl;
+@@ -151,8 +358,39 @@ rb_feature_p(const char *feature, const char *ext, int rb, int expanded, const c
  	type = 0;
      }
      features = get_loaded_features();
 -    for (i = 0; i < RARRAY_LEN(features); ++i) {
-+    i = rb_feature_first_equal_or_greater(features, feature, len);
-+    for (; i < RARRAY_LEN(features); ++i) {
- 	v = RARRAY_PTR(features)[i];
-+	if (rb_stop_search_feature(v, feature, len)) break;
+-	v = RARRAY_PTR(features)[i];
++    features_index = get_loaded_features_index();
++
++    feature_val = rb_str_new(feature, len);
++    this_feature_index = rb_hash_lookup(features_index, feature_val);
++    /* We search `features` for an entry such that either
++         "#{features[i]}" == "#{load_path[j]}/#{feature}#{e}"
++       for some j, or
++         "#{features[i]}" == "#{feature}#{e}"
++       Here `e` is an "allowed" extension -- either empty or one
++       of the extensions accepted by IS_RBEXT, IS_SOEXT, or
++       IS_DLEXT.  Further, if `ext && rb` then `IS_RBEXT(e)`,
++       and if `ext && !rb` then `IS_SOEXT(e) || IS_DLEXT(e)`.
++
++       If `expanded`, then only the latter form (without load_path[j])
++       is accepted.  Otherwise either form is accepted, *unless* `ext`
++       is false and an otherwise-matching entry of the first form is
++       preceded by an entry of the form
++         "#{features[i2]}" == "#{load_path[j2]}/#{feature}#{e2}"
++       where `e2` matches %r{^\.[^./]*$} but is not an allowed extension.
++       After a "distractor" entry of this form, only entries of the
++       form "#{feature}#{e}" are accepted.
++
++       In `rb_provide_feature()` and `get_loaded_features_index()` we
++       maintain an invariant that the array `this_feature_index` will
++       point to every entry in `features` which has the form
++         "#{prefix}#{feature}#{e}"
++       where `e` is empty or matches %r{^\.[^./]*$}, and `prefix` is empty
++       or ends in '/'.  This includes both match forms above, as well
++       as any distractors, so we may ignore all other entries in `features`.
++     */
++    for (i = 0; this_feature_index != Qnil && i < RARRAY_LEN(this_feature_index); i++) {
++	long index = FIX2LONG(rb_ary_entry(this_feature_index, i));
++	v = RARRAY_PTR(features)[index];
  	f = StringValuePtr(v);
  	if ((n = RSTRING_LEN(v)) < len) continue;
  	if (strncmp(f, feature, len) != 0) {
-@@ -176,14 +200,14 @@ rb_feature_p(const char *feature, const char *ext, int rb, int expanded, const c
+@@ -175,6 +413,7 @@ rb_feature_p(const char *feature, const char *ext, int rb, int expanded, const c
+ 	    return 'r';
  	}
      }
++
      loading_tbl = get_loading_table();
--    if (loading_tbl) {
-+    if (loading_tbl && loading_tbl->num_entries > 0) {
+     if (loading_tbl) {
  	f = 0;
- 	if (!expanded) {
- 	    struct loaded_feature_searching fs;
+@@ -183,7 +422,7 @@ rb_feature_p(const char *feature, const char *ext, int rb, int expanded, const c
  	    fs.name = feature;
  	    fs.len = len;
  	    fs.type = type;
@@ -3283,436 +2549,54 @@ index 163ec4c..b5b0fde 100644
  	    fs.result = 0;
  	    st_foreach(loading_tbl, loaded_feature_path_i, (st_data_t)&fs);
  	    if ((f = fs.result) != 0) {
-@@ -251,6 +275,170 @@ rb_feature_provided(const char *feature, const char **loading)
-     return FALSE;
- }
+@@ -233,7 +472,7 @@ rb_feature_provided(const char *feature, const char **loading)
  
-+static long
-+feature_basename_length(const char *feature, long flen)
-+{
-+    if (sorted_loaded_features) {
-+	const char *ext = strrchr(feature, '.');
-+	return ext && !strchr(ext, '/') ? ext - feature : flen;
-+    } else {
-+	return 0;
-+    }
-+}
-+
-+static int
-+compare_feature_name(const char *left, long llen, const char *right, long rlen)
-+{
-+    int diff = 0;
-+    while (llen-- && rlen--) {
-+	diff = left[llen] - right[rlen];
-+	if (diff) break;
-+	if (left[llen] == '/') break;
-+    }
-+    return diff;
-+}
-+
-+static int
-+rb_compare_feature_name(VALUE loaded, const char *feature, long flen)
-+{
-+    const char *loaded_name = StringValuePtr(loaded);
-+    long loaded_len = feature_basename_length(loaded_name, RSTRING_LEN(loaded));
-+    return compare_feature_name(loaded_name, loaded_len, feature, flen);
-+}
-+
-+/* used to find when equal features run out */
-+static int
-+rb_stop_search_feature(VALUE loaded, const char *feature, long flen)
-+{
-+    if (sorted_loaded_features)
-+	return rb_compare_feature_name(loaded, feature, flen) > 0;
-+    else
-+	return FALSE;
-+}
-+
-+/* returns first position to search feature from */
-+static long
-+rb_feature_first_equal_or_greater(VALUE features, const char *feature, long flen)
-+{
-+    if (sorted_loaded_features) {
-+	long before = 0, first = RARRAY_LEN(features);
-+	VALUE *values = RARRAY_PTR(features);
-+	if (first == 0)
-+	    return 0;
-+	if (rb_compare_feature_name(values[0], feature, flen) >= 0)
-+	    return 0;
-+
-+	while (first - before > 1) {
-+	    long mid = (first + before) / 2;
-+	    long cmp = rb_compare_feature_name(values[mid], feature, flen);
-+	    if (cmp >= 0)
-+		first = mid;
-+	    else
-+		before = mid;
-+	}
-+	return first;
-+    } else {
-+	return 0;
-+    }
-+}
-+
-+/* returns position to insert new feature in */
-+static long
-+rb_feature_first_greater(VALUE features, const char *feature, long flen)
-+{
-+    if (sorted_loaded_features) {
-+	long before = 0, first = RARRAY_LEN(features);
-+	VALUE *values = RARRAY_PTR(features);
-+	if (first == 0)
-+	    return 0;
-+	if (rb_compare_feature_name(values[0], feature, flen) > 0)
-+	    return 0;
-+	if (rb_compare_feature_name(values[first-1], feature, flen) <= 0)
-+	    return first;
-+
-+	while (first - before > 1) {
-+	    long mid = (first + before) / 2;
-+	    long cmp = rb_compare_feature_name(values[mid], feature, flen);
-+	    if (cmp > 0)
-+		first = mid;
-+	    else
-+		before = mid;
-+	}
-+	return first;
-+    } else {
-+	return RARRAY_LEN(features);
-+    }
-+}
-+
-+
-+static VALUE
-+rb_push_feature_1(VALUE features, VALUE feature)
-+{
-+    const char *fname = StringValuePtr(feature);
-+    long flen = feature_basename_length(fname, RSTRING_LEN(feature));
-+    long i = rb_feature_first_greater(features, fname, flen);
-+    rb_ary_push(features, feature);
-+    if ( i < RARRAY_LEN(features) - 1 ) {
-+	MEMMOVE(RARRAY_PTR(features) + i + 1, RARRAY_PTR(features) + i,
-+		VALUE, RARRAY_LEN(features) - i - 1);
-+	RARRAY_PTR(features)[i] = feature;
-+    }
-+    return features;
-+}
-+
-+static VALUE
-+rb_push_feature_m(long argc, VALUE *argv, VALUE features)
-+{
-+    while (argc--) {
-+	rb_push_feature_1(features, *argv++);
-+    }
-+    return features;
-+}
-+
-+static VALUE
-+rb_concat_features(VALUE features, VALUE add)
-+{
-+    add = rb_convert_type(add, T_ARRAY, "Array", "to_ary");
-+    if (RARRAY_LEN(add)) {
-+	rb_push_feature_m(RARRAY_LEN(add), RARRAY_PTR(add), features);
-+    }
-+    return features;
-+}
-+static const char *load_features_undefined_methods[] = {
-+    "[]=", "reverse!", "rotate!", "sort!", "sort_by!",
-+    "collect!", "map!", "shuffle!", "fill", "insert",
-+    NULL
-+};
-+
-+static VALUE
-+rb_loaded_features_init(void)
-+{
-+    char *sorted_flag;
-+    const char **name;
-+    VALUE loaded_features = rb_ary_new();
-+    VALUE loaded_features_c = rb_singleton_class(loaded_features);
-+
-+    sorted_flag = getenv("RUBY_LOADED_FEATURES_SORTED");
-+    if (sorted_flag != NULL) {
-+	int sorted_set = atoi(sorted_flag);
-+	if (RTEST(ruby_verbose))
-+	    fprintf(stderr, "sorted_loaded_features=%d (%d)\n", sorted_set, sorted_loaded_features);
-+	sorted_loaded_features = sorted_set;
-+    }
-+
-+    for(name = load_features_undefined_methods; *name; name++) {
-+	rb_undef_method(loaded_features_c, *name);
-+    }
-+
-+    if (sorted_loaded_features) {
-+	rb_define_method(loaded_features_c, "<<", rb_push_feature_1, 1);
-+	rb_define_method(loaded_features_c, "push", rb_push_feature_m, -1);
-+	rb_define_method(loaded_features_c, "concat", rb_concat_features, 1);
-+	rb_define_method(loaded_features_c, "unshift", rb_push_feature_m, -1);
-+    }
-+    return loaded_features;
-+}
-+
+     if (*feature == '.' &&
+ 	(feature[1] == '/' || strncmp(feature+1, "./", 2) == 0)) {
+-	fullpath = rb_file_expand_path_fast(rb_str_new2(feature), Qnil);
++	fullpath = rb_file_expand_path_fast(rb_get_path(rb_str_new2(feature)), Qnil);
+ 	feature = RSTRING_PTR(fullpath);
+     }
+     if (ext && !strchr(ext, '/')) {
+@@ -254,11 +493,18 @@ rb_feature_provided(const char *feature, const char **loading)
  static void
  rb_provide_feature(VALUE feature)
  {
-@@ -258,7 +446,10 @@ rb_provide_feature(VALUE feature)
+-    if (OBJ_FROZEN(get_loaded_features())) {
++    VALUE features;
++
++    features = get_loaded_features();
++    if (OBJ_FROZEN(features)) {
  	rb_raise(rb_eRuntimeError,
  		 "$LOADED_FEATURES is frozen; cannot append feature");
      }
 -    rb_ary_push(get_loaded_features(), feature);
-+    if (sorted_loaded_features)
-+	rb_push_feature_1(get_loaded_features(), feature);
-+    else
-+	rb_ary_push(get_loaded_features(), feature);
++    rb_str_freeze(feature);
++
++    rb_ary_push(features, feature);
++    features_index_add(feature, INT2FIX(RARRAY_LEN(features)-1));
++    reset_loaded_features_snapshot();
  }
  
  void
-@@ -761,6 +952,230 @@ rb_f_autoload_p(VALUE obj, VALUE sym)
-     return rb_mod_autoload_p(klass, sym);
- }
- 
-+/* $LOAD_PATH methods which invalidates cache */
-+static const char *load_path_reset_cache_methods[] = {
-+    "[]=", "collect!", "compact!", "delete",
-+    "delete_if", "fill", "flatten!", "insert", "keep_if",
-+    "map!", "reject!", "replace", "select!", "shuffle!",
-+    "sort!", "sort_by!", "uniq!", NULL
-+};
-+
-+/* $LOAD_PATH methods which sends also to cache */
-+static const char *load_path_apply_to_cache_methods[] = {
-+    "clear", "delete_at", "pop", "reverse!", "rotate!",
-+    "shift", "slice!", NULL
-+};
-+
-+/* $LOAD_PATH methods which sends to cache whith expanded arguments */
-+static const char *load_path_apply_expanded_methods[] = {
-+    "<<", "push", "unshift", NULL
-+};
-+
-+void
-+rb_reset_expanded_cache()
-+{
-+    GET_VM()->load_path_expanded_cache = 0;
-+}
-+
-+static VALUE
-+rb_load_path_expanded_cache()
-+{
-+    VALUE cache = GET_VM()->load_path_expanded_cache;
-+    VALUE expanded = Qnil;
-+    if (RTEST(cache)) {
-+	expanded = RARRAY_PTR(cache)[2];
-+    }
-+    return expanded;
-+}
-+
-+/* Return cache only if we still in the same working directory
-+ * and filesystem_encoding didn't change
-+ * Invalidate cache otherwise
-+ */
-+static VALUE
-+rb_checked_expanded_cache(int *has_relative)
-+{
-+    VALUE cache = GET_VM()->load_path_expanded_cache;
-+    VALUE expanded = Qnil;
-+    if (RTEST(cache)) {
-+	VALUE curwd = RARRAY_PTR(cache)[0];
-+	VALUE encindex = RARRAY_PTR(cache)[1];
-+	int cache_valid = rb_filesystem_encindex() == FIX2INT(encindex);
-+
-+	if ( cache_valid ) {
-+	    cache_valid = curwd == Qtrue;
-+	    if (has_relative) {
-+		*has_relative = cache_valid;
-+	    }
-+	    if (!cache_valid ) {
-+		char *cwd = my_getcwd();
-+		cache_valid = !strcmp(RSTRING_PTR(curwd), cwd);
-+		xfree(cwd);
-+	    }
-+	}
-+
-+	if ( !cache_valid ) {
-+	    rb_reset_expanded_cache();
-+	} else {
-+	    expanded = RARRAY_PTR(cache)[2];
-+	}
-+    }
-+    RB_GC_GUARD(cache);
-+    return expanded;
-+}
-+
-+static void
-+rb_set_expanded_cache(VALUE expanded, int has_relative)
-+{
-+    VALUE cache = rb_ary_new2(3);
-+
-+    if (has_relative) {
-+	char *cwd = my_getcwd();
-+	rb_ary_push(cache, rb_str_new_cstr(cwd));
-+	xfree(cwd);
-+    } else {
-+	rb_ary_push(cache, Qtrue);
-+    }
-+
-+    rb_ary_push(cache, INT2FIX(rb_filesystem_encindex()));
-+    rb_ary_push(cache, rb_ary_dup(expanded));
-+    GET_VM()->load_path_expanded_cache = cache;
-+}
-+
-+static VALUE
-+rb_expand_load_paths(long pathc, VALUE* paths, int *has_relative)
-+{
-+    long i;
-+    const char *p;
-+    VALUE path, expanded = rb_ary_new2(pathc);
-+
-+    for(i = 0; i < pathc; i++) {
-+	path = rb_get_path(paths[i]);
-+	p = RSTRING_PTR(path);
-+	*has_relative = *has_relative || !rb_is_absolute_path(p);
-+	path = rb_file_expand_path(path, Qnil);
-+	RBASIC(path)->klass = rb_cExpandedPath;
-+	rb_str_freeze(path);
-+	rb_ary_push(expanded, path);
-+    }
-+
-+    return expanded;
-+}
-+
-+/* Invalidating $LOAD_PATH methods implementation */
-+static VALUE
-+rb_load_path_reset_cache_method(int argc, VALUE *argv, VALUE self)
-+{
-+    rb_reset_expanded_cache();
-+    return rb_call_super(argc, argv);
-+}
-+
-+/* Proxying $LOAD_PATH methods implementation */
-+static VALUE
-+rb_load_path_apply_to_cache_method(int argc, VALUE *argv, VALUE self)
-+{
-+    VALUE load_path_expanded = rb_load_path_expanded_cache();
-+    if (RTEST(load_path_expanded)) {
-+	ID func = rb_frame_this_func();
-+	rb_funcall2(load_path_expanded, func, argc, argv);
-+    }
-+    return rb_call_super(argc, argv);
-+}
-+
-+/* Proxying with expansion $LOAD_PATH methods implementation */
-+static VALUE
-+rb_load_path_apply_expanded_method(int argc, VALUE *argv, VALUE self)
-+{
-+    int old_has_relative = 0;
-+    /* We call methods on cache only if we still in the same working directory */
-+    VALUE load_path_expanded = rb_checked_expanded_cache(&old_has_relative);
-+    if (RTEST(load_path_expanded)) {
-+	int has_relative = 0;
-+	ID func = rb_frame_this_func();
-+	VALUE expanded = rb_expand_load_paths(argc, argv, &has_relative);
-+
-+	rb_funcall2(load_path_expanded, func, argc, RARRAY_PTR(expanded));
-+
-+	if (!old_has_relative && has_relative) {
-+	    rb_set_expanded_cache(load_path_expanded, has_relative);
-+	}
-+	RB_GC_GUARD(expanded);
-+    }
-+    return rb_call_super(argc, argv);
-+}
-+/* $LOAD_PATH.concat(ary) - special, we call push(*ary) instead
-+ * cause I'm lazy a bit and wish not to rewrite method above second time :)
-+ */
-+static VALUE
-+rb_load_path_concat(VALUE self, VALUE ary)
-+{
-+    ID push;
-+    CONST_ID(push, "push");
-+    RB_GC_GUARD(ary);
-+    return rb_funcall2(self, push, (int)RARRAY_LEN(ary), RARRAY_PTR(ary));
-+}
-+
-+void
-+rb_load_path_ary_push(VALUE path)
-+{
-+    int old_has_relative = 0;
-+    VALUE load_path_expanded = rb_checked_expanded_cache(&old_has_relative);
-+    if (RTEST(load_path_expanded)) {
-+	int has_relative = 0;
-+	VALUE expanded = rb_expand_load_paths(1, &path, &has_relative);
-+
-+	rb_ary_push(load_path_expanded, RARRAY_PTR(expanded)[0]);
-+
-+	if (!old_has_relative && has_relative) {
-+	    rb_set_expanded_cache(load_path_expanded, has_relative);
-+	}
-+	RB_GC_GUARD(expanded);
-+    }
-+
-+    rb_ary_push(GET_VM()->load_path, path);
-+}
-+
-+static VALUE
-+rb_load_path_init(void)
-+{
-+    const char **name;
-+    VALUE load_path = rb_ary_new();
-+    char *cached_flag;
-+
-+    cached_flag = getenv("RUBY_CACHED_LOAD_PATH");
-+    if (cached_flag != NULL) {
-+	cached_expanded_load_path = atoi(cached_flag);
-+    }
-+
-+    rb_cExpandedPath = rb_class_new(rb_cString); /* XXX could GC collect it before next line is executed? */
-+    rb_iv_set(rb_cFile, "expanded_path", rb_cExpandedPath); /* prevent from GC */
-+
-+    /* Do all the magick if user did not disable it
-+     * with RUBY_CACHED_LOAD_PATH=0 environment variable
-+     */
-+    if (cached_expanded_load_path) {
-+	VALUE load_path_c = rb_singleton_class(load_path);
-+
-+	for(name = load_path_reset_cache_methods; *name; name++ ) {
-+	    rb_define_method(load_path_c, *name, rb_load_path_reset_cache_method, -1);
-+	}
-+
-+	for(name = load_path_apply_to_cache_methods; *name; name++ ) {
-+	    rb_define_method(load_path_c, *name, rb_load_path_apply_to_cache_method, -1);
-+	}
-+
-+	for(name = load_path_apply_expanded_methods; *name; name++ ) {
-+	    rb_define_method(load_path_c, *name, rb_load_path_apply_expanded_method, -1);
-+	}
-+
-+	rb_define_method(load_path_c, "concat", rb_load_path_concat, 1);
-+    }
-+
-+    rb_reset_expanded_cache();
-+
-+    return load_path;
-+}
-+
- void
- Init_load()
- {
-@@ -773,11 +1188,11 @@ Init_load()
-     rb_define_hooked_variable(var_load_path, (VALUE*)vm, load_path_getter, rb_gvar_readonly_setter);
+@@ -774,10 +1020,15 @@ Init_load()
      rb_alias_variable(rb_intern("$-I"), id_load_path);
      rb_alias_variable(rb_intern("$LOAD_PATH"), id_load_path);
--    vm->load_path = rb_ary_new();
-+    vm->load_path = rb_load_path_init();
+     vm->load_path = rb_ary_new();
++    vm->expanded_load_path = rb_ary_new();
++    vm->load_path_snapshot = rb_ary_new();
++    vm->load_path_check_cache = 0;
  
      rb_define_virtual_variable("$\"", get_loaded_features, 0);
      rb_define_virtual_variable("$LOADED_FEATURES", get_loaded_features, 0);
--    vm->loaded_features = rb_ary_new();
-+    vm->loaded_features = rb_loaded_features_init();
+     vm->loaded_features = rb_ary_new();
++    vm->loaded_features_snapshot = rb_ary_new();
++    vm->loaded_features_index = rb_hash_new();
  
      rb_define_global_function("load", rb_f_load, -1);
      rb_define_global_function("require", rb_f_require, 1);
 diff --git a/marshal.c b/marshal.c
-index 113908e..0920cd9 100644
+index 9a43cdb..a4a3551 100644
 --- a/marshal.c
 +++ b/marshal.c
 @@ -506,7 +506,7 @@ w_uclass(VALUE obj, VALUE super, struct dump_arg *arg)
@@ -3759,7 +2643,7 @@ index 113908e..0920cd9 100644
  
  	    v = rb_funcall(obj, s_dump, 1, INT2NUM(limit));
 diff --git a/method.h b/method.h
-index 896e309..3369698 100644
+index 9229896..2fecd57 100644
 --- a/method.h
 +++ b/method.h
 @@ -100,6 +100,6 @@ int rb_method_entry_eq(const rb_method_entry_t *m1, const rb_method_entry_t *m2)
@@ -3771,7 +2655,7 @@ index 896e309..3369698 100644
  
  #endif /* METHOD_H */
 diff --git a/object.c b/object.c
-index 30db480..6c62ed9 100644
+index f45e013..1352d01 100644
 --- a/object.c
 +++ b/object.c
 @@ -229,17 +229,8 @@ init_copy(VALUE dest, VALUE obj)
@@ -3999,59 +2883,19 @@ index 0000000..a7879ab
 +}
 +#endif
 diff --git a/ruby.c b/ruby.c
-index b29b8c0..f7506de 100644
+index 3ddd96c..7ffc78e 100644
 --- a/ruby.c
 +++ b/ruby.c
-@@ -209,7 +209,6 @@ push_include(const char *path, VALUE (*filter)(VALUE))
- {
-     const char sep = PATH_SEP_CHAR;
-     const char *p, *s;
--    VALUE load_path = GET_VM()->load_path;
- 
-     p = path;
-     while (*p) {
-@@ -217,7 +216,7 @@ push_include(const char *path, VALUE (*filter)(VALUE))
- 	    p++;
- 	if (!*p) break;
- 	for (s = p; *s && *s != sep; s = CharNext(s));
--	rb_ary_push(load_path, (*filter)(rubylib_mangled_path(p, s - p)));
-+	rb_load_path_ary_push((*filter)(rubylib_mangled_path(p, s - p)));
- 	p = s;
-     }
- }
-@@ -338,7 +337,6 @@ ruby_init_loadpath(void)
- void
- ruby_init_loadpath_safe(int safe_level)
- {
--    VALUE load_path;
-     ID id_initial_load_path_mark;
-     extern const char ruby_initial_load_paths[];
-     const char *paths = ruby_initial_load_paths;
-@@ -450,7 +448,6 @@ ruby_init_loadpath_safe(int safe_level)
- #define RUBY_RELATIVE(path, len) rubylib_mangled_path((path), (len))
- #define PREFIX_PATH() RUBY_RELATIVE(exec_prefix, sizeof(exec_prefix)-1)
- #endif
--    load_path = GET_VM()->load_path;
- 
-     if (safe_level == 0) {
- #ifdef MANGLED_PATH
-@@ -464,7 +461,7 @@ ruby_init_loadpath_safe(int safe_level)
- 	size_t len = strlen(paths);
- 	VALUE path = RUBY_RELATIVE(paths, len);
- 	rb_ivar_set(path, id_initial_load_path_mark, path);
--	rb_ary_push(load_path, path);
-+	rb_load_path_ary_push(path);
- 	paths += len + 1;
-     }
- 
-@@ -1368,6 +1365,7 @@ process_options(int argc, char **argv, struct cmdline_options *opt)
+@@ -1366,7 +1366,8 @@ process_options(int argc, char **argv, struct cmdline_options *opt)
+ 	long i;
+ 	VALUE load_path = GET_VM()->load_path;
  	for (i = 0; i < RARRAY_LEN(load_path); ++i) {
- 	    rb_enc_associate(RARRAY_PTR(load_path)[i], lenc);
+-	    rb_enc_associate(RARRAY_PTR(load_path)[i], lenc);
++	    RARRAY_PTR(load_path)[i] =
++		rb_enc_associate(rb_str_dup(RARRAY_PTR(load_path)[i]), lenc);
  	}
-+	rb_reset_expanded_cache();
      }
      if (!(opt->disable & DISABLE_BIT(gems))) {
- #if defined DISABLE_RUBYGEMS && DISABLE_RUBYGEMS
 diff --git a/sp_ar.c b/sp_ar.c
 new file mode 100644
 index 0000000..2ed69bf
@@ -5645,8 +4489,202 @@ index fda5784..20ec427 100644
  			ptr = tmp;
  			break;
  		    }
+diff --git a/test/ruby/test_array.rb b/test/ruby/test_array.rb
+index 28d3e41..bcad2c0 100644
+--- a/test/ruby/test_array.rb
++++ b/test/ruby/test_array.rb
+@@ -414,6 +414,18 @@ class TestArray < Test::Unit::TestCase
+     a = @cls[1, 2, 3]
+     a[-1, 0] = a
+     assert_equal([1, 2, 1, 2, 3, 3], a)
++
++    a = @cls[]
++    a[5,0] = [5]
++    assert_equal([nil, nil, nil, nil, nil, 5], a)
++
++    a = @cls[1]
++    a[1,0] = [2]
++    assert_equal([1, 2], a)
++
++    a = @cls[1]
++    a[1,1] = [2]
++    assert_equal([1, 2], a)
+   end
+ 
+   def test_assoc
+diff --git a/test/ruby/test_marshal.rb b/test/ruby/test_marshal.rb
+index 7ec6959..f5774cd 100644
+--- a/test/ruby/test_marshal.rb
++++ b/test/ruby/test_marshal.rb
+@@ -312,7 +312,7 @@ class TestMarshal < Test::Unit::TestCase
+         assert_equal(a.instance_variable_get(i), b.instance_variable_get(i), bug1932)
+       end
+     end
+-    a.__send__(a.methods(true).grep(/=\z/)[0], a)
++    a.__send__(a.methods(true).grep(/\Ar.+=\z/)[0], a)
+     assert_nothing_raised(bug1932) do
+       b = Marshal.load(Marshal.dump(a))
+       assert_equal(ClassISO8859_1, b.class, bug1932)
+diff --git a/test/ruby/test_method.rb b/test/ruby/test_method.rb
+index 2cc0de5..b1bf33e 100644
+--- a/test/ruby/test_method.rb
++++ b/test/ruby/test_method.rb
+@@ -406,7 +406,7 @@ class TestMethod < Test::Unit::TestCase
+     obj = a.new
+     assert_equal([:a], obj.public_methods(false), bug)
+     obj.extend(m)
+-    assert_equal([:m1, :a], obj.public_methods(false), bug)
++    assert_equal([:a, :m1], obj.public_methods(false).sort, bug)
+   end
+ 
+   def test_visibility
+diff --git a/test/ruby/test_module.rb b/test/ruby/test_module.rb
+index 6176f48..a67d845 100644
+--- a/test/ruby/test_module.rb
++++ b/test/ruby/test_module.rb
+@@ -870,7 +870,7 @@ class TestModule < Test::Unit::TestCase
+       (class << self ; self ; end).class_eval do
+         define_method :method_added do |sym|
+           memo << sym
+-          memo << mod.instance_methods(false)
++          memo << mod.instance_methods(false).sort
+           memo << (mod.instance_method(sym) rescue nil)
+         end
+       end
+@@ -887,10 +887,10 @@ class TestModule < Test::Unit::TestCase
+     assert_equal [:f, :g], memo.shift
+     assert_equal mod.instance_method(:f), memo.shift
+     assert_equal :a, memo.shift
+-    assert_equal [:f, :g, :a], memo.shift
++    assert_equal [:a, :f, :g], memo.shift
+     assert_equal mod.instance_method(:a), memo.shift
+     assert_equal :a=, memo.shift
+-    assert_equal [:f, :g, :a, :a=], memo.shift
++    assert_equal [:a, :a=, :f, :g], memo.shift
+     assert_equal mod.instance_method(:a=), memo.shift
+   end
+ 
+diff --git a/test/ruby/test_require.rb b/test/ruby/test_require.rb
+index 58a9ee2..ec75096 100644
+--- a/test/ruby/test_require.rb
++++ b/test/ruby/test_require.rb
+@@ -356,4 +356,114 @@ class TestRequire < Test::Unit::TestCase
+     $:.replace(loadpath)
+     $".replace(features)
+   end
++
++  def test_require_changed_current_dir
++    bug7158 = '[ruby-core:47970]'
++    Dir.mktmpdir {|tmp|
++      Dir.chdir(tmp) {
++        Dir.mkdir("a")
++        Dir.mkdir("b")
++        open(File.join("a", "foo.rb"), "w") {}
++        open(File.join("b", "bar.rb"), "w") {|f|
++          f.puts "p :ok"
++        }
++        assert_in_out_err([], <<-INPUT, %w(:ok), [], bug7158)
++          $: << "."
++          Dir.chdir("a")
++          require "foo"
++          Dir.chdir("../b")
++          p :ng unless require "bar"
++          Dir.chdir("..")
++          p :ng if require "b/bar"
++        INPUT
++      }
++    }
++  end
++
++  def test_require_not_modified_load_path
++    bug7158 = '[ruby-core:47970]'
++    Dir.mktmpdir {|tmp|
++      Dir.chdir(tmp) {
++        open("foo.rb", "w") {}
++        assert_in_out_err([], <<-INPUT, %w(:ok), [], bug7158)
++          a = Object.new
++          def a.to_str
++            "#{tmp}"
++          end
++          $: << a
++          require "foo"
++          last_path = $:.pop
++          p :ok if last_path == a && last_path.class == Object
++        INPUT
++      }
++    }
++  end
++
++  def test_require_changed_home
++    bug7158 = '[ruby-core:47970]'
++    Dir.mktmpdir {|tmp|
++      Dir.chdir(tmp) {
++        open("foo.rb", "w") {}
++        Dir.mkdir("a")
++        open(File.join("a", "bar.rb"), "w") {}
++        assert_in_out_err([], <<-INPUT, %w(:ok), [], bug7158)
++          $: << '~'
++          ENV['HOME'] = "#{tmp}"
++          require "foo"
++          ENV['HOME'] = "#{tmp}/a"
++          p :ok if require "bar"
++        INPUT
++      }
++    }
++  end
++
++  def test_require_to_path_redefined_in_load_path
++    bug7158 = '[ruby-core:47970]'
++    Dir.mktmpdir {|tmp|
++      Dir.chdir(tmp) {
++        open("foo.rb", "w") {}
++        assert_in_out_err(["RUBYOPT"=>nil], <<-INPUT, %w(:ok), [], bug7158)
++          a = Object.new
++          def a.to_path
++            "bar"
++          end
++          $: << a
++          begin
++            require "foo"
++            p :ng
++          rescue LoadError
++          end
++          def a.to_path
++            "#{tmp}"
++          end
++          p :ok if require "foo"
++        INPUT
++      }
++    }
++  end
++
++  def test_require_to_str_redefined_in_load_path
++    bug7158 = '[ruby-core:47970]'
++    Dir.mktmpdir {|tmp|
++      Dir.chdir(tmp) {
++        open("foo.rb", "w") {}
++        assert_in_out_err(["RUBYOPT"=>nil], <<-INPUT, %w(:ok), [], bug7158)
++          a = Object.new
++          def a.to_str
++            "foo"
++          end
++          $: << a
++          begin
++            require "foo"
++            p :ng
++          rescue LoadError
++          end
++          def a.to_str
++            "#{tmp}"
++          end
++          p :ok if require "foo"
++        INPUT
++      }
++    }
++  end
+ end
 diff --git a/time.c b/time.c
-index a47ce23..64fb1d9 100644
+index 755812f..83edc83 100644
 --- a/time.c
 +++ b/time.c
 @@ -4712,16 +4712,14 @@ time_mload(VALUE time, VALUE str)
@@ -5668,7 +4706,7 @@ index a47ce23..64fb1d9 100644
  
      get_attr(nano_num, {});
 diff --git a/variable.c b/variable.c
-index ba47d26..67813e5 100644
+index 3da500e..385d4af 100644
 --- a/variable.c
 +++ b/variable.c
 @@ -19,15 +19,15 @@
@@ -6048,7 +5086,7 @@ index ba47d26..67813e5 100644
          iv_index_tbl = ROBJECT_IV_INDEX_TBL(obj);
          if (!iv_index_tbl) break;
 -        if (!st_lookup(iv_index_tbl, (st_data_t)id, &index)) break;
-+        if (!sa_lookup(iv_index_tbl, (st_data_t)id, &index)) break;
++        if (!sa_lookup(iv_index_tbl, (sa_index_t)id, &index)) break;
          if (len <= (long)index) break;
          val = ptr[index];
          if (val != Qundef)
@@ -6316,7 +5354,7 @@ index ba47d26..67813e5 100644
      rb_const_set(mod, id, Qundef);
      tbl = RCLASS_IV_TBL(mod);
 -    if (tbl && st_lookup(tbl, (st_data_t)autoload, &av)) {
-+    if (sa_lookup(tbl, (st_data_t)autoload, &av)) {
++    if (sa_lookup(tbl, (sa_index_t)autoload, &av)) {
  	tbl = check_autoload_table((VALUE)av);
      }
      else {
@@ -6662,7 +5700,7 @@ index ba47d26..67813e5 100644
      }
      if (rb_cvar_defined(mod, id)) {
 diff --git a/vm.c b/vm.c
-index dd026cb..4c1b7ca 100644
+index 63141ba..61653d7 100644
 --- a/vm.c
 +++ b/vm.c
 @@ -1042,7 +1042,7 @@ static void
@@ -6674,28 +5712,38 @@ index dd026cb..4c1b7ca 100644
  	me->def->type == VM_METHOD_TYPE_CFUNC) {
  	st_insert(vm_opt_method_table, (st_data_t)me, (st_data_t)bop);
      }
-@@ -1578,6 +1578,7 @@ rb_vm_mark(void *ptr)
+@@ -1578,7 +1578,12 @@ rb_vm_mark(void *ptr)
  	RUBY_MARK_UNLESS_NULL(vm->thgroup_default);
  	RUBY_MARK_UNLESS_NULL(vm->mark_object_ary);
  	RUBY_MARK_UNLESS_NULL(vm->load_path);
-+	RUBY_MARK_UNLESS_NULL(vm->load_path_expanded_cache);
++	RUBY_MARK_UNLESS_NULL(vm->load_path_snapshot);
++	RUBY_MARK_UNLESS_NULL(vm->load_path_check_cache);
++	RUBY_MARK_UNLESS_NULL(vm->expanded_load_path);
  	RUBY_MARK_UNLESS_NULL(vm->loaded_features);
++	RUBY_MARK_UNLESS_NULL(vm->loaded_features_snapshot);
++	RUBY_MARK_UNLESS_NULL(vm->loaded_features_index);
  	RUBY_MARK_UNLESS_NULL(vm->top_self);
  	RUBY_MARK_UNLESS_NULL(vm->coverages);
+ 	rb_gc_mark_locations(vm->special_exceptions, vm->special_exceptions + ruby_special_error_count);
 diff --git a/vm_core.h b/vm_core.h
-index ea6b1d4..c56d0fa 100644
+index 60146f0..7b25806 100644
 --- a/vm_core.h
 +++ b/vm_core.h
-@@ -298,6 +298,7 @@ typedef struct rb_vm_struct {
+@@ -298,7 +298,12 @@ typedef struct rb_vm_struct {
      /* load */
      VALUE top_self;
      VALUE load_path;
-+    VALUE load_path_expanded_cache;
++    VALUE load_path_snapshot;
++    VALUE load_path_check_cache;
++    VALUE expanded_load_path;
      VALUE loaded_features;
++    VALUE loaded_features_snapshot;
++    VALUE loaded_features_index;
      struct st_table *loading_table;
  
+     /* signal */
 diff --git a/vm_insnhelper.c b/vm_insnhelper.c
-index 8e7fe94..1367cec 100644
+index 55152df..deeed9b 100644
 --- a/vm_insnhelper.c
 +++ b/vm_insnhelper.c
 @@ -1187,7 +1187,7 @@ vm_get_ev_const(rb_thread_t *th, const rb_iseq_t *iseq,
