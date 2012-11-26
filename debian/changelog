@@ -1,3 +1,12 @@
+ruby1.9.1 (1.9.3.194-5) unstable; urgency=high
+
+  * Disable running the test suite during the build on sparc again. Keeping
+    urgency=high because the previous release, which contains a security bug
+    fix, did not reach testing yet because of a segfault when running tests in
+    the sparc buildd.
+
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 25 Nov 2012 19:12:28 -0300
+
 ruby1.9.1 (1.9.3.194-4) unstable; urgency=high
 
   [ James Healy ]
