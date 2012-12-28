@@ -2,7 +2,7 @@
 
   thread.c -
 
-  $Author: kosaki $
+  $Author: usa $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -3855,17 +3855,24 @@ recursive_list_access(void)
 static VALUE
 recursive_check(VALUE list, VALUE obj_id, VALUE paired_obj_id)
 {
+#if SIZEOF_LONG == SIZEOF_VOIDP
+  #define OBJ_ID_EQL(obj_id, other) ((obj_id) == (other))
+#elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
+  #define OBJ_ID_EQL(obj_id, other) (RB_TYPE_P((obj_id), T_BIGNUM) ? \
+    rb_big_eql((obj_id), (other)) : ((obj_id) == (other)))
+#endif
+
     VALUE pair_list = rb_hash_lookup2(list, obj_id, Qundef);
     if (pair_list == Qundef)
 	return Qfalse;
     if (paired_obj_id) {
 	if (TYPE(pair_list) != T_HASH) {
-	if (pair_list != paired_obj_id)
-	    return Qfalse;
+	    if (!OBJ_ID_EQL(paired_obj_id, pair_list))
+		return Qfalse;
 	}
 	else {
-	if (NIL_P(rb_hash_lookup(pair_list, paired_obj_id)))
-	    return Qfalse;
+	    if (NIL_P(rb_hash_lookup(pair_list, paired_obj_id)))
+		return Qfalse;
 	}
     }
     return Qtrue;
@@ -4138,16 +4145,25 @@ set_threads_event_flags(int flag)
 static inline int
 exec_event_hooks(const rb_event_hook_t *hook, rb_event_flag_t flag, VALUE self, ID id, VALUE klass)
 {
-    int removed = 0;
+    volatile int removed = 0;
+    const rb_event_hook_t *volatile hnext = 0;
+    int state;
+
+    PUSH_TAG();
+    if ((state = EXEC_TAG()) != 0) {
+	hook = hnext;
+    }
     for (; hook; hook = hook->next) {
 	if (hook->flag & RUBY_EVENT_REMOVED) {
 	    removed++;
 	    continue;
 	}
 	if (flag & hook->flag) {
+	    hnext = hook->next;
 	    (*hook->func)(flag, hook->data, self, id, klass);
 	}
     }
+    POP_TAG();
     return removed;
 }
 
