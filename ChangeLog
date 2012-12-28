@@ -1,3 +1,249 @@
+Tue Dec 25 23:35:09 2012  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* lib/mkmf.rb: fix for if config["libdir"] is nil.
+
+Tue Dec 25 20:40:47 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* bignum.c, include/ruby/intern.h (rb_big_eql): exported.
+
+	* thread.c (recursive_check): object_id maybe a Bignum, not Fixnum on
+	  LLP64.  see also r38493 and r38548.
+	  reported by Heesob Park at [ruby-core:51083] [Bug #7607], and patched
+	  by shirosaki at [ruby-core:51095]
+
+Tue Dec 25 09:54:31 2012  Hiroshi Shirosaki  <h.shirosaki@gmail.com>
+
+	* gc.c (obj_id_to_ref): add a macro to treat Bignum object id.
+	  This follows the change r38493.
+
+	* gc.c (id2ref): fix for working fine with Bignum object id on x64
+	  Windows.
+	* gc.c (wmap_finalize): ditto.
+
+Sat Dec 22 00:33:28 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* object.c (rb_obj_hash): shouldn't assume object_id can be long.
+	  based on a patch by Heesob Park at [ruby-core:51060].
+	  cf. [Backport #7454]
+
+Sat Dec 22 00:33:28 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* gc.c (nonspecial_obj_id): VALUE is not compatible with Fixnum on
+	  LLP64 platform, such as 64bit Windows.
+	  reporeted by Heesob Park at [ruby-core:50255] [Bug #7454], and the
+	  fix is suggested by akr.
+
+Fri Dec 21 16:03:54 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/ruby/test_argf.rb (TestArgf#test_chars): since marshal data is
+	  binary, shouldn't pass via text mode.  use base64 encoded data.
+
+Thu Dec 13 23:10:52  Charlie Somerville  <charlie@charliesomerville.com>
+	* object.c (Init_Object): use rb_mod_init_copy for Class#initialize_copy
+	* class.c (rb_class_init_copy): rename to class_init_copy_check, performs type
+	  checks on arguments to prevent reinitialization of initialized class
+	  [ruby-core:50869] [Bug #7557]
+	* class.c (rb_mod_init_copy): use class_init_copy_check if receiver is T_CLASS
+	* test/ruby/test_class.rb (class TestClass): related test
+
+
+Thu Dec 20 18:46:17 2012  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* test/dl/test_func.rb (test_name_with_block, test_bind, test_qsort1):
+	  call unbind to release the callback closure because maximum number
+	  of callbacks is limited to DL::MAX_CALLBACK (== 5) with pure DL
+	  without Fiddle.
+
+Thu Dec 20 18:46:17 2012  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* ext/dl/lib/dl/func.rb (DL::Function#unbind, #bound?): suppress
+	  NoMethodError when Fiddle is available. [ruby-core:50756] [Bug #7543]
+	* test/dl/test_func.rb (test_bound*, test_unbind*): tests for the above.
+
+Thu Dec 20 18:46:17 2012  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* ext/dl/lib/dl/func.rb (DL::Function#initialize, DL::Function#bind):
+	  ABI should be set by using CFunc#calltype even when Fiddle is used.
+	  When Fiddle is used and a block is given, name shoud not be ignored.
+	  [ruby-core:50562] [Bug #7514]
+
+	* ext/dl/lib/dl/import.rb (DL::Importer#bind_function): should respect
+	  abi and name when Fiddle is used.
+
+	* test/dl/test_func.rb (test_name_with_block): test for "name" method
+	  with giving a block.
+
+Thu Dec 20 18:43:00 2012  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* ext/fiddle/extconf.rb, ext/fiddle/function.c
+	  (Fiddle::Function::STDCALL): FFI_STDCALL is not a macro, but an
+	  enumeration. [ruby-core:50398] [Bug #7483]
+
+Thu Dec 20 18:40:25 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* thread.c (exec_event_hooks): exceptions in event hooks should not
+	  propagate outside.
+
+Thu Dec 20 18:37:45 2012  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* test/ruby/test_m17n_comb.rb (test_str_crypt): Use RbConfig to get
+	  libc's directory. Patched by Vit Ondruch [ruby-core:49763] [Bug #7312]
+
+Thu Dec 20 18:37:45 2012  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* string.c (rb_str_crypt): crypt(3) may return NULL.
+	  Latest glibc (2.16?) crypt(3) actually returns NULL. [Bug #7312]
+
+Thu Dec 20 18:36:19 2012  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* ext/dl/lib/dl/func.rb (DL::Function#bind): When Fiddle is used,
+	  @ptr should be updated. This fixes SEGV raised in DL::Function#call
+	  after calling DL::Function#bind. [Bug #7516] [ruby-dev:46708]
+
+	* test/dl/test_func.rb (test_bind): test for the above
+
+Thu Dec 20 18:35:36 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* gc.h (SET_MACHINE_STACK_END): add volatile for preventing
+	  harmful optimization.  [ruby-dev:46665] [Bug #7468]
+
+Thu Dec 20 18:34:38 2012  Hiroshi Shirosaki  <h.shirosaki@gmail.com>
+
+	* compile.c (ADD_CATCH_ENTRY): add a cast to fix SEGV with x64 mingw
+	  on Windows 8. Without cast, 0 might be non zero value at higher bits
+	  in rb_ary_new3().
+	  [ruby-core:50258] [Bug #7456]
+
+Wed Dec 19 21:24:40 2012  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* io.c (argf_each_codepoint): add missing ARGF#codepoints [Bug #7438]
+
+Wed Dec 19 21:20:23 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* file.c (file_expand_path): use wcscasecmp().
+
+Wed Dec 19 21:15:29 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* parse.y (parser_yylex): fix false usage of local variable, it cannot
+	  appear in fname state [ruby-core:49659] [Bug #7408]
+
+Wed Dec 19 21:14:28 2012  Narihiro Nakamura  <authornari@gmail.com>
+
+	* gc.c: return true or false. Patch by Dirkjan Bussink. [Bug #6821]
+
+	* test/ruby/test_gc.rb: add test-case for this bug.
+
+Wed Dec 19 21:12:49 2012  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* marshal.c (r_entry0): don't taint classes and modules because
+	  Marshal.load just returns the dumped classes and modules.
+	  [Bug #7325] [ruby-core:49198]
+
+	* test/ruby/test_marshal.rb: related test.
+
+Tue Dec 11 19:19:33 2012  Luis Lavena <luislavena@gmail.com>
+
+	* win32/file.c (replace_to_long_name): correct logic around wildcard
+	  characters detection and ensure wide-chars are used as pattern.
+	  [ruby-core:49451] [Bug #7374]
+
+Sat Nov 17 21:45:12  Luis Lavena  <luislavena@gmail.com>
+
+	* win32/file.c (replace_to_long_name): skip expansion for all wildcard
+	  characters.
+	  [ruby-core:49451] [Bug #7374]
+
+	* test/ruby/test_file_exhaustive.rb: add more assertions to test.
+
+Tue Dec 11 19:19:33 2012  Luis Lavena  <luislavena@gmail.com>
+
+	* win32/file.c (replace_to_long_name): skip automatic path expansion
+	  when wildcard character is used.  [ruby-core:49451] [Bug #7374]
+
+	* test/ruby/test_file_exhaustive.rb: add a test for above.
+
+Tue Dec 11 19:18:12 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/mkexports.rb (each_export): skip garbages generated by VS2012's
+	  nmake.
+	  reported and patched by Yoshida Masato at [Bug #7333] [ruby-dev:46484]
+
+Tue Dec 11 19:15:51 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* parse.y (parser_here_document): flush string content between new
+	  line and :string_embexpr.  [ruby-core:48703] [Bug #7255]
+
+Tue Dec 11 17:53:55 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* compile.c (iseq_compile_each): count flip-flop state in local iseq
+	  not in each iseqs, so that the keys can be other than hidden
+	  strings.  [ruby-core:47253] [Bug #6899]
+
+	* vm_insnhelper.c (lep_svar_get, lep_svar_set, vm_getspecial): store
+	  flip-flop states in an array instead of a hash.
+
+	* iseq.c (set_relation): main iseq also can has local scope.
+
+Tue Dec 11 17:52:30 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* include/ruby/backward/rubysig.h: fix visibility.  [Bug #6607]
+
+Tue Dec 11 17:49:45 2012  Koichi Sasada  <ko1@atdot.net>
+
+	* vm.c (rb_vm_make_env_object): make Proc object if Env is possible
+	  to point block. [ruby-core:41038] [ruby-trunk - Bug #5634]
+
+	* vm.c (rb_vm_make_proc): No need to make Proc object here.
+
+	* bootstraptest/test_proc.rb: add tests.
+
+Tue Dec 11 17:47:01 2012  Narihiro Nakamura  <authornari@gmail.com>
+
+	* lib/irb/magic-file.rb: set a encoding, which is detected from
+	  the file to read, to the internal encoding.
+	  [Bug #4281][ruby-dev:43036]
+
+Thu Nov 15 15:17:11 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* gc.c (free_method_entry_i): method entry may be in
+	  unlinked_method_entry_list.  [ruby-core:43383][Bug #6171]
+
+Wed Nov 14 20:20:46 2012  Naohisa Goto  <ngotogenome@gmail.com>
+
+	* ruby_atomic.h: renamed from atomic.h to avoid header file name
+	  conflict on Solaris 10. [ruby-dev:46414] [Bug #7287]
+
+	* gc.c, signal.c, vm_core.h, common.mk: reflect the rename from
+	  atomic.h to ruby_atomic.h.
+
+Tue Nov 13 18:13:10 2012  Narihiro Nakamura  <authornari@gmail.com>
+
+	* gc.c: Use the non-recursive marking instead of recursion. The
+	  recursion marking of CRuby needs checking stack overflow and the
+	  fail-safe system, but these systems not good at partial points,
+	  for example, marking deep tree structures. [ruby-dev:46184]
+	  [Feature #7095]
+
+	* configure.in (GC_MARK_STACKFRAME_WORD): removed. It's used by
+	  checking stack overflow of marking.
+
+	* win32/Makefile.sub (GC_MARK_STACKFRAME_WORD): ditto.
+
+	* gc.c (free_stack_chunks): it is used only when per-VM object space
+	  is enabled.
+
+	* gc.c (rb_objspace_call_finalizer): mark self-referencing finalizers
+	  before run finalizers, to fix SEGV from btest on 32bit.
+
+	* gc.c (gc_mark_stacked_objects): extract from gc_marks().
+
+	* gc.c (rb_objspace_call_finalizer): call gc_mark_stacked_objects
+	  at suitable point.
+
+	* gc.c (init_heap): call init_mark_stack before to allocate
+	  altstack. This change avoid the stack overflow at the signal
+	  handler on 32bit, but I don't understand reason... [Feature #7095]
+
 Sat Nov 10 01:25:52 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* file.c (append_fspath): no need to do encoding trick here.

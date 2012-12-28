@@ -2,7 +2,7 @@
 
   signal.c -
 
-  $Author: kosaki $
+  $Author: usa $
   created at: Tue Dec 20 10:13:44 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -16,7 +16,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <errno.h>
-#include "atomic.h"
+#include "ruby_atomic.h"
 
 #if !defined(_WIN32) && !defined(HAVE_GCC_ATOMIC_BUILTINS)
 rb_atomic_t

@@ -11385,6 +11385,25 @@ parser_tokadd_string(struct parser_params *parser,
 #define NEW_STRTERM(func, term, paren) \
 	rb_node_newnode(NODE_STRTERM, (func), (term) | ((paren) << (CHAR_BIT * 2)), 0)
 
+#ifdef RIPPER
+static void
+ripper_flush_string_content(struct parser_params *parser, rb_encoding *enc)
+{
+    if (!NIL_P(parser->delayed)) {
+	ptrdiff_t len = lex_p - parser->tokp;
+	if (len > 0) {
+	    rb_enc_str_buf_cat(parser->delayed, parser->tokp, len, enc);
+	}
+	ripper_dispatch_delayed_token(parser, tSTRING_CONTENT);
+	parser->tokp = lex_p;
+    }
+}
+
+#define flush_string_content(enc) ripper_flush_string_content(parser, (enc))
+#else
+#define flush_string_content(enc) ((void)(enc))
+#endif
+
 static int
 parser_parse_string(struct parser_params *parser, NODE *quote)
 {
@@ -11443,17 +11462,7 @@ parser_parse_string(struct parser_params *parser, NODE *quote)
 
     tokfix();
     set_yylval_str(STR_NEW3(tok(), toklen(), enc, func));
-
-#ifdef RIPPER
-    if (!NIL_P(parser->delayed)) {
-	ptrdiff_t len = lex_p - parser->tokp;
-	if (len > 0) {
-	    rb_enc_str_buf_cat(parser->delayed, parser->tokp, len, enc);
-	}
-	ripper_dispatch_delayed_token(parser, tSTRING_CONTENT);
-	parser->tokp = lex_p;
-    }
-#endif
+    flush_string_content(enc);
 
     return tSTRING_CONTENT;
 }
@@ -11658,6 +11667,7 @@ parser_here_document(struct parser_params *parser, NODE *here)
 	    }
 	    if (c != '\n') {
 		set_yylval_str(STR_NEW3(tok(), toklen(), enc, func));
+		flush_string_content(enc);
 		return tSTRING_CONTENT;
 	    }
 	    tokadd(nextc());
@@ -13313,7 +13323,8 @@ parser_yylex(struct parser_params *parser)
             ID ident = TOK_INTERN(!ENC_SINGLE(mb));
 
             set_yylval_name(ident);
-            if (last_state != EXPR_DOT && is_local_id(ident) && lvar_defined(ident)) {
+            if (last_state != EXPR_DOT && last_state != EXPR_FNAME &&
+		is_local_id(ident) && lvar_defined(ident)) {
                 lex_state = EXPR_END;
             }
         }
