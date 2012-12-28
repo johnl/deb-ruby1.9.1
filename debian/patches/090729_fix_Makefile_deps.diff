@@ -17,8 +17,8 @@ Index: ruby1.9.1/common.mk
  
  install-nodoc: pre-install-nodoc do-install-nodoc post-install-nodoc
  pre-install-nodoc:: pre-install-local pre-install-ext
--do-install-nodoc: $(PREP)
-+do-install-nodoc: $(PREP) $(PROGRAM)
+-do-install-nodoc: main
++do-install-nodoc: main $(PROGRAM)
  	$(INSTRUBY) --make="$(MAKE)" $(INSTRUBY_ARGS)
  post-install-nodoc:: post-install-local post-install-ext
  
