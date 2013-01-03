@@ -2,7 +2,7 @@
 
   dir.c -
 
-  $Author: naruse $
+  $Author: usa $
   created at: Wed Jan  5 09:51:01 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -762,7 +762,6 @@ dir_close(VALUE dir)
 static void
 dir_chdir(VALUE path)
 {
-    path = rb_str_encode_ospath(path);
     if (chdir(RSTRING_PTR(path)) < 0)
 	rb_sys_fail_path(path);
 }
@@ -845,6 +844,7 @@ dir_s_chdir(int argc, VALUE *argv, VALUE obj)
     rb_secure(2);
     if (rb_scan_args(argc, argv, "01", &path) == 1) {
 	FilePathValue(path);
+	path = rb_str_encode_ospath(path);
     }
     else {
 	const char *dist = getenv("HOME");
@@ -862,9 +862,8 @@ dir_s_chdir(int argc, VALUE *argv, VALUE obj)
 
     if (rb_block_given_p()) {
 	struct chdir_data args;
-	char *cwd = my_getcwd();
 
-	args.old_path = rb_tainted_str_new2(cwd); xfree(cwd);
+	args.old_path = rb_str_encode_ospath(rb_dir_getwd());
 	args.new_path = path;
 	args.done = FALSE;
 	return rb_ensure(chdir_yield, (VALUE)&args, chdir_restore, (VALUE)&args);
@@ -909,14 +908,21 @@ dir_s_getwd(VALUE dir)
 static void
 check_dirname(volatile VALUE *dir)
 {
+    VALUE d = *dir;
     char *path, *pend;
+    long len;
+    rb_encoding *enc;
 
     rb_secure(2);
-    FilePathValue(*dir);
-    path = RSTRING_PTR(*dir);
-    if (path && *(pend = rb_path_end(rb_path_skip_prefix(path)))) {
-	*dir = rb_str_new(path, pend - path);
+    FilePathValue(d);
+    enc = rb_enc_get(d);
+    RSTRING_GETMEM(d, path, len);
+    pend = path + len;
+    pend = rb_enc_path_end(rb_enc_path_skip_prefix(path, pend, enc), pend, enc);
+    if (pend - path < len) {
+	d = rb_str_subseq(d, 0, pend - path);
     }
+    *dir = rb_str_encode_ospath(d);
 }
 
 #if defined(HAVE_CHROOT)
@@ -933,8 +939,6 @@ static VALUE
 dir_s_chroot(VALUE dir, VALUE path)
 {
     check_dirname(&path);
-
-    path = rb_str_encode_ospath(path);
     if (chroot(RSTRING_PTR(path)) == -1)
 	rb_sys_fail_path(path);
 
@@ -973,7 +977,6 @@ dir_s_mkdir(int argc, VALUE *argv, VALUE obj)
     }
 
     check_dirname(&path);
-    path = rb_str_encode_ospath(path);
     if (mkdir(RSTRING_PTR(path), mode) == -1)
 	rb_sys_fail_path(path);
 
@@ -993,7 +996,6 @@ static VALUE
 dir_s_rmdir(VALUE obj, VALUE dir)
 {
     check_dirname(&dir);
-    dir = rb_str_encode_ospath(dir);
     if (rmdir(RSTRING_PTR(dir)) < 0)
 	rb_sys_fail_path(dir);
 
@@ -1497,7 +1499,7 @@ ruby_glob0(const char *path, int flags, ruby_glob_func *func, VALUE arg, rb_enco
     start = root = path;
     flags |= FNM_SYSCASE;
 #if defined DOSISH
-    root = rb_path_skip_prefix(root);
+    root = rb_enc_path_skip_prefix(root, root + strlen(root), enc);
 #endif
 
     if (root && *root == '/') root++;

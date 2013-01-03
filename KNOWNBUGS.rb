@@ -3,14 +3,5 @@
 # So all tests will cause failure.
 #
 
-assert_normal_exit %q{
-  open("tst-remove-load.rb", "w") {|f|
-    f << <<-'End'
-      module Kernel
-        remove_method :load
-      end
-      raise
-    End
-  }
-  load "tst-remove-load.rb"
-}, '[ruby-dev:40234] [ruby-core:27959]', :timeout => 1
+assert_equal('', "set_trace_func(proc{|t,|raise if t == 'line'})\n""1\n'ok'")
+assert_finish(3, "def m; end\n""set_trace_func(proc{|t,|raise if t == 'return'})\n""m")

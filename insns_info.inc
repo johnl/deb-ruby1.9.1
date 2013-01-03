@@ -9,18 +9,18 @@
   or insns2vm.rb
  */
 
-#define TS_VALUE 'V'
+#define TS_ISEQ 'S'
 #define TS_GENTRY 'G'
+#define TS_OFFSET 'O'
 #define TS_DINDEX 'D'
 #define TS_VARIABLE '.'
 #define TS_CDHASH 'H'
 #define TS_IC 'C'
 #define TS_ID 'I'
-#define TS_LINDEX 'L'
 #define TS_FUNCPTR 'F'
-#define TS_ISEQ 'S'
+#define TS_VALUE 'V'
+#define TS_LINDEX 'L'
 #define TS_NUM 'N'
-#define TS_OFFSET 'O'
 
 static const char *const insn_name_info[] = {
   "nop",
@@ -110,8 +110,8 @@ static const char *const insn_operand_info[] = {
   "", 
   "L", 
   "L", 
-  "VN", 
-  "V", 
+  "NN", 
+  "N", 
   "DN", 
   "DN", 
   "IC", 

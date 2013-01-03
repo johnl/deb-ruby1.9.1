@@ -2,7 +2,7 @@
 
   parse.y -
 
-  $Author: nobu $
+  $Author: usa $
   created at: Fri May 28 18:02:42 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -4374,6 +4374,8 @@ f_arglist	: '(' f_args rparen
 		| f_args term
 		    {
 			$$ = $1;
+			lex_state = EXPR_BEG;
+			command_start = TRUE;
 		    }
 		;
 
@@ -5926,7 +5928,7 @@ parser_tokadd_string(struct parser_params *parser,
 	      default:
 		if (c == -1) return -1;
 		if (!ISASCII(c)) {
-		    tokadd('\\');
+		    if ((func & STR_FUNC_EXPAND) == 0) tokadd('\\');
 		    goto non_ascii;
 		}
 		if (func & STR_FUNC_REGEXP) {
@@ -5982,6 +5984,25 @@ parser_tokadd_string(struct parser_params *parser,
 
 #define NEW_STRTERM(func, term, paren) \
 	rb_node_newnode(NODE_STRTERM, (func), (term) | ((paren) << (CHAR_BIT * 2)), 0)
+
+#ifdef RIPPER
+static void
+ripper_flush_string_content(struct parser_params *parser, rb_encoding *enc)
+{
+    if (!NIL_P(parser->delayed)) {
+	ptrdiff_t len = lex_p - parser->tokp;
+	if (len > 0) {
+	    rb_enc_str_buf_cat(parser->delayed, parser->tokp, len, enc);
+	}
+	ripper_dispatch_delayed_token(parser, tSTRING_CONTENT);
+	parser->tokp = lex_p;
+    }
+}
+
+#define flush_string_content(enc) ripper_flush_string_content(parser, (enc))
+#else
+#define flush_string_content(enc) ((void)(enc))
+#endif
 
 static int
 parser_parse_string(struct parser_params *parser, NODE *quote)
@@ -6041,17 +6062,7 @@ parser_parse_string(struct parser_params *parser, NODE *quote)
 
     tokfix();
     set_yylval_str(STR_NEW3(tok(), toklen(), enc, func));
-
-#ifdef RIPPER
-    if (!NIL_P(parser->delayed)) {
-	ptrdiff_t len = lex_p - parser->tokp;
-	if (len > 0) {
-	    rb_enc_str_buf_cat(parser->delayed, parser->tokp, len, enc);
-	}
-	ripper_dispatch_delayed_token(parser, tSTRING_CONTENT);
-	parser->tokp = lex_p;
-    }
-#endif
+    flush_string_content(enc);
 
     return tSTRING_CONTENT;
 }
@@ -6256,6 +6267,7 @@ parser_here_document(struct parser_params *parser, NODE *here)
 	    }
 	    if (c != '\n') {
 		set_yylval_str(STR_NEW3(tok(), toklen(), enc, func));
+		flush_string_content(enc);
 		return tSTRING_CONTENT;
 	    }
 	    tokadd(nextc());
@@ -7015,7 +7027,6 @@ parser_yylex(struct parser_params *parser)
             }
             else if (!lex_eol_p() && !(c = *lex_p, ISASCII(c))) {
                 nextc();
-		tokadd('\\');
                 if (tokadd_mbchar(c) == -1) return 0;
             }
             else {
@@ -7912,7 +7923,8 @@ parser_yylex(struct parser_params *parser)
             ID ident = TOK_INTERN(!ENC_SINGLE(mb));
 
             set_yylval_name(ident);
-            if (last_state != EXPR_DOT && is_local_id(ident) && lvar_defined(ident)) {
+            if (last_state != EXPR_DOT && last_state != EXPR_FNAME &&
+		is_local_id(ident) && lvar_defined(ident)) {
                 lex_state = EXPR_END;
             }
         }

@@ -2,7 +2,7 @@
 
   string.c -
 
-  $Author: naruse $
+  $Author: usa $
   created at: Mon Aug  9 17:12:58 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -1909,15 +1909,12 @@ rb_enc_cr_str_buf_cat(VALUE str, const char *ptr, long len,
     int str_encindex = ENCODING_GET(str);
     int res_encindex;
     int str_cr, res_cr;
-    int ptr_a8 = ptr_encindex == 0;
 
     str_cr = ENC_CODERANGE(str);
 
     if (str_encindex == ptr_encindex) {
-        if (str_cr == ENC_CODERANGE_UNKNOWN ||
-            (ptr_a8 && str_cr != ENC_CODERANGE_7BIT)) {
+        if (str_cr == ENC_CODERANGE_UNKNOWN)
             ptr_cr = ENC_CODERANGE_UNKNOWN;
-        }
         else if (ptr_cr == ENC_CODERANGE_UNKNOWN) {
             ptr_cr = coderange_scan(ptr, len, rb_enc_from_index(ptr_encindex));
         }
@@ -2158,12 +2155,6 @@ rb_str_prepend(VALUE str, VALUE str2)
     StringValue(str);
     rb_str_update(str, 0L, 0L, str2);
     return str;
-}
-
-st_index_t
-rb_memhash(const void *ptr, long len)
-{
-    return st_hash(ptr, len, rb_hash_start((st_index_t)len));
 }
 
 st_index_t
@@ -6784,6 +6775,7 @@ rb_str_crypt(VALUE str, VALUE salt)
     extern char *crypt(const char *, const char *);
     VALUE result;
     const char *s, *saltp;
+    char *res;
 #ifdef BROKEN_CRYPT
     char salt_8bit_clean[3];
 #endif
@@ -6803,7 +6795,11 @@ rb_str_crypt(VALUE str, VALUE salt)
 	saltp = salt_8bit_clean;
     }
 #endif
-    result = rb_str_new2(crypt(s, saltp));
+    res = crypt(s, saltp);
+    if (!res) {
+	rb_sys_fail("crypt");
+    }
+    result = rb_str_new2(res);
     OBJ_INFECT(result, str);
     OBJ_INFECT(result, salt);
     return result;

@@ -5,7 +5,7 @@
  * Documented by mathew <meta@pobox.com>
  *
  * $RoughId: syslog.c,v 1.21 2002/02/25 12:21:17 knu Exp $
- * $Id: syslog.c 31234 2011-04-03 13:58:32Z nagachika $
+ * $Id: syslog.c 35740 2012-05-21 07:24:34Z knu $
  */
 
 #include "ruby/ruby.h"
@@ -314,6 +314,8 @@ static VALUE mSyslog_log(int argc, VALUE *argv, VALUE self)
 static VALUE mSyslog_inspect(VALUE self)
 {
     char buf[1024];
+
+    Check_Type(self, T_MODULE);
 
     if (syslog_opened) {
 	snprintf(buf, sizeof(buf),

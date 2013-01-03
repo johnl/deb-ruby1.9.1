@@ -1,0 +1,24 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 20121014_bison_2_6_fix.diff by James Healy <james@yob.id.au>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: 1.9.3p286 doesn't build cleanly against bison 2.6. This patch is
+## DP: backported from upstream changeset 36532. This can probably be
+## DP: removed with the next upstream release
+Index: a/tool/ytab.sed
+===================================================================
+--- a/tool/ytab.sed	(revision 36532)
++++ b/tool/ytab.sed	(revision 36533)
+@@ -5,6 +5,12 @@
+ a\
+ #endif
+ }
++/^extern int yydebug;/{
++i\
++#ifndef yydebug
++a\
++#endif
++}
+ /^yydestruct.*yymsg/,/#endif/{
+   /^yydestruct/{
+     /parser/!{

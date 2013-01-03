@@ -2,7 +2,7 @@
 
   util.h -
 
-  $Author: akr $
+  $Author: usa $
   created at: Thu Mar  9 11:55:53 JST 1995
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -53,10 +53,6 @@ extern "C" {
 unsigned long ruby_scan_oct(const char *, size_t, size_t *);
 #define scan_hex(s,l,e) ((int)ruby_scan_hex((s),(l),(e)))
 unsigned long ruby_scan_hex(const char *, size_t, size_t *);
-
-#if defined(__CYGWIN32__) || defined(_WIN32)
-void ruby_add_suffix(VALUE str, const char *suffix);
-#endif
 
 void ruby_qsort(void *, const size_t, const size_t,
 		int (*)(const void *, const void *, void *), void *);

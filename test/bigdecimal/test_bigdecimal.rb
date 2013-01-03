@@ -558,6 +558,10 @@ class TestBigDecimal < Test::Unit::TestCase
 
     a, b = BigDecimal("0.11111").coerce(1.quo(3))
     assert_equal(BigDecimal("0." + "3"*a.precs[0]), a)
+
+    assert_nothing_raised(TypeError, '#7176') do
+      BigDecimal.new('1') + Rational(1)
+    end
   end
 
   def test_uplus
@@ -1296,5 +1300,11 @@ class TestBigDecimal < Test::Unit::TestCase
     bug6093 = '[ruby-core:42969]'
     code = "exit(BigDecimal.new('10.0') == 10.0.to_d)"
     assert_ruby_status(%w[-rbigdecimal -rbigdecimal/util -rmathn -], code, bug6093)
+  end
+
+  def test_bug6406
+    assert_in_out_err(%w[-rbigdecimal --disable-gems], <<-EOS, [], [])
+    Thread.current.keys.to_s
+    EOS
   end
 end

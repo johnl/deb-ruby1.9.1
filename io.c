@@ -2,7 +2,7 @@
 
   io.c -
 
-  $Author: naruse $
+  $Author: usa $
   created at: Fri Oct 15 18:08:59 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -33,10 +33,6 @@
 
 #if defined(__BOW__) || defined(__CYGWIN__) || defined(_WIN32) || defined(__EMX__) || defined(__BEOS__) || defined(__HAIKU__)
 # define NO_SAFE_RENAME
-#endif
-
-#if defined(__CYGWIN__) || defined(_WIN32)
-# define NO_LONG_FNAME
 #endif
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(sun) || defined(_nec_ews)
@@ -161,6 +157,65 @@ rb_update_max_fd(int fd)
     if (max_file_descriptor < fd) max_file_descriptor = fd;
 }
 
+void
+rb_maygvl_fd_fix_cloexec(int fd)
+{
+  /* MinGW don't have F_GETFD and FD_CLOEXEC.  [ruby-core:40281] */
+#ifdef F_GETFD
+  int flags, flags2, ret;
+  flags = fcntl(fd, F_GETFD); /* should not fail except EBADF. */
+  if (flags == -1) {
+    rb_bug("rb_maygvl_fd_fix_cloexec: fcntl(%d, F_GETFD) failed: %s", fd, strerror(errno));
+  }
+  if (fd <= 2)
+    flags2 = flags & ~FD_CLOEXEC; /* Clear CLOEXEC for standard file descriptors: 0, 1, 2. */
+  else
+    flags2 = flags | FD_CLOEXEC; /* Set CLOEXEC for non-standard file descriptors: 3, 4, 5, ... */
+  if (flags != flags2) {
+    ret = fcntl(fd, F_SETFD, flags2);
+    if (ret == -1) {
+      rb_bug("rb_maygvl_fd_fix_cloexec: fcntl(%d, F_SETFD, %d) failed: %s", fd, flags2, strerror(errno));
+    }
+  }
+#endif
+}
+
+int
+rb_cloexec_fcntl_dupfd(int fd, int minfd)
+{
+    int ret;
+
+#if defined(HAVE_FCNTL) && defined(F_DUPFD_CLOEXEC)
+    static int try_dupfd_cloexec = 1;
+    if (try_dupfd_cloexec) {
+      ret = fcntl(fd, F_DUPFD_CLOEXEC, minfd);
+      if (ret != -1) {
+	if (ret <= 2)
+	  rb_maygvl_fd_fix_cloexec(ret);
+	return ret;
+      }
+      /* F_DUPFD_CLOEXEC is available since Linux 2.6.24.  Linux 2.6.18 fails with EINVAL */
+      if (errno == EINVAL) {
+	ret = fcntl(fd, F_DUPFD, minfd);
+	if (ret != -1) {
+	  try_dupfd_cloexec = 0;
+	}
+      }
+    }
+    else {
+      ret = fcntl(fd, F_DUPFD, minfd);
+    }
+#elif defined(F_DUPFD)
+    ret = fcntl(fd, F_DUPFD, minfd);
+#else
+    ret = -1;
+    errno = EINVAL;
+#endif
+    if (ret == -1) return -1;
+    rb_maygvl_fd_fix_cloexec(ret);
+    return ret;
+}
+
 #define argf_of(obj) (*(struct argf *)DATA_PTR(obj))
 #define ARGF argf_of(argf)
 
@@ -193,7 +248,7 @@ rb_update_max_fd(int fd)
 
 #if defined(_WIN32)
 #define WAIT_FD_IN_WIN32(fptr) \
-    (rb_w32_has_cancel_io() ? 0 : rb_thread_wait_fd((fptr)->fd))
+    (rb_w32_io_cancelable_p((fptr)->fd) ? 0 : rb_thread_wait_fd((fptr)->fd))
 #else
 #define WAIT_FD_IN_WIN32(fptr)
 #endif
@@ -302,6 +357,12 @@ io_unread(rb_io_t *fptr)
     /* add extra offset for removed '\r' in rbuf */
     extra_max = (long)(pos - fptr->rbuf.len);
     p = fptr->rbuf.ptr + fptr->rbuf.off;
+
+    /* if the end of rbuf is '\r', rbuf doesn't have '\r' within rbuf.len */
+    if (*(fptr->rbuf.ptr + fptr->rbuf.capa - 1) == '\r') {
+	newlines++;
+    }
+
     for (i = 0; i < fptr->rbuf.len; i++) {
 	if (*p == '\n') newlines++;
 	if (extra_max == newlines) break;
@@ -360,10 +421,10 @@ set_binary_mode_with_seek_cur(rb_io_t *fptr)
 # define DEFAULT_TEXTMODE 0
 #define NEED_READCONV(fptr) ((fptr)->encs.enc2 != NULL || NEED_NEWLINE_DECORATOR_ON_READ(fptr))
 #define NEED_WRITECONV(fptr) (((fptr)->encs.enc != NULL && (fptr)->encs.enc != rb_ascii8bit_encoding()) || NEED_NEWLINE_DECORATOR_ON_WRITE(fptr) || ((fptr)->encs.ecflags & (ECONV_DECORATOR_MASK|ECONV_STATEFUL_DECORATOR_MASK)))
-#define SET_BINARY_MODE(fptr) 0
-#define NEED_NEWLINE_DECORATOR_ON_READ_CHECK(fptr) 0
-#define SET_UNIVERSAL_NEWLINE_DECORATOR_IF_ENC2(enc2, ecflags) 0
-#define SET_BINARY_MODE_WITH_SEEK_CUR(fptr) 0
+#define SET_BINARY_MODE(fptr) (void)(fptr)
+#define NEED_NEWLINE_DECORATOR_ON_READ_CHECK(fptr) (void)(fptr)
+#define SET_UNIVERSAL_NEWLINE_DECORATOR_IF_ENC2(enc2, ecflags) ((void)(enc2), (void)(ecflags))
+#define SET_BINARY_MODE_WITH_SEEK_CUR(fptr) (void)(fptr)
 #endif
 
 #if !defined HAVE_SHUTDOWN && !defined shutdown
@@ -4694,7 +4755,7 @@ rb_io_extract_modeenc(VALUE *vmode_p, VALUE *vperm_p, VALUE opthash,
 
   vmode_handle:
     if (NIL_P(vmode)) {
-        fmode = FMODE_READABLE | DEFAULT_TEXTMODE;
+        fmode = FMODE_READABLE;
         oflags = O_RDONLY;
     }
     else if (!NIL_P(intmode = rb_check_to_integer(vmode, "to_int"))) {
@@ -4740,6 +4801,11 @@ rb_io_extract_modeenc(VALUE *vmode_p, VALUE *vperm_p, VALUE opthash,
 #ifdef O_BINARY
 	if (fmode & FMODE_BINMODE)
             oflags |= O_BINARY;
+#endif
+#if DEFAULT_TEXTMODE
+	else if (NIL_P(vmode)) {
+	    fmode |= DEFAULT_TEXTMODE;
+	}
 #endif
 	if (!has_vmode) {
 	    v = rb_hash_aref(opthash, sym_mode);
@@ -4894,65 +4960,63 @@ static void io_encoding_set(rb_io_t *, VALUE, VALUE, VALUE);
 static int
 io_strip_bom(VALUE io)
 {
-    int b1, b2, b3, b4;
-    switch (b1 = FIX2INT(rb_io_getbyte(io))) {
-      case 0xEF:
-	b2 = FIX2INT(rb_io_getbyte(io));
-	if (b2 == 0xBB) {
-	    b3 = FIX2INT(rb_io_getbyte(io));
-	    if (b3 == 0xBF) {
+    VALUE b1, b2, b3, b4;
+
+    if (NIL_P(b1 = rb_io_getbyte(io))) return 0;
+    switch (b1) {
+      case INT2FIX(0xEF):
+	if (NIL_P(b2 = rb_io_getbyte(io))) break;
+	if (b2 == INT2FIX(0xBB) && !NIL_P(b3 = rb_io_getbyte(io))) {
+	    if (b3 == INT2FIX(0xBF)) {
 		return rb_utf8_encindex();
 	    }
-	    rb_io_ungetbyte(io, INT2FIX(b3));
+	    rb_io_ungetbyte(io, b3);
 	}
-	rb_io_ungetbyte(io, INT2FIX(b2));
+	rb_io_ungetbyte(io, b2);
 	break;
 
-      case 0xFE:
-	b2 = FIX2INT(rb_io_getbyte(io));
-	if (b2 == 0xFF) {
+      case INT2FIX(0xFE):
+	if (NIL_P(b2 = rb_io_getbyte(io))) break;
+	if (b2 == INT2FIX(0xFF)) {
 	    return rb_enc_find_index("UTF-16BE");
 	}
-	rb_io_ungetbyte(io, INT2FIX(b2));
+	rb_io_ungetbyte(io, b2);
 	break;
 
-      case 0xFF:
-	b2 = FIX2INT(rb_io_getbyte(io));
-	if (b2 == 0xFE) {
-	    b3 = FIX2INT(rb_io_getbyte(io));
-	    if (b3 == 0) {
-		b4 = FIX2INT(rb_io_getbyte(io));
-		if (b4 == 0) {
+      case INT2FIX(0xFF):
+	if (NIL_P(b2 = rb_io_getbyte(io))) break;
+	if (b2 == INT2FIX(0xFE)) {
+	    b3 = rb_io_getbyte(io);
+	    if (b3 == INT2FIX(0) && !NIL_P(b4 = rb_io_getbyte(io))) {
+		if (b4 == INT2FIX(0)) {
 		    return rb_enc_find_index("UTF-32LE");
 		}
-		rb_io_ungetbyte(io, INT2FIX(b4));
+		rb_io_ungetbyte(io, b4);
+		rb_io_ungetbyte(io, b3);
 	    }
 	    else {
-		rb_io_ungetbyte(io, INT2FIX(b3));
+		rb_io_ungetbyte(io, b3);
 		return rb_enc_find_index("UTF-16LE");
 	    }
-	    rb_io_ungetbyte(io, INT2FIX(b3));
 	}
-	rb_io_ungetbyte(io, INT2FIX(b2));
+	rb_io_ungetbyte(io, b2);
 	break;
 
-      case 0:
-	b2 = FIX2INT(rb_io_getbyte(io));
-	if (b2 == 0) {
-	    b3 = FIX2INT(rb_io_getbyte(io));
-	    if (b3 == 0xFE) {
-		b4 = FIX2INT(rb_io_getbyte(io));
-		if (b4 == 0xFF) {
+      case INT2FIX(0):
+	if (NIL_P(b2 = rb_io_getbyte(io))) break;
+	if (b2 == INT2FIX(0) && !NIL_P(b3 = rb_io_getbyte(io))) {
+	    if (b3 == INT2FIX(0xFE) && !NIL_P(b4 = rb_io_getbyte(io))) {
+		if (b4 == INT2FIX(0xFF)) {
 		    return rb_enc_find_index("UTF-32BE");
 		}
-		rb_io_ungetbyte(io, INT2FIX(b4));
+		rb_io_ungetbyte(io, b4);
 	    }
-	    rb_io_ungetbyte(io, INT2FIX(b3));
+	    rb_io_ungetbyte(io, b3);
 	}
-	rb_io_ungetbyte(io, INT2FIX(b2));
+	rb_io_ungetbyte(io, b2);
 	break;
     }
-    rb_io_ungetbyte(io, INT2FIX(b1));
+    rb_io_ungetbyte(io, b1);
     return 0;
 }
 
@@ -7130,15 +7194,15 @@ argf_next_argv(VALUE argf)
 		    fstat(fr, &st);
 		    if (*ARGF.inplace) {
 			str = rb_str_new2(fn);
-#ifdef NO_LONG_FNAME
-                        ruby_add_suffix(str, ARGF.inplace);
-#else
 			rb_str_cat2(str, ARGF.inplace);
-#endif
 #ifdef NO_SAFE_RENAME
 			(void)close(fr);
 			(void)unlink(RSTRING_PTR(str));
-			(void)rename(fn, RSTRING_PTR(str));
+			if (rename(fn, RSTRING_PTR(str)) < 0) {
+			    rb_warn("Can't rename %s to %s: %s, skipping file",
+				    fn, RSTRING_PTR(str), strerror(errno));
+			    goto retry;
+			}
 			fr = rb_sysopen(str, O_RDONLY, 0);
 #else
 			if (rename(fn, RSTRING_PTR(str)) < 0) {
@@ -7918,60 +7982,227 @@ rb_f_select(int argc, VALUE *argv, VALUE obj)
     return rb_ensure(select_call, (VALUE)&args, select_end, (VALUE)&args);
 }
 
-struct io_cntl_arg {
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__)
+ typedef unsigned long ioctl_req_t;
+ #define NUM2IOCTLREQ(num) NUM2ULONG(num)
+#else
+ typedef int ioctl_req_t;
+ #define NUM2IOCTLREQ(num) NUM2INT(num)
+#endif
+
+struct ioctl_arg {
     int		fd;
-    int		cmd;
+    ioctl_req_t	cmd;
     long	narg;
-    int		io_p;
 };
 
-static VALUE nogvl_io_cntl(void *ptr)
+static VALUE nogvl_ioctl(void *ptr)
 {
-    struct io_cntl_arg *arg = ptr;
+    struct ioctl_arg *arg = ptr;
 
-    if (arg->io_p)
-	return (VALUE)ioctl(arg->fd, arg->cmd, arg->narg);
-    else
-	return (VALUE)fcntl(arg->fd, arg->cmd, arg->narg);
+    return (VALUE)ioctl(arg->fd, arg->cmd, arg->narg);
 }
 
 static int
-io_cntl(int fd, int cmd, long narg, int io_p)
+do_ioctl(int fd, ioctl_req_t cmd, long narg)
 {
     int retval;
-    struct io_cntl_arg arg;
-
-#ifndef HAVE_FCNTL
-    if (!io_p) {
-	rb_notimplement();
-    }
-#endif
+    struct ioctl_arg arg;
 
     arg.fd = fd;
     arg.cmd = cmd;
     arg.narg = narg;
-    arg.io_p = io_p;
 
-    retval = (int)rb_thread_io_blocking_region(nogvl_io_cntl, &arg, fd);
-#if defined(F_DUPFD)
-    if (!io_p && retval != -1 && cmd == F_DUPFD) {
-	rb_update_max_fd(retval);
-    }
-#endif
+    retval = (int)rb_thread_io_blocking_region(nogvl_ioctl, &arg, fd);
 
     return retval;
 }
 
-static VALUE
-rb_io_ctl(VALUE io, VALUE req, VALUE arg, int io_p)
-{
-    int cmd = NUM2INT(req);
-    rb_io_t *fptr;
-    long len = 0;
-    long narg = 0;
-    int retval;
+#define DEFULT_IOCTL_NARG_LEN (256)
 
-    rb_secure(2);
+#ifdef __linux__
+static long
+linux_iocparm_len(ioctl_req_t cmd)
+{
+    long len;
+
+    if ((cmd & 0xFFFF0000) == 0) {
+	/* legacy and unstructured ioctl number. */
+	return DEFULT_IOCTL_NARG_LEN;
+    }
+
+    len = _IOC_SIZE(cmd);
+
+    /* paranoia check for silly drivers which don't keep ioctl convention */
+    if (len < DEFULT_IOCTL_NARG_LEN)
+	len = DEFULT_IOCTL_NARG_LEN;
+
+    return len;
+}
+#endif
+
+static long
+ioctl_narg_len(ioctl_req_t cmd)
+{
+    long len;
+
+#ifdef IOCPARM_MASK
+#ifndef IOCPARM_LEN
+#define IOCPARM_LEN(x)  (((x) >> 16) & IOCPARM_MASK)
+#endif
+#endif
+#ifdef IOCPARM_LEN
+    len = IOCPARM_LEN(cmd);	/* on BSDish systems we're safe */
+#elif defined(__linux__)
+    len = linux_iocparm_len(cmd);
+#else
+    /* otherwise guess at what's safe */
+    len = DEFULT_IOCTL_NARG_LEN;
+#endif
+
+    return len;
+}
+
+#ifdef HAVE_FCNTL
+#ifdef __linux__
+typedef long fcntl_arg_t;
+#else
+/* posix */
+typedef int fcntl_arg_t;
+#endif
+
+static long
+fcntl_narg_len(int cmd)
+{
+    long len;
+
+    switch (cmd) {
+#ifdef F_DUPFD
+      case F_DUPFD:
+	len = sizeof(fcntl_arg_t);
+	break;
+#endif
+#ifdef F_DUP2FD /* bsd specific */
+      case F_DUP2FD:
+	len = sizeof(int);
+	break;
+#endif
+#ifdef F_DUPFD_CLOEXEC /* linux specific */
+      case F_DUPFD_CLOEXEC:
+	len = sizeof(fcntl_arg_t);
+	break;
+#endif
+#ifdef F_GETFD
+      case F_GETFD:
+	len = 1;
+	break;
+#endif
+#ifdef F_SETFD
+      case F_SETFD:
+	len = sizeof(fcntl_arg_t);
+	break;
+#endif
+#ifdef F_GETFL
+      case F_GETFL:
+	len = 1;
+	break;
+#endif
+#ifdef F_SETFL
+      case F_SETFL:
+	len = sizeof(fcntl_arg_t);
+	break;
+#endif
+#ifdef F_GETOWN
+      case F_GETOWN:
+	len = 1;
+	break;
+#endif
+#ifdef F_SETOWN
+      case F_SETOWN:
+	len = sizeof(fcntl_arg_t);
+	break;
+#endif
+#ifdef F_GETOWN_EX /* linux specific */
+      case F_GETOWN_EX:
+	len = sizeof(struct f_owner_ex);
+	break;
+#endif
+#ifdef F_SETOWN_EX /* linux specific */
+      case F_SETOWN_EX:
+	len = sizeof(struct f_owner_ex);
+	break;
+#endif
+#ifdef F_GETLK
+      case F_GETLK:
+	len = sizeof(struct flock);
+	break;
+#endif
+#ifdef F_SETLK
+      case F_SETLK:
+	len = sizeof(struct flock);
+	break;
+#endif
+#ifdef F_SETLKW
+      case F_SETLKW:
+	len = sizeof(struct flock);
+	break;
+#endif
+#ifdef F_READAHEAD /* bsd specific */
+      case F_READAHEAD:
+	len = sizeof(int);
+	break;
+#endif
+#ifdef F_RDAHEAD /* Darwin specific */
+      case F_RDAHEAD:
+	len = sizeof(int);
+	break;
+#endif
+#ifdef F_GETSIG /* linux specific */
+      case F_GETSIG:
+	len = 1;
+	break;
+#endif
+#ifdef F_SETSIG /* linux specific */
+      case F_SETSIG:
+	len = sizeof(fcntl_arg_t);
+	break;
+#endif
+#ifdef F_GETLEASE /* linux specific */
+      case F_GETLEASE:
+	len = 1;
+	break;
+#endif
+#ifdef F_SETLEASE /* linux specific */
+      case F_SETLEASE:
+	len = sizeof(fcntl_arg_t);
+	break;
+#endif
+#ifdef F_NOTIFY /* linux specific */
+      case F_NOTIFY:
+	len = sizeof(fcntl_arg_t);
+	break;
+#endif
+
+      default:
+	len = 256;
+	break;
+    }
+
+    return len;
+}
+#else /* HAVE_FCNTL */
+static long
+fcntl_narg_len(int cmd)
+{
+    return 0;
+}
+#endif /* HAVE_FCNTL */
+
+static long
+setup_narg(ioctl_req_t cmd, VALUE *argp, int io_p)
+{
+    long narg = 0;
+    VALUE arg = *argp;
 
     if (NIL_P(arg) || arg == Qfalse) {
 	narg = 0;
@@ -7989,49 +8220,49 @@ rb_io_ctl(VALUE io, VALUE req, VALUE arg, int io_p)
 	    narg = NUM2LONG(arg);
 	}
 	else {
-	    arg = tmp;
-#ifdef IOCPARM_MASK
-#ifndef IOCPARM_LEN
-#define IOCPARM_LEN(x)  (((x) >> 16) & IOCPARM_MASK)
-#endif
-#endif
-#ifdef IOCPARM_LEN
-	    len = IOCPARM_LEN(cmd);	/* on BSDish systems we're safe */
-#else
-	    len = 256;		/* otherwise guess at what's safe */
-#endif
+	    long len;
+
+	    *argp = arg = tmp;
+	    if (io_p)
+		len = ioctl_narg_len(cmd);
+	    else
+		len = fcntl_narg_len((int)cmd);
 	    rb_str_modify(arg);
 
-	    if (len <= RSTRING_LEN(arg)) {
-		len = RSTRING_LEN(arg);
-	    }
-	    if (RSTRING_LEN(arg) < len) {
+	    /* expand for data + sentinel. */
+	    if (RSTRING_LEN(arg) < len+1) {
 		rb_str_resize(arg, len+1);
 	    }
-	    RSTRING_PTR(arg)[len] = 17;	/* a little sanity check here */
+	    /* a little sanity check here */
+	    RSTRING_PTR(arg)[RSTRING_LEN(arg) - 1] = 17;
 	    narg = (long)(SIGNED_VALUE)RSTRING_PTR(arg);
 	}
     }
-    GetOpenFile(io, fptr);
-    retval = io_cntl(fptr->fd, cmd, narg, io_p);
-    if (retval < 0) rb_sys_fail_path(fptr->pathv);
-    if (TYPE(arg) == T_STRING && RSTRING_PTR(arg)[len] != 17) {
-	rb_raise(rb_eArgError, "return value overflowed string");
+        return narg;
     }
 
-    if (!io_p && cmd == F_SETFL) {
-	if (narg & O_NONBLOCK) {
-	    fptr->mode |= FMODE_WSPLIT_INITIALIZED;
-	    fptr->mode &= ~FMODE_WSPLIT;
-	}
-	else {
-	    fptr->mode &= ~(FMODE_WSPLIT_INITIALIZED|FMODE_WSPLIT);
-	}
+static VALUE
+rb_ioctl(VALUE io, VALUE req, VALUE arg)
+{
+    ioctl_req_t cmd = NUM2IOCTLREQ(req);
+    rb_io_t *fptr;
+    long narg;
+    int retval;
+  
+    rb_secure(2);
+
+    narg = setup_narg(cmd, &arg, 1);
+    GetOpenFile(io, fptr);
+    retval = do_ioctl(fptr->fd, cmd, narg);
+    if (retval < 0) rb_sys_fail_path(fptr->pathv);
+    if (RB_TYPE_P(arg, T_STRING)) {
+	if (RSTRING_PTR(arg)[RSTRING_LEN(arg)-1] != 17)
+	    rb_raise(rb_eArgError, "return value overflowed string");
+	RSTRING_PTR(arg)[RSTRING_LEN(arg)-1] = '\0';
     }
 
     return INT2NUM(retval);
 }
-
 
 /*
  *  call-seq:
@@ -8051,10 +8282,80 @@ rb_io_ioctl(int argc, VALUE *argv, VALUE io)
     VALUE req, arg;
 
     rb_scan_args(argc, argv, "11", &req, &arg);
-    return rb_io_ctl(io, req, arg, 1);
+    return rb_ioctl(io, req, arg);
 }
 
 #ifdef HAVE_FCNTL
+struct fcntl_arg {
+    int		fd;
+    int 	cmd;
+    long	narg;
+};
+
+static VALUE nogvl_fcntl(void *ptr)
+{
+    struct fcntl_arg *arg = ptr;
+
+#if defined(F_DUPFD)
+    if (arg->cmd == F_DUPFD)
+	return (VALUE)rb_cloexec_fcntl_dupfd(arg->fd, (int)arg->narg);
+#endif
+    return (VALUE)fcntl(arg->fd, arg->cmd, arg->narg);
+}
+
+static int
+do_fcntl(int fd, int cmd, long narg)
+{
+    int retval;
+    struct fcntl_arg arg;
+
+    arg.fd = fd;
+    arg.cmd = cmd;
+    arg.narg = narg;
+
+    retval = (int)rb_thread_io_blocking_region(nogvl_fcntl, &arg, fd);
+#if defined(F_DUPFD)
+    if (retval != -1 && cmd == F_DUPFD) {
+	rb_update_max_fd(retval);
+    }
+#endif
+
+    return retval;
+}
+
+static VALUE
+rb_fcntl(VALUE io, VALUE req, VALUE arg)
+{
+    int cmd = NUM2INT(req);
+    rb_io_t *fptr;
+    long narg;
+    int retval;
+
+    rb_secure(2);
+
+    narg = setup_narg(cmd, &arg, 0);
+    GetOpenFile(io, fptr);
+    retval = do_fcntl(fptr->fd, cmd, narg);
+    if (retval < 0) rb_sys_fail_path(fptr->pathv);
+    if (RB_TYPE_P(arg, T_STRING)) {
+	if (RSTRING_PTR(arg)[RSTRING_LEN(arg)-1] != 17)
+	    rb_raise(rb_eArgError, "return value overflowed string");
+	RSTRING_PTR(arg)[RSTRING_LEN(arg)-1] = '\0';
+    }
+
+    if (cmd == F_SETFL) {
+	if (narg & O_NONBLOCK) {
+	    fptr->mode |= FMODE_WSPLIT_INITIALIZED;
+	    fptr->mode &= ~FMODE_WSPLIT;
+	}
+	else {
+	    fptr->mode &= ~(FMODE_WSPLIT_INITIALIZED|FMODE_WSPLIT);
+	}
+    }
+
+    return INT2NUM(retval);
+}
+
 /*
  *  call-seq:
  *     ios.fcntl(integer_cmd, arg)    -> integer
@@ -8074,7 +8375,7 @@ rb_io_fcntl(int argc, VALUE *argv, VALUE io)
     VALUE req, arg;
 
     rb_scan_args(argc, argv, "11", &req, &arg);
-    return rb_io_ctl(io, req, arg, 0);
+    return rb_fcntl(io, req, arg);
 }
 #else
 #define rb_io_fcntl rb_f_notimplement
@@ -10264,6 +10565,36 @@ argf_each_char(VALUE argf)
 
 /*
  *  call-seq:
+ *     ARGF.codepoints      {|codepoint| block }  -> ARGF
+ *     ARGF.codepoints                       -> an_enumerator
+ *
+ *     ARGF.each_codepoint  {|codepoint| block }  -> ARGF
+ *     ARGF.each_codepoint                   -> an_enumerator
+ *
+ *  Iterates over each codepoint of each file in +ARGF+.
+ *
+ *  This method allows you to treat the files supplied on the command line as
+ *  a single file consisting of the concatenation of each named file. After
+ *  the last codepoint of the first file has been returned, the first
+ *  codepoint of the second file is returned. The +ARGF.filename+ method can
+ *  be used to determine the name of the file in which the current codepoint
+ *  appears.
+ *
+ *  If no block is given, an enumerator is returned instead.
+ */
+static VALUE
+argf_each_codepoint(VALUE argf)
+{
+    RETURN_ENUMERATOR(argf, 0, 0);
+    for (;;) {
+	if (!next_argv()) return argf;
+	rb_block_call(ARGF.current_file, rb_intern("each_codepoint"), 0, 0, 0, 0);
+	ARGF.next_p = 1;
+    }
+}
+
+/*
+ *  call-seq:
  *     ARGF.filename  -> String
  *     ARGF.path      -> String
  *
@@ -10990,9 +11321,11 @@ Init_IO(void)
     rb_define_method(rb_cARGF, "each_line",  argf_each_line, -1);
     rb_define_method(rb_cARGF, "each_byte",  argf_each_byte, 0);
     rb_define_method(rb_cARGF, "each_char",  argf_each_char, 0);
+    rb_define_method(rb_cARGF, "each_codepoint",  argf_each_codepoint, 0);
     rb_define_method(rb_cARGF, "lines", argf_each_line, -1);
     rb_define_method(rb_cARGF, "bytes", argf_each_byte, 0);
     rb_define_method(rb_cARGF, "chars", argf_each_char, 0);
+    rb_define_method(rb_cARGF, "codepoints", argf_each_codepoint, 0);
 
     rb_define_method(rb_cARGF, "read",  argf_read, -1);
     rb_define_method(rb_cARGF, "readpartial",  argf_readpartial, -1);

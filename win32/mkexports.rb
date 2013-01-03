@@ -111,8 +111,8 @@ class Exports::Mswin < Exports
           next unless l.sub!(/.*?\s(\(\)\s+)?External\s+\|\s+/, '')
           is_data = !$1
           if noprefix or /^[@_]/ =~ l
-            next if /(?!^)@.*@/ =~ l || /@[[:xdigit:]]{8,16}$/ =~ l ||
-              /^_(?:Init_|.*_threadptr_|DllMain@)/ =~ l
+            next if /(?!^)@.*@/ =~ l || /@[[:xdigit:]]{8,32}$/ =~ l ||
+              /^_?(?:Init_|.*_threadptr_|DllMain\b)/ =~ l
             l.sub!(/^[@_]/, '') if /@\d+$/ !~ l
           elsif !l.sub!(/^(\S+) \([^@?\`\']*\)$/, '\1')
             next
@@ -146,7 +146,7 @@ class Exports::Cygwin < Exports
   def each_export(objs)
     symprefix = RbConfig::CONFIG["SYMBOL_PREFIX"]
     symprefix.strip! if symprefix
-    re = /\s(?:(T)|[[:upper:]])\s#{symprefix}((?!Init_|.*_threadptr_|DllMain@).*)$/
+    re = /\s(?:(T)|[[:upper:]])\s#{symprefix}((?!Init_|.*_threadptr_|DllMain\b).*)$/
     objdump(objs) do |l|
       next if /@.*@/ =~ l
       yield $2, !$1 if re =~ l

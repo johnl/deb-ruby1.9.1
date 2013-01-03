@@ -92,7 +92,16 @@ class TestException < Test::Unit::TestCase
          end
          false
        })
+  end
 
+  def test_catch_throw_in_require
+    bug7185 = '[ruby-dev:46234]'
+    t = Tempfile.open(["dep", ".rb"])
+    t.puts("throw :extdep, 42")
+    t.close
+    assert_equal(42, catch(:extdep) {require t.path}, bug7185)
+  ensure
+    t.close! if t
   end
 
   def test_else
@@ -332,5 +341,55 @@ end.join
     assert_nothing_raised(NameError, bug5575) do
       load(t.path)
     end
+  end
+
+  def test_to_s_taintness_propagation
+    for exc in [Exception, NameError]
+      m = "abcdefg"
+      e = exc.new(m)
+      e.taint
+      s = e.to_s
+      assert_equal(false, m.tainted?,
+                   "#{exc}#to_s should not propagate taintness")
+      assert_equal(false, s.tainted?,
+                   "#{exc}#to_s should not propagate taintness")
+    end
+    
+    o = Object.new
+    def o.to_str
+      "foo"
+    end
+    o.taint
+    e = NameError.new(o)
+    s = e.to_s
+    assert_equal(false, s.tainted?)
+  end
+
+  def test_exception_to_s_should_not_propagate_untrustedness
+    favorite_lang = "Ruby"
+
+    for exc in [Exception, NameError]
+      assert_raise(SecurityError) do
+        lambda {
+          $SAFE = 4
+          exc.new(favorite_lang).to_s
+          favorite_lang.replace("Python")
+        }.call
+      end
+    end
+
+    assert_raise(SecurityError) do
+      lambda {
+        $SAFE = 4
+        o = Object.new
+        o.singleton_class.send(:define_method, :to_str) {
+          favorite_lang
+        }
+        NameError.new(o).to_s
+        favorite_lang.replace("Python")
+      }.call
+    end
+
+    assert_equal("Ruby", favorite_lang)
   end
 end
