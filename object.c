@@ -2,7 +2,7 @@
 
   object.c -
 
-  $Author: naruse $
+  $Author: usa $
   created at: Thu Jul 15 12:01:24 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -112,7 +112,14 @@ VALUE
 rb_obj_hash(VALUE obj)
 {
     VALUE oid = rb_obj_id(obj);
-    st_index_t h = rb_hash_end(rb_hash_start(NUM2LONG(oid)));
+#if SIZEOF_LONG == SIZEOF_VOIDP
+    st_index_t index = NUM2LONG(oid);
+#elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
+    st_index_t index = NUM2LL(oid);
+#else
+# error not supported
+#endif
+    st_index_t h = rb_hash_end(rb_hash_start(index));
     return LONG2FIX(h);
 }
 
@@ -2696,11 +2703,11 @@ Init_Object(void)
 
     rb_define_method(rb_mKernel, "to_s", rb_any_to_s, 0);
     rb_define_method(rb_mKernel, "inspect", rb_obj_inspect, 0);
-    rb_define_method(rb_mKernel, "methods", rb_obj_methods, -1);
+    rb_define_method(rb_mKernel, "methods", rb_obj_methods, -1); /* in class.c */
     rb_define_method(rb_mKernel, "singleton_methods", rb_obj_singleton_methods, -1); /* in class.c */
-    rb_define_method(rb_mKernel, "protected_methods", rb_obj_protected_methods, -1);
-    rb_define_method(rb_mKernel, "private_methods", rb_obj_private_methods, -1);
-    rb_define_method(rb_mKernel, "public_methods", rb_obj_public_methods, -1);
+    rb_define_method(rb_mKernel, "protected_methods", rb_obj_protected_methods, -1); /* in class.c */
+    rb_define_method(rb_mKernel, "private_methods", rb_obj_private_methods, -1); /* in class.c */
+    rb_define_method(rb_mKernel, "public_methods", rb_obj_public_methods, -1); /* in class.c */
     rb_define_method(rb_mKernel, "instance_variables", rb_obj_instance_variables, 0); /* in variable.c */
     rb_define_method(rb_mKernel, "instance_variable_get", rb_obj_ivar_get, 1);
     rb_define_method(rb_mKernel, "instance_variable_set", rb_obj_ivar_set, 2);
@@ -2791,7 +2798,6 @@ Init_Object(void)
     rb_define_method(rb_cClass, "allocate", rb_obj_alloc, 0);
     rb_define_method(rb_cClass, "new", rb_class_new_instance, -1);
     rb_define_method(rb_cClass, "initialize", rb_class_initialize, -1);
-    rb_define_method(rb_cClass, "initialize_copy", rb_class_init_copy, 1); /* in class.c */
     rb_define_method(rb_cClass, "superclass", rb_class_superclass, 0);
     rb_define_alloc_func(rb_cClass, rb_class_s_alloc);
     rb_undef_method(rb_cClass, "extend_object");

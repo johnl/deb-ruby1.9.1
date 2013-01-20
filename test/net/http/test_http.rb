@@ -1,4 +1,4 @@
-# $Id: test_http.rb 32192 2011-06-21 17:44:44Z nahi $
+# $Id: test_http.rb 37659 2012-11-15 06:15:17Z usa $
 
 require 'test/unit'
 require 'net/http'
@@ -426,7 +426,7 @@ end
 class TestNetHTTP_v1_2 < Test::Unit::TestCase
   CONFIG = {
     'host' => '127.0.0.1',
-    'port' => 10081,
+    'port' => 0,
     'proxy_host' => nil,
     'proxy_port' => nil,
   }
@@ -444,7 +444,7 @@ end
 class TestNetHTTP_v1_2_chunked < Test::Unit::TestCase
   CONFIG = {
     'host' => '127.0.0.1',
-    'port' => 10081,
+    'port' => 0,
     'proxy_host' => nil,
     'proxy_port' => nil,
     'chunked' => true,
@@ -476,7 +476,7 @@ end
 class TestNetHTTPContinue < Test::Unit::TestCase
   CONFIG = {
     'host' => '127.0.0.1',
-    'port' => 10081,
+    'port' => 0,
     'proxy_host' => nil,
     'proxy_port' => nil,
     'chunked' => true,

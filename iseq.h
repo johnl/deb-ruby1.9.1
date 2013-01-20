@@ -2,7 +2,7 @@
 
   iseq.h -
 
-  $Author: akr $
+  $Author: usa $
   created at: 04/01/01 23:36:57 JST
 
   Copyright (C) 2004-2008 Koichi Sasada
@@ -94,7 +94,6 @@ struct iseq_compile_data {
     struct iseq_compile_data_storage *storage_current;
     int last_line;
     int last_coverable_line;
-    int flip_cnt;
     int label_no;
     int node_level;
     const rb_compile_option_t *option;
@@ -117,6 +116,8 @@ enum defined_type {
     DEFINED_ZSUPER,
     DEFINED_FUNC
 };
+
+#define DEFAULT_SPECIAL_VAR_COUNT 2
 
 #if defined __GNUC__ && __GNUC__ >= 4
 #pragma GCC visibility pop

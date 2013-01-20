@@ -88,7 +88,7 @@ INSN_ENTRY(getspecial){
 {
   VALUE val;
   rb_num_t type = (rb_num_t)GET_OPERAND(2);
-  VALUE key = (VALUE)GET_OPERAND(1);
+  rb_num_t key = (rb_num_t)GET_OPERAND(1);
 
   DEBUG_ENTER_INSN("getspecial");
   ADD_PC(1+2);
@@ -114,7 +114,7 @@ INSN_ENTRY(getspecial){
   END_INSN(getspecial);}}}
 INSN_ENTRY(setspecial){
 {
-  VALUE key = (VALUE)GET_OPERAND(1);
+  rb_num_t key = (rb_num_t)GET_OPERAND(1);
   VALUE obj = TOPN(0);
   DEBUG_ENTER_INSN("setspecial");
   ADD_PC(1+1);
