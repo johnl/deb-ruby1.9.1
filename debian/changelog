@@ -1,3 +1,9 @@
+ruby1.9.1 (1:1.9.3.374-1bbox1) precise; urgency=low
+
+  * New upstream release, 1.9.3-p374
+
+ -- John Leach <john@brightbox.co.uk>  Sun, 20 Jan 2013 14:30:09 +0000
+
 ruby1.9.1 (1:1.9.3.327-1bbox1) precise; urgency=high
 
   * New upstream release, 1.9.3-p327
