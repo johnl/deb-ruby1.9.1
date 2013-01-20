@@ -2,7 +2,7 @@
 
   thread.c -
 
-  $Author: kosaki $
+  $Author: usa $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -3855,17 +3855,24 @@ recursive_list_access(void)
 static VALUE
 recursive_check(VALUE list, VALUE obj_id, VALUE paired_obj_id)
 {
+#if SIZEOF_LONG == SIZEOF_VOIDP
+  #define OBJ_ID_EQL(obj_id, other) ((obj_id) == (other))
+#elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
+  #define OBJ_ID_EQL(obj_id, other) (RB_TYPE_P((obj_id), T_BIGNUM) ? \
+    rb_big_eql((obj_id), (other)) : ((obj_id) == (other)))
+#endif
+
     VALUE pair_list = rb_hash_lookup2(list, obj_id, Qundef);
     if (pair_list == Qundef)
 	return Qfalse;
     if (paired_obj_id) {
 	if (TYPE(pair_list) != T_HASH) {
-	if (pair_list != paired_obj_id)
-	    return Qfalse;
+	    if (!OBJ_ID_EQL(paired_obj_id, pair_list))
+		return Qfalse;
 	}
 	else {
-	if (NIL_P(rb_hash_lookup(pair_list, paired_obj_id)))
-	    return Qfalse;
+	    if (NIL_P(rb_hash_lookup(pair_list, paired_obj_id)))
+		return Qfalse;
 	}
     }
     return Qtrue;
@@ -4053,7 +4060,7 @@ enum {
     EVENT_RUNNING_EVENT_MASK = EVENT_RUNNING_VM|EVENT_RUNNING_THREAD
 };
 
-static VALUE thread_suppress_tracing(rb_thread_t *th, int ev, VALUE (*func)(VALUE, int), VALUE arg, int always);
+static VALUE thread_suppress_tracing(rb_thread_t *th, int ev, VALUE (*func)(VALUE, int), VALUE arg, int always, int pop_p);
 
 struct event_call_args {
     rb_thread_t *th;
@@ -4192,7 +4199,7 @@ thread_exec_event_hooks(VALUE args, int running)
 }
 
 void
-rb_threadptr_exec_event_hooks(rb_thread_t *th, rb_event_flag_t flag, VALUE self, ID id, VALUE klass)
+rb_threadptr_exec_event_hooks(rb_thread_t *th, rb_event_flag_t flag, VALUE self, ID id, VALUE klass, int pop_p)
 {
     const VALUE errinfo = th->errinfo;
     struct event_call_args args;
@@ -4202,7 +4209,7 @@ rb_threadptr_exec_event_hooks(rb_thread_t *th, rb_event_flag_t flag, VALUE self,
     args.id = id;
     args.klass = klass;
     args.proc = 0;
-    thread_suppress_tracing(th, EVENT_RUNNING_EVENT_MASK, thread_exec_event_hooks, (VALUE)&args, FALSE);
+    thread_suppress_tracing(th, EVENT_RUNNING_EVENT_MASK, thread_exec_event_hooks, (VALUE)&args, FALSE, pop_p);
     th->errinfo = errinfo;
 }
 
@@ -4551,11 +4558,11 @@ VALUE
 ruby_suppress_tracing(VALUE (*func)(VALUE, int), VALUE arg, int always)
 {
     rb_thread_t *th = GET_THREAD();
-    return thread_suppress_tracing(th, EVENT_RUNNING_TRACE, func, arg, always);
+    return thread_suppress_tracing(th, EVENT_RUNNING_TRACE, func, arg, always, 0);
 }
 
 static VALUE
-thread_suppress_tracing(rb_thread_t *th, int ev, VALUE (*func)(VALUE, int), VALUE arg, int always)
+thread_suppress_tracing(rb_thread_t *th, int ev, VALUE (*func)(VALUE, int), VALUE arg, int always, int pop_p)
 {
     int state, tracing = th->tracing, running = tracing & ev;
     volatile int raised;
@@ -4585,6 +4592,9 @@ thread_suppress_tracing(rb_thread_t *th, int ev, VALUE (*func)(VALUE, int), VALU
 
     th->tracing = tracing;
     if (state) {
+	if (pop_p) {
+	    th->cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(th->cfp);
+	}
 	JUMP_TAG(state);
     }
     th->state = outer_state;

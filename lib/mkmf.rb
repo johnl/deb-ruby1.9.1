@@ -2198,7 +2198,7 @@ def init_mkmf(config = CONFIG, rbconfig = RbConfig::CONFIG)
   $extout ||= nil
   $extout_prefix ||= nil
 
-  @libdir_basename = config["libdir"][/\A\$\(exec_prefix\)\/(.*)/, 1] || "lib"
+  @libdir_basename = config["libdir"] && config["libdir"][/\A\$\(exec_prefix\)\/(.*)/, 1] or "lib"
 
   $arg_config.clear
   dir_config("opt")
@@ -2296,11 +2296,12 @@ UNIVERSAL_INTS = config_string('UNIVERSAL_INTS') {|s| Shellwords.shellwords(s)} 
 
 sep = config_string('BUILD_FILE_SEPARATOR') {|s| ":/=#{s}" if s != "/"} || ""
 CLEANINGS = "
+clean-static::
 clean-rb-default::
 clean-rb::
 clean-so::
-clean: clean-so clean-rb-default clean-rb
-\t\t@-$(RM) $(CLEANLIBS#{sep}) $(CLEANOBJS#{sep}) $(CLEANFILES#{sep})
+clean: clean-so clean-static clean-rb-default clean-rb
+\t\t-$(Q)$(RM) $(CLEANLIBS#{sep}) $(CLEANOBJS#{sep}) $(CLEANFILES#{sep}) .*.time
 
 distclean-rb-default::
 distclean-rb::

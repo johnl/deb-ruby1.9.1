@@ -2,7 +2,7 @@
 
   iseq.c -
 
-  $Author: naruse $
+  $Author: usa $
   created at: 2006-07-11(Tue) 09:00:03 +0900
 
   Copyright (C) 2006 Koichi Sasada
@@ -215,6 +215,10 @@ set_relation(rb_iseq_t *iseq, const VALUE parent)
 	rb_iseq_t *piseq;
 	GetISeqPtr(parent, piseq);
 	iseq->parent_iseq = piseq;
+    }
+
+    if (type == ISEQ_TYPE_MAIN) {
+	iseq->local_iseq = iseq;
     }
 }
 

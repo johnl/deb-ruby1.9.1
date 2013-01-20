@@ -2,7 +2,7 @@
 
   vm.h -
 
-  $Author: akr $
+  $Author: usa $
   created at: 04/01/01 16:56:59 JST
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -15,7 +15,7 @@
 typedef long OFFSET;
 typedef unsigned long lindex_t;
 typedef unsigned long dindex_t;
-typedef rb_num_t GENTRY;
+typedef VALUE GENTRY;
 typedef rb_iseq_t *ISEQ;
 
 #ifdef  COLLECT_USAGE_ANALYSIS
