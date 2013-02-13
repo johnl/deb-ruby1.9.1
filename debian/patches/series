@@ -20,3 +20,4 @@ hurd-path-max.diff
 CVE-2012-4522.patch
 20121120-cve-2012-5371.diff
 CVE-2013-0256.patch
+CVE-2013-0269.patch

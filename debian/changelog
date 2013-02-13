@@ -1,3 +1,10 @@
+ruby1.9.1 (1.9.3.194-7) unstable; urgency=high
+
+  * debian/patches/CVE-2013-269.patch: fix possible denial of service and
+    unsafe object creation vulnerability in JSON (Closes: #700471)
+
+ -- Cédric Boutillier <boutil@debian.org>  Wed, 13 Feb 2013 14:56:19 +0100
+
 ruby1.9.1 (1.9.3.194-6) unstable; urgency=high
 
   [Nobuhiro Iwamatsu]
