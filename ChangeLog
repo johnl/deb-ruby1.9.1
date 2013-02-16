@@ -1,3 +1,110 @@
+Wed Feb  6 17:39:19 2013  Eric Hodel  <drbrain@segment7.net>
+
+	* lib/rdoc: Import RDoc 3.9.5.
+
+Wed Feb  6 14:27:25 2013  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* ext/socket/raddrinfo.c (rsock_unix_sockaddr_len): return
+	  sizeof(sa_familiy_t) if path is empty.  see "Autobind Feature" in
+	  unix(7) for details.
+
+	* ext/socket/lib/socket.rb (unix_socket_abstract_name?): treat an
+	  empty path as an abstract name.
+
+	* test/socket/test_unix.rb: related test.
+
+	* ext/socket/unixsocket.c (rsock_init_unixsock): use rb_inspect()
+	  because rb_sys_fail_str() fails if its argument contains NUL.
+
+	* test/socket/test_unix.rb: related test.
+
+	* ext/socket/socket.c (sock_s_pack_sockaddr_un): calculate the
+	  correct address length of an abstract socket.
+
+	* test/socket/test_unix.rb: related test.
+
+	* ext/socket/raddrinfo (rsock_unix_sockaddr_len): renamed from
+	  rsock_unixpath_len, because it returns not the length of the path,
+	  but the length of a socket address for the path.
+
+	* ext/socket/raddrinfo.c (rsock_unixpath_len, init_unix_addrinfo),
+	  ext/socket/unixsocket.c (unixsock_connect_internal,
+	  rsock_init_unixsock): calculate the correct address length of
+	  an abstract socket.  Without this fix, sizeof(struct sockaddr_un)
+	  is specified as the length of an abstract socket for bind(2) or
+	  connect(2), so the address of the socket is filled with extra NUL
+	  characters.  See unix(7) for details.
+
+	* ext/socket/lib/socket.rb (unix_server_socket): don't access the
+	  file system if the platform is Linux and path starts with NUL,
+	  which means that the socket is an abstract socket.
+
+	* test/socket/test_unix.rb: related test.
+
+	* ext/socket/socket.c (sock_s_pack_sockaddr_un): support the longest
+	  path in sockaddr_un, really.
+	  reported by nagachika.
+	  http://d.hatena.ne.jp/nagachika/20120426/ruby_trunk_changes_35474_35476
+
+	* ext/socket/raddrinfo.c (init_unix_addrinfo): support the longest
+	  path in sockaddr_un.
+	  (inspect_sockaddr): ditto.
+	  (addrinfo_mdump): ditto.
+	  (addrinfo_mload): ditto.
+	  (rsock_unixpath_str): new function.
+	  (rsock_unixpath): removed.
+	  (rsock_unixaddr): use rsock_unixpath_str.
+
+	* ext/socket/socket.c (sock_s_pack_sockaddr_un): support the longest
+	  path in sockaddr_un.
+	  (sock_s_unpack_sockaddr_un): ditto.
+	  (sock_s_gethostbyaddr): unused variable removed.
+
+	* ext/socket/unixsocket.c (rsock_init_unixsock): support the longest
+	  path in sockaddr_un.
+
+	* ext/socket/rubysocket.h (rsock_unixpath_str): declared.
+	  (rsock_unixpath): removed.
+
+	* test/socket/test_unix.rb: comment out test_nul because abstract unix
+	  sockets may contain NULs.
+
+Wed Feb  6 14:20:12 2013  Tanaka Akira  <akr@fsij.org>
+
+	* ext/socket/basicsocket.c (bsock_getsockname): ignore truncated
+	  part of socket address.
+	  (bsock_getpeername): ditto.
+	  (bsock_local_address): ditto.
+	  (bsock_remote_address): ditto.
+
+	* ext/socket/unixsocket.c (unix_path): ditto.
+	  (unix_addr): ditto.
+	  (unix_peeraddr): ditto.
+
+	* ext/socket/init.c (cloexec_accept): ditto.
+
+Wed Feb  6 14:19:07 2013  Kouhei Sutou  <kou@cozmixng.org>
+
+	* lib/rexml/parsers/baseparser.rb, test/rexml/test_comment.rb:
+	  allow a single hyphen in comment. [Bug #5278] [ruby-core:39289]
+	  Reported by Thomas Fritzsche. Thanks!!!
+
+Wed Feb  6 14:14:38 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* file.c (realpath_rec): prevent link from GC while link_names refers
+	  the content.
+
+Wed Feb  6 14:13:25 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* missing/setproctitle.c (environ): use (*_NSGetEnviron()) instead of
+	  environ on Darwin for namespace cleanness, same as [ruby-core:00537].
+	  [ruby-core:45615] [Bug #6576]
+
+Wed Feb  6 14:05:09 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* dir.c (glob_make_pattern): names under recursive need to be single
+	  basenames to match for each name.  [ruby-core:47418] [Bug #6977]
+
 Tue Jan 15 16:30:29 2013  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
 
 	* thread_pthread.c (gvl_init): Reset gvl.wait_yield explicitly when
