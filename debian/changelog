@@ -1,3 +1,11 @@
+ruby1.9.1 (1:1.9.3.385-1bbox1) precise; urgency=high
+
+  * New upstream release, 1.9.3-p385 with security foxes
+  * Updated funny-falcon's performance patches
+  * Added libreadline-dev as dependency option
+
+ -- John Leach <john@brightbox.co.uk>  Sat, 16 Feb 2013 15:42:32 +0000
+
 ruby1.9.1 (1:1.9.3.374-1bbox1) precise; urgency=low
 
   * New upstream release, 1.9.3-p374
