@@ -1,7 +1,7 @@
 ruby1.9.1 (1.9.3.194-8) unstable; urgency=low
 
   * ruby1.9.1: add Breaks: apt-listbugs (<< 0.1.6) to avoid breaking the
-    squeeze->wheezy upgrades (Closes: #700671).
+    squeeze->wheezy upgrades (Closes: #701466).
 
  -- Antonio Terceiro <terceiro@debian.org>  Sat, 23 Feb 2013 09:21:27 -0300
 
