@@ -14,6 +14,7 @@ Architecture: any
 Depends: libruby1.9.1 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Suggests: ruby1.9.1-examples, ri1.9.1, graphviz, ruby1.9.1-dev, ruby-switch
 Conflicts: rdoc1.9.1 (<< 1.9.1.378-2~), irb1.9.1 (<< 1.9.1.378-2~), rubygems1.9.1, ri1.9.1 (<< 1.9.2.180-3~), ruby (<= 4.5), ri (<= 4.5)
+Breaks: apt-listbugs (<< 0.1.6)
 Replaces: rdoc1.9.1, irb1.9.1, rubygems1.9.1
 Provides: rdoc1.9.1, irb1.9.1, rubygems1.9.1, ruby-interpreter
 Description: Interpreter of object-oriented scripting language Ruby

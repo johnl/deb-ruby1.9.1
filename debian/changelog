@@ -1,3 +1,10 @@
+ruby1.9.1 (1.9.3.194-8) unstable; urgency=low
+
+  * ruby1.9.1: add Breaks: apt-listbugs (<< 0.1.6) to avoid breaking the
+    squeeze->wheezy upgrades (Closes: #700671).
+
+ -- Antonio Terceiro <terceiro@debian.org>  Sat, 23 Feb 2013 09:21:27 -0300
+
 ruby1.9.1 (1.9.3.194-7) unstable; urgency=high
 
   * debian/patches/CVE-2013-0269.patch: fix possible denial of service and
