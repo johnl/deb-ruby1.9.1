@@ -2,13 +2,13 @@
 
   readline.c - GNU Readline module
 
-  $Author: nobu $
+  $Author: usa $
   created at: Wed Jan 20 13:59:32 JST 1999
 
   Copyright (C) 1997-2008  Shugo Maeda
   Copyright (C) 2008-2009  TAKAO Kouji
 
-  $Id: readline.c 34505 2012-02-09 03:25:07Z nobu $
+  $Id: readline.c 39377 2013-02-22 05:27:47Z usa $
 
   Contact:
    - TAKAO Kouji <kouji at takao7 dot net> (current maintainer)
@@ -1678,10 +1678,8 @@ Init_readline()
     rl_attempted_completion_function = readline_attempted_completion_function;
 #ifdef HAVE_RL_CATCH_SIGNALS
     rl_catch_signals = 0;
-#endif
-#ifdef HAVE_RL_CATCH_SIGWINCH
-    rl_catch_sigwinch = 0;
-#endif
+#endif 
+
 #ifdef HAVE_RL_CLEAR_SIGNALS
     rl_clear_signals();
 #endif

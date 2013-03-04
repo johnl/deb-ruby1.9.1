@@ -958,7 +958,7 @@ INSN_ENTRY(pop){
   USAGE_ANALYSIS_INSN(BIN(pop));
 {
 #line 634 "insns.def"
-    val = val;
+    (void)val;
     /* none */
 
 #line 965 "vm.inc"
