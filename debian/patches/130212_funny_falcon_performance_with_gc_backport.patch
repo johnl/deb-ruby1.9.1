@@ -1,5 +1,3 @@
-diff --git a/array.c b/array.c
-index e427cb3..7e76227 100644
 --- a/array.c
 +++ b/array.c
 @@ -255,15 +255,24 @@
@@ -112,7 +110,7 @@ index e427cb3..7e76227 100644
  	FL_SET_SHARED_ROOT(shared);
  	ARY_SET_SHARED_NUM((VALUE)shared, 1);
  	FL_SET_SHARED(ary);
-@@ -721,8 +790,6 @@ enum ary_take_pos_flags
+@@ -721,8 +790,6 @@
      return ary_make_partial(ary, rb_cArray, offset, n);
  }
  
@@ -121,7 +119,7 @@ index e427cb3..7e76227 100644
  /*
   *  call-seq:
   *     ary << obj            -> ary
-@@ -739,8 +806,12 @@ enum ary_take_pos_flags
+@@ -739,8 +806,12 @@
  VALUE
  rb_ary_push(VALUE ary, VALUE item)
  {
@@ -136,7 +134,7 @@ index e427cb3..7e76227 100644
  }
  
  static VALUE
-@@ -756,6 +827,18 @@ enum ary_take_pos_flags
+@@ -756,6 +827,18 @@
      return ary;
  }
  
@@ -155,7 +153,7 @@ index e427cb3..7e76227 100644
  /*
   *  call-seq:
   *     ary.push(obj, ... )   -> ary
-@@ -772,11 +855,7 @@ enum ary_take_pos_flags
+@@ -772,11 +855,7 @@
  static VALUE
  rb_ary_push_m(int argc, VALUE *argv, VALUE ary)
  {
@@ -168,7 +166,7 @@ index e427cb3..7e76227 100644
  }
  
  VALUE
-@@ -904,6 +983,55 @@ enum ary_take_pos_flags
+@@ -904,6 +983,55 @@
      return result;
  }
  
@@ -224,7 +222,7 @@ index e427cb3..7e76227 100644
  /*
   *  call-seq:
   *     ary.unshift(obj, ...)  -> ary
-@@ -919,19 +1047,16 @@ enum ary_take_pos_flags
+@@ -919,19 +1047,16 @@
  static VALUE
  rb_ary_unshift_m(int argc, VALUE *argv, VALUE ary)
  {
@@ -250,7 +248,7 @@ index e427cb3..7e76227 100644
      return ary;
  }
  
-@@ -1293,15 +1418,12 @@ enum ary_take_pos_flags
+@@ -1293,15 +1418,12 @@
  	rpl = rb_ary_to_ary(rpl);
  	rlen = RARRAY_LEN(rpl);
      }
@@ -267,7 +265,7 @@ index e427cb3..7e76227 100644
  	rb_mem_clear(RARRAY_PTR(ary) + RARRAY_LEN(ary), beg - RARRAY_LEN(ary));
  	if (rlen > 0) {
  	    MEMCPY(RARRAY_PTR(ary) + beg, RARRAY_PTR(rpl), VALUE, rlen);
-@@ -1311,6 +1433,7 @@ enum ary_take_pos_flags
+@@ -1311,6 +1433,7 @@
      else {
  	long alen;
  
@@ -275,7 +273,7 @@ index e427cb3..7e76227 100644
  	alen = RARRAY_LEN(ary) + rlen - len;
  	if (alen >= ARY_CAPA(ary)) {
  	    ary_double_capa(ary, alen);
-@@ -2100,12 +2223,13 @@ enum {
+@@ -2100,12 +2223,13 @@
      if (RARRAY_LEN(ary) > 1) {
  	VALUE tmp = ary_make_substitution(ary); /* only ary refers tmp */
  	struct ary_sort_data data;
@@ -290,7 +288,7 @@ index e427cb3..7e76227 100644
  		   rb_block_given_p()?sort_1:sort_2, &data);
  
          if (ARY_EMBED_P(tmp)) {
-@@ -2122,7 +2246,7 @@ enum {
+@@ -2122,7 +2246,7 @@
              if (ARY_HEAP_PTR(ary) == ARY_HEAP_PTR(tmp)) {
                  assert(!ARY_EMBED_P(ary));
                  FL_UNSET_SHARED(ary);
@@ -299,7 +297,7 @@ index e427cb3..7e76227 100644
              }
              else {
                  assert(!ARY_SHARED_P(tmp));
-@@ -2137,8 +2261,8 @@ enum {
+@@ -2137,8 +2261,8 @@
                      xfree(ARY_HEAP_PTR(ary));
                  }
                  ARY_SET_PTR(ary, RARRAY_PTR(tmp));
@@ -310,8 +308,6 @@ index e427cb3..7e76227 100644
              }
              /* tmp was lost ownership for the ptr */
              FL_UNSET(tmp, FL_FREEZE);
-diff --git a/class.c b/class.c
-index 4fbdf18..63fdd76 100644
 --- a/class.c
 +++ b/class.c
 @@ -31,7 +31,7 @@
@@ -323,7 +319,7 @@ index 4fbdf18..63fdd76 100644
  static ID id_attached;
  
  /**
-@@ -53,11 +53,15 @@ class_alloc(VALUE flags, VALUE klass)
+@@ -53,11 +53,15 @@
      NEWOBJ(obj, struct RClass);
      OBJSETUP(obj, klass, flags);
      obj->ptr = ext;
@@ -344,7 +340,7 @@ index 4fbdf18..63fdd76 100644
      return (VALUE)obj;
  }
  
-@@ -77,7 +81,6 @@ class_alloc(VALUE flags, VALUE klass)
+@@ -77,7 +81,6 @@
      VALUE klass = class_alloc(T_CLASS, rb_cClass);
  
      RCLASS_SUPER(klass) = super;
@@ -352,7 +348,7 @@ index 4fbdf18..63fdd76 100644
  
      OBJ_INFECT(klass, super);
      return (VALUE)klass;
-@@ -120,43 +123,30 @@ class_alloc(VALUE flags, VALUE klass)
+@@ -120,43 +123,30 @@
      return rb_class_boot(super);
  }
  
@@ -405,7 +401,7 @@ index 4fbdf18..63fdd76 100644
  }
  
  static void
-@@ -177,6 +167,7 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -177,6 +167,7 @@
  VALUE
  rb_mod_init_copy(VALUE clone, VALUE orig)
  {
@@ -413,7 +409,7 @@ index 4fbdf18..63fdd76 100644
      if (RB_TYPE_P(clone, T_CLASS)) {
  	class_init_copy_check(clone, orig);
      }
-@@ -186,36 +177,22 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -186,36 +177,22 @@
  	rb_singleton_class_attached(RBASIC(clone)->klass, (VALUE)clone);
      }
      RCLASS_SUPER(clone) = RCLASS_SUPER(orig);
@@ -438,12 +434,7 @@ index 4fbdf18..63fdd76 100644
 -    }
 -    if (RCLASS_M_TBL(orig)) {
 -	struct clone_method_data data;
-+    sa_copy_to(RCLASS_IV_TBL(orig), RCLASS_IV_TBL(clone));
-+    CONST_ID(id, "__classpath__");
-+    sa_delete(RCLASS_IV_TBL(clone), (sa_index_t)id, 0);
-+    CONST_ID(id, "__classid__");
-+    sa_delete(RCLASS_IV_TBL(clone), (sa_index_t)id, 0);
- 
+-
 -	if (RCLASS_M_TBL(clone)) {
 -	    rb_free_m_table(RCLASS_M_TBL(clone));
 -	}
@@ -452,6 +443,12 @@ index 4fbdf18..63fdd76 100644
 -	st_foreach(RCLASS_M_TBL(orig), clone_method,
 -		   (st_data_t)&data);
 -    }
++    sa_copy_to(RCLASS_IV_TBL(orig), RCLASS_IV_TBL(clone));
++    CONST_ID(id, "__classpath__");
++    sa_delete(RCLASS_IV_TBL(clone), (sa_index_t)id, 0);
++    CONST_ID(id, "__classid__");
++    sa_delete(RCLASS_IV_TBL(clone), (sa_index_t)id, 0);
++
 +    sa_clear(RCLASS_CONST_TBL(clone));
 +    SA_FOREACH_START(RCLASS_CONST_TBL(orig));
 +    clone_const(entry->key, value, RCLASS_CONST_TBL(clone));
@@ -464,7 +461,7 @@ index 4fbdf18..63fdd76 100644
  
      return clone;
  }
-@@ -228,7 +205,6 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -228,7 +205,6 @@
      if (!FL_TEST(klass, FL_SINGLETON))
  	return klass;
      else {
@@ -472,7 +469,7 @@ index 4fbdf18..63fdd76 100644
  	/* copy singleton(unnamed) class */
  	VALUE clone = class_alloc((RBASIC(klass)->flags & ~(FL_MARK)), 0);
  
-@@ -240,18 +216,16 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -240,18 +216,16 @@
  	}
  
  	RCLASS_SUPER(clone) = RCLASS_SUPER(klass);
@@ -501,7 +498,7 @@ index 4fbdf18..63fdd76 100644
  	rb_singleton_class_attached(RBASIC(clone)->klass, (VALUE)clone);
  	FL_SET(clone, FL_SINGLETON);
  	return (VALUE)clone;
-@@ -266,10 +240,7 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -266,10 +240,7 @@
  rb_singleton_class_attached(VALUE klass, VALUE obj)
  {
      if (FL_TEST(klass, FL_SINGLETON)) {
@@ -513,7 +510,7 @@ index 4fbdf18..63fdd76 100644
      }
  }
  
-@@ -356,12 +327,12 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -356,12 +327,12 @@
  static VALUE
  boot_defclass(const char *name, VALUE super)
  {
@@ -528,7 +525,7 @@ index 4fbdf18..63fdd76 100644
      rb_const_set((rb_cObject ? rb_cObject : obj), id, obj);
      return obj;
  }
-@@ -485,7 +456,7 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -485,7 +456,7 @@
  	rb_warn("no super class for `%s', Object assumed", name);
      }
      klass = rb_define_class_id(id, super);
@@ -537,7 +534,7 @@ index 4fbdf18..63fdd76 100644
      rb_name_class(klass, id);
      rb_const_set(rb_cObject, id, klass);
      rb_class_inherited(super, klass);
-@@ -566,8 +537,6 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -566,8 +537,6 @@
  {
      VALUE mdl = class_alloc(T_MODULE, rb_cModule);
  
@@ -546,7 +543,7 @@ index 4fbdf18..63fdd76 100644
      return (VALUE)mdl;
  }
  
-@@ -596,7 +565,7 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -596,7 +565,7 @@
  	rb_raise(rb_eTypeError, "%s is not a module", rb_obj_classname(module));
      }
      module = rb_define_module_id(id);
@@ -555,7 +552,7 @@ index 4fbdf18..63fdd76 100644
      rb_const_set(rb_cObject, id, module);
  
      return module;
-@@ -631,27 +600,15 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -631,27 +600,15 @@
  static VALUE
  include_class_new(VALUE module, VALUE super)
  {
@@ -587,7 +584,7 @@ index 4fbdf18..63fdd76 100644
      OBJ_INFECT(klass, module);
      OBJ_INFECT(klass, super);
  
-@@ -678,13 +635,13 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -678,13 +635,13 @@
      while (module) {
  	int superclass_seen = FALSE;
  
@@ -603,7 +600,7 @@ index 4fbdf18..63fdd76 100644
  		    if (!superclass_seen) {
  			c = p;  /* move insertion point */
  		    }
-@@ -697,7 +654,7 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -697,7 +654,7 @@
  	    }
  	}
  	c = RCLASS_SUPER(c) = include_class_new(module, RCLASS_SUPER(c));
@@ -612,7 +609,7 @@ index 4fbdf18..63fdd76 100644
  	    changed = 1;
        skip:
  	module = RCLASS_SUPER(module);
-@@ -828,58 +785,58 @@ class_init_copy_check(VALUE clone, VALUE orig)
+@@ -828,58 +785,58 @@
  }
  
  static int
@@ -681,7 +678,7 @@ index 4fbdf18..63fdd76 100644
  
      if (argc == 0) {
  	recur = TRUE;
-@@ -890,16 +847,14 @@ class_instance_method_list(int argc, VALUE *argv, VALUE mod, int obj, int (*func
+@@ -890,16 +847,14 @@
  	recur = RTEST(r);
      }
  
@@ -700,7 +697,7 @@ index 4fbdf18..63fdd76 100644
  
      return ary;
  }
-@@ -1113,7 +1068,7 @@ class_instance_method_list(int argc, VALUE *argv, VALUE mod, int obj, int (*func
+@@ -1113,7 +1068,7 @@
  rb_obj_singleton_methods(int argc, VALUE *argv, VALUE obj)
  {
      VALUE recur, ary, klass;
@@ -709,7 +706,7 @@ index 4fbdf18..63fdd76 100644
  
      if (argc == 0) {
  	recur = Qtrue;
-@@ -1122,20 +1077,18 @@ class_instance_method_list(int argc, VALUE *argv, VALUE mod, int obj, int (*func
+@@ -1122,20 +1077,18 @@
  	rb_scan_args(argc, argv, "01", &recur);
      }
      klass = CLASS_OF(obj);
@@ -733,11 +730,9 @@ index 4fbdf18..63fdd76 100644
  
      return ary;
  }
-diff --git a/common.mk b/common.mk
-index ccc9647..0d767ab 100644
 --- a/common.mk
 +++ b/common.mk
-@@ -79,6 +79,7 @@ COMMONOBJS    = array.$(OBJEXT) \
+@@ -79,6 +79,7 @@
  		safe.$(OBJEXT) \
  		signal.$(OBJEXT) \
  		sprintf.$(OBJEXT) \
@@ -745,7 +740,7 @@ index ccc9647..0d767ab 100644
  		st.$(OBJEXT) \
  		strftime.$(OBJEXT) \
  		string.$(OBJEXT) \
-@@ -638,7 +639,8 @@ file.$(OBJEXT): {$(VPATH)}file.c $(RUBY_H_INCLUDES) {$(VPATH)}io.h \
+@@ -638,7 +639,8 @@
  gc.$(OBJEXT): {$(VPATH)}gc.c $(RUBY_H_INCLUDES) {$(VPATH)}re.h \
    {$(VPATH)}regex.h $(ENCODING_H_INCLUDES) $(VM_CORE_H_INCLUDES) \
    {$(VPATH)}gc.h {$(VPATH)}io.h {$(VPATH)}eval_intern.h {$(VPATH)}util.h \
@@ -755,7 +750,7 @@ index ccc9647..0d767ab 100644
  hash.$(OBJEXT): {$(VPATH)}hash.c $(RUBY_H_INCLUDES) {$(VPATH)}util.h \
    $(ENCODING_H_INCLUDES)
  inits.$(OBJEXT): {$(VPATH)}inits.c $(RUBY_H_INCLUDES) \
-@@ -702,7 +704,8 @@ signal.$(OBJEXT): {$(VPATH)}signal.c $(RUBY_H_INCLUDES) \
+@@ -702,7 +704,8 @@
    $(VM_CORE_H_INCLUDES) {$(VPATH)}debug.h
  sprintf.$(OBJEXT): {$(VPATH)}sprintf.c $(RUBY_H_INCLUDES) {$(VPATH)}re.h \
    {$(VPATH)}regex.h {$(VPATH)}vsnprintf.c $(ENCODING_H_INCLUDES)
@@ -765,11 +760,9 @@ index ccc9647..0d767ab 100644
  strftime.$(OBJEXT): {$(VPATH)}strftime.c $(RUBY_H_INCLUDES) \
    {$(VPATH)}timev.h
  string.$(OBJEXT): {$(VPATH)}string.c $(RUBY_H_INCLUDES) {$(VPATH)}re.h \
-diff --git a/configure.in b/configure.in
-index c64d981..131c0ed 100644
 --- a/configure.in
 +++ b/configure.in
-@@ -1268,6 +1268,30 @@ if test $rb_cv_stack_end_address != no; then
+@@ -1270,6 +1270,30 @@
    AC_DEFINE_UNQUOTED(STACK_END_ADDRESS, $rb_cv_stack_end_address)
  fi
  
@@ -800,7 +793,7 @@ index c64d981..131c0ed 100644
  dnl Checks for library functions.
  AC_TYPE_GETGROUPS
  AC_TYPE_SIGNAL
-@@ -1367,7 +1391,8 @@ AC_CHECK_FUNCS(fmod killpg wait4 waitpid fork spawnv syscall __syscall chroot ge
+@@ -1369,7 +1393,8 @@
  	      setsid telldir seekdir fchmod cosh sinh tanh log2 round\
  	      setuid setgid daemon select_large_fdset setenv unsetenv\
                mktime timegm gmtime_r clock_gettime gettimeofday poll ppoll\
@@ -810,8 +803,6 @@ index c64d981..131c0ed 100644
  
  AC_CACHE_CHECK(for unsetenv returns a value, rb_cv_unsetenv_return_value,
    [AC_TRY_COMPILE([
-diff --git a/constant.h b/constant.h
-index 8232910..9106847 100644
 --- a/constant.h
 +++ b/constant.h
 @@ -23,7 +23,7 @@
@@ -823,8 +814,6 @@ index 8232910..9106847 100644
  VALUE rb_public_const_get(VALUE klass, ID id);
  VALUE rb_public_const_get_at(VALUE klass, ID id);
  VALUE rb_public_const_get_from(VALUE klass, ID id);
-diff --git a/ext/-test-/st/numhash/numhash.c b/ext/-test-/st/numhash/numhash.c
-index e186cd4..53d9e1b 100644
 --- a/ext/-test-/st/numhash/numhash.c
 +++ b/ext/-test-/st/numhash/numhash.c
 @@ -54,7 +54,7 @@
@@ -836,8 +825,6 @@ index e186cd4..53d9e1b 100644
  }
  
  void
-diff --git a/ext/objspace/objspace.c b/ext/objspace/objspace.c
-index 66e33a3..4b31f92 100644
 --- a/ext/objspace/objspace.c
 +++ b/ext/objspace/objspace.c
 @@ -60,20 +60,10 @@
@@ -865,8 +852,6 @@ index 66e33a3..4b31f92 100644
  	break;
        case T_STRING:
  	size += rb_str_memsize(obj);
-diff --git a/file.c b/file.c
-index fd64116..cd071e1 100644
 --- a/file.c
 +++ b/file.c
 @@ -149,40 +149,60 @@
@@ -939,7 +924,7 @@ index fd64116..cd071e1 100644
  VALUE
  rb_get_path_no_checksafe(VALUE obj)
  {
-@@ -3250,7 +3270,6 @@ struct utimbuf {
+@@ -3250,7 +3270,6 @@
  VALUE
  rb_file_expand_path_fast(VALUE fname, VALUE dname)
  {
@@ -947,7 +932,7 @@ index fd64116..cd071e1 100644
      return rb_file_expand_path_internal(fname, dname, 0, 0, EXPAND_PATH_BUFFER());
  }
  
-@@ -5241,7 +5260,7 @@ struct utimbuf {
+@@ -5241,7 +5260,7 @@
  	rb_raise(rb_eSecurityError, "loading from non-absolute path %s", f);
      }
  
@@ -956,7 +941,7 @@ index fd64116..cd071e1 100644
      if (!load_path) return 0;
  
      fname = rb_str_dup(*filep);
-@@ -5306,7 +5325,7 @@ struct utimbuf {
+@@ -5306,7 +5325,7 @@
  	rb_raise(rb_eSecurityError, "loading from non-absolute path %s", f);
      }
  
@@ -965,8 +950,6 @@ index fd64116..cd071e1 100644
      if (load_path) {
  	long i;
  
-diff --git a/gc.c b/gc.c
-index f307ecb..d471c74 100644
 --- a/gc.c
 +++ b/gc.c
 @@ -20,6 +20,7 @@
@@ -1041,7 +1024,7 @@ index f307ecb..d471c74 100644
  };
  
  struct gc_list {
-@@ -346,7 +360,27 @@ struct gc_list {
+@@ -346,7 +360,27 @@
      size_t unused_cache_size;
  } mark_stack_t;
  
@@ -1069,7 +1052,7 @@ index f307ecb..d471c74 100644
  
  typedef struct rb_objspace {
      struct {
-@@ -357,16 +391,19 @@ struct gc_list {
+@@ -357,16 +391,19 @@
  	size_t allocations;
  #endif
      } malloc_params;
@@ -1092,7 +1075,7 @@ index f307ecb..d471c74 100644
  	size_t live_num;
  	size_t free_num;
  	size_t free_min;
-@@ -377,6 +414,7 @@ struct gc_list {
+@@ -377,6 +414,7 @@
  	int dont_gc;
  	int dont_lazy_sweep;
  	int during_gc;
@@ -1100,7 +1083,7 @@ index f307ecb..d471c74 100644
      } flags;
      struct {
  	st_table *table;
-@@ -400,7 +438,11 @@ struct gc_list {
+@@ -400,7 +438,11 @@
  #define ruby_initial_gc_stress	initial_params.gc_stress
  int *ruby_initial_gc_stress_ptr = &ruby_initial_gc_stress;
  #else
@@ -1112,7 +1095,7 @@ index f307ecb..d471c74 100644
  int *ruby_initial_gc_stress_ptr = &rb_objspace.gc_stress;
  #endif
  #define malloc_limit		objspace->malloc_params.limit
-@@ -408,13 +450,12 @@ struct gc_list {
+@@ -408,13 +450,12 @@
  #define heaps			objspace->heap.ptr
  #define heaps_length		objspace->heap.length
  #define heaps_used		objspace->heap.used
@@ -1127,7 +1110,7 @@ index f307ecb..d471c74 100644
  #define finalizer_table 	objspace->final.table
  #define deferred_final_list	objspace->final.deferred
  #define global_List		objspace->global_list
-@@ -423,7 +464,16 @@ struct gc_list {
+@@ -423,7 +464,16 @@
  #define initial_heap_min_slots	initial_params.initial_heap_min_slots
  #define initial_free_min	initial_params.initial_free_min
  
@@ -1144,7 +1127,7 @@ index f307ecb..d471c74 100644
  
  #if defined(ENABLE_VM_OBJSPACE) && ENABLE_VM_OBJSPACE
  rb_objspace_t *
-@@ -433,6 +483,10 @@ struct gc_list {
+@@ -433,6 +483,10 @@
      memset(objspace, 0, sizeof(*objspace));
      malloc_limit = initial_malloc_limit;
      ruby_gc_stress = ruby_initial_gc_stress;
@@ -1155,7 +1138,7 @@ index f307ecb..d471c74 100644
  
      return objspace;
  }
-@@ -500,43 +554,63 @@ struct gc_list {
+@@ -500,43 +554,63 @@
  	struct gc_list *list, *next;
  	for (list = global_List; list; list = next) {
  	    next = list->next;
@@ -1211,8 +1194,6 @@ index f307ecb..d471c74 100644
 -/*#define HEAP_SIZE 0x800 */
 -
 -#define HEAP_OBJ_LIMIT (unsigned int)(HEAP_SIZE / sizeof(struct RVALUE))
--
--extern st_table *rb_class_tbl;
 +#ifndef HEAP_ALIGN_LOG
 +/* default tiny heap size: 16KB */
 +#define HEAP_ALIGN_LOG 14
@@ -1236,12 +1217,13 @@ index f307ecb..d471c74 100644
 +#define MARKED_IN_BITMAP(bits, p) (bits[BITMAP_INDEX(p)] & ((uintptr_t)1 << BITMAP_OFFSET(p)))
 +#define MARK_IN_BITMAP(bits, p) (bits[BITMAP_INDEX(p)] = bits[BITMAP_INDEX(p)] | ((uintptr_t)1 << BITMAP_OFFSET(p)))
 +#define CLEAR_IN_BITMAP(bits, p) (bits[BITMAP_INDEX(p)] &= ~((uintptr_t)1 << BITMAP_OFFSET(p)))
-+
+ 
+-extern st_table *rb_class_tbl;
 +extern sa_table rb_class_tbl;
  
  int ruby_disable_gc_stress = 0;
  
-@@ -846,8 +920,10 @@ struct gc_list {
+@@ -846,8 +920,10 @@
      size_t size;
      ptr = ((size_t *)ptr) - 1;
      size = ((size_t*)ptr)[0];
@@ -1254,7 +1236,7 @@ index f307ecb..d471c74 100644
  #endif
  
      free(ptr);
-@@ -917,6 +993,27 @@ struct gc_list {
+@@ -917,6 +993,27 @@
  	vm_xfree(&rb_objspace, x);
  }
  
@@ -1282,7 +1264,7 @@ index f307ecb..d471c74 100644
  
  /*
   *  call-seq:
-@@ -1007,70 +1104,140 @@ struct gc_list {
+@@ -1007,70 +1104,140 @@
      }
  }
  
@@ -1446,17 +1428,16 @@ index f307ecb..d471c74 100644
  	if (mid_membase < membase) {
  	    lo = mid + 1;
  	}
-@@ -1082,14 +1249,16 @@ struct gc_list {
+@@ -1082,14 +1249,16 @@
  	}
      }
      if (hi < heaps_used) {
 -	MEMMOVE(&objspace->heap.sorted[hi+1], &objspace->heap.sorted[hi], struct sorted_heaps_slot, heaps_used - hi);
--    }
++	MEMMOVE(&objspace->heap.sorted[hi+1], &objspace->heap.sorted[hi], struct heaps_header*, heaps_used - hi);
+     }
 -    objspace->heap.sorted[hi].slot = slot;
 -    objspace->heap.sorted[hi].start = p;
 -    objspace->heap.sorted[hi].end = (p + objs);
-+	MEMMOVE(&objspace->heap.sorted[hi+1], &objspace->heap.sorted[hi], struct heaps_header*, heaps_used - hi);
-+    }
 +    objspace->heap.sorted[hi] = membase;
 +    membase->start = p;
 +    membase->end = (p + objs);
@@ -1470,7 +1451,7 @@ index f307ecb..d471c74 100644
      objspace->heap.free_num += objs;
      pend = p + objs;
      if (lomem == 0 || lomem > p) lomem = p;
-@@ -1098,19 +1267,24 @@ struct gc_list {
+@@ -1098,19 +1267,24 @@
  
      while (p < pend) {
  	p->as.free.flags = 0;
@@ -1499,7 +1480,7 @@ index f307ecb..d471c74 100644
      }
  
      for (i = 0; i < add; i++) {
-@@ -1161,6 +1335,7 @@ struct gc_list {
+@@ -1161,6 +1335,7 @@
  
      if (next_heaps_length > heaps_length) {
  	allocate_sorted_heaps(objspace, next_heaps_length);
@@ -1507,7 +1488,7 @@ index f307ecb..d471c74 100644
      }
  }
  
-@@ -1183,6 +1358,7 @@ struct gc_list {
+@@ -1183,6 +1358,7 @@
  }
  
  #define RANY(o) ((RVALUE*)(o))
@@ -1515,7 +1496,7 @@ index f307ecb..d471c74 100644
  
  VALUE
  rb_newobj(void)
-@@ -1203,15 +1379,18 @@ struct gc_list {
+@@ -1203,15 +1379,18 @@
  	}
      }
  
@@ -1537,7 +1518,7 @@ index f307ecb..d471c74 100644
  
      MEMZERO((void*)obj, RVALUE, 1);
  #ifdef GC_DEBUG
-@@ -1512,26 +1691,27 @@ struct gc_list {
+@@ -1512,26 +1691,27 @@
  is_pointer_to_heap(rb_objspace_t *objspace, void *ptr)
  {
      register RVALUE *p = RANY(ptr);
@@ -1575,7 +1556,7 @@ index f307ecb..d471c74 100644
      }
      return FALSE;
  }
-@@ -1589,6 +1769,15 @@ struct mark_tbl_arg {
+@@ -1589,6 +1769,15 @@
      st_foreach(tbl, mark_entry, (st_data_t)&arg);
  }
  
@@ -1591,7 +1572,7 @@ index f307ecb..d471c74 100644
  static int
  mark_key(VALUE key, VALUE value, st_data_t data)
  {
-@@ -1665,74 +1854,52 @@ struct mark_tbl_arg {
+@@ -1665,74 +1854,52 @@
      mark_method_entry(&rb_objspace, me);
  }
  
@@ -1605,7 +1586,8 @@ index f307ecb..d471c74 100644
 -
  static void
 -mark_m_tbl(rb_objspace_t *objspace, st_table *tbl)
--{
++mark_m_tbl(rb_objspace_t *objspace, sa_table *tbl)
+ {
 -    struct mark_tbl_arg arg;
 -    if (!tbl) return;
 -    arg.objspace = objspace;
@@ -1614,8 +1596,7 @@ index f307ecb..d471c74 100644
 -
 -static int
 -free_method_entry_i(ID key, rb_method_entry_t *me, st_data_t data)
-+mark_m_tbl(rb_objspace_t *objspace, sa_table *tbl)
- {
+-{
 -    if (!me->mark) {
 -	rb_free_method_entry(me);
 -    }
@@ -1691,7 +1672,7 @@ index f307ecb..d471c74 100644
  }
  
  void
-@@ -1743,6 +1910,16 @@ struct mark_tbl_arg {
+@@ -1743,6 +1910,16 @@
      }
  }
  
@@ -1708,7 +1689,7 @@ index f307ecb..d471c74 100644
  static void
  gc_mark(rb_objspace_t *objspace, VALUE ptr)
  {
-@@ -1751,9 +1928,7 @@ struct mark_tbl_arg {
+@@ -1751,9 +1928,7 @@
      obj = RANY(ptr);
      if (rb_special_const_p(ptr)) return; /* special const not marked */
      if (obj->as.basic.flags == 0) return;       /* free cell */
@@ -1719,7 +1700,7 @@ index f307ecb..d471c74 100644
  
      push_mark_stack(&objspace->mark_stack, ptr);
  }
-@@ -1768,6 +1943,7 @@ struct mark_tbl_arg {
+@@ -1768,6 +1943,7 @@
  gc_mark_children(rb_objspace_t *objspace, VALUE ptr)
  {
      register RVALUE *obj = RANY(ptr);
@@ -1727,7 +1708,7 @@ index f307ecb..d471c74 100644
  
      goto marking;		/* skip */
  
-@@ -1775,8 +1951,9 @@ struct mark_tbl_arg {
+@@ -1775,8 +1951,9 @@
      obj = RANY(ptr);
      if (rb_special_const_p(ptr)) return; /* special const not marked */
      if (obj->as.basic.flags == 0) return;       /* free cell */
@@ -1739,7 +1720,7 @@ index f307ecb..d471c74 100644
      objspace->heap.live_num++;
  
    marking:
-@@ -1928,7 +2105,7 @@ struct mark_tbl_arg {
+@@ -1928,7 +2105,7 @@
        case T_CLASS:
        case T_MODULE:
  	mark_m_tbl(objspace, RCLASS_M_TBL(obj));
@@ -1748,7 +1729,7 @@ index f307ecb..d471c74 100644
  	mark_const_tbl(objspace, RCLASS_CONST_TBL(obj));
  	ptr = RCLASS_SUPER(obj);
  	goto again;
-@@ -2038,15 +2215,22 @@ struct mark_tbl_arg {
+@@ -2038,15 +2215,22 @@
  
  static int obj_free(rb_objspace_t *, VALUE);
  
@@ -1775,7 +1756,7 @@ index f307ecb..d471c74 100644
  static void
  finalize_list(rb_objspace_t *objspace, RVALUE *p)
  {
-@@ -2054,17 +2238,16 @@ struct mark_tbl_arg {
+@@ -2054,17 +2238,16 @@
  	RVALUE *tmp = p->as.free.next;
  	run_final(objspace, (VALUE)p);
  	if (!FL_TEST(p, FL_SINGLETON)) { /* not freeing page */
@@ -1799,7 +1780,7 @@ index f307ecb..d471c74 100644
  	}
  	p = tmp;
      }
-@@ -2085,97 +2268,106 @@ struct mark_tbl_arg {
+@@ -2085,97 +2268,106 @@
      slot->next = NULL;
  }
  
@@ -1963,7 +1944,7 @@ index f307ecb..d471c74 100644
          rb_thread_t *th = GET_THREAD();
          if (th) {
              RUBY_VM_SET_FINALIZER_INTERRUPT(th);
-@@ -2187,7 +2379,7 @@ struct mark_tbl_arg {
+@@ -2187,7 +2379,7 @@
  ready_to_gc(rb_objspace_t *objspace)
  {
      if (dont_gc || during_gc) {
@@ -1972,7 +1953,7 @@ index f307ecb..d471c74 100644
              if (!heaps_increment(objspace)) {
                  set_heaps_increment(objspace);
                  heaps_increment(objspace);
-@@ -2201,7 +2393,6 @@ struct mark_tbl_arg {
+@@ -2201,7 +2393,6 @@
  static void
  before_gc_sweep(rb_objspace_t *objspace)
  {
@@ -1980,7 +1961,7 @@ index f307ecb..d471c74 100644
      objspace->heap.do_heap_free = (size_t)((heaps_used * HEAP_OBJ_LIMIT) * 0.65);
      objspace->heap.free_min = (size_t)((heaps_used * HEAP_OBJ_LIMIT)  * 0.2);
      if (objspace->heap.free_min < initial_free_min) {
-@@ -2210,6 +2401,7 @@ struct mark_tbl_arg {
+@@ -2210,6 +2401,7 @@
      }
      objspace->heap.sweep_slots = heaps;
      objspace->heap.free_num = 0;
@@ -1988,7 +1969,7 @@ index f307ecb..d471c74 100644
  
      /* sweep unlinked method entries */
      if (GET_VM()->unlinked_method_entry_list) {
-@@ -2232,8 +2424,6 @@ struct mark_tbl_arg {
+@@ -2232,8 +2424,6 @@
  	if (malloc_limit < initial_malloc_limit) malloc_limit = initial_malloc_limit;
      }
      malloc_increase = 0;
@@ -1997,7 +1978,7 @@ index f307ecb..d471c74 100644
  }
  
  static int
-@@ -2246,7 +2436,7 @@ struct mark_tbl_arg {
+@@ -2246,7 +2436,7 @@
          next = objspace->heap.sweep_slots->next;
  	slot_sweep(objspace, objspace->heap.sweep_slots);
          objspace->heap.sweep_slots = next;
@@ -2006,7 +1987,7 @@ index f307ecb..d471c74 100644
              during_gc = 0;
              return TRUE;
          }
-@@ -2258,10 +2448,10 @@ struct mark_tbl_arg {
+@@ -2258,10 +2448,10 @@
  rest_sweep(rb_objspace_t *objspace)
  {
      if (objspace->heap.sweep_slots) {
@@ -2021,7 +2002,7 @@ index f307ecb..d471c74 100644
      }
  }
  
-@@ -2308,9 +2498,9 @@ struct mark_tbl_arg {
+@@ -2308,9 +2498,9 @@
      }
  
      GC_PROF_SWEEP_TIMER_START;
@@ -2033,7 +2014,7 @@ index f307ecb..d471c74 100644
              res = TRUE;
              during_gc = 0;
          }
-@@ -2343,12 +2533,17 @@ struct mark_tbl_arg {
+@@ -2343,12 +2533,17 @@
  rb_gc_force_recycle(VALUE p)
  {
      rb_objspace_t *objspace = &rb_objspace;
@@ -2055,7 +2036,7 @@ index f307ecb..d471c74 100644
      }
  }
  
-@@ -2395,15 +2590,9 @@ struct mark_tbl_arg {
+@@ -2395,15 +2590,9 @@
        case T_CLASS:
  	rb_clear_cache_by_class((VALUE)obj);
  	rb_free_m_table(RCLASS_M_TBL(obj));
@@ -2074,7 +2055,7 @@ index f307ecb..d471c74 100644
          xfree(RANY(obj)->as.klass.ptr);
  	break;
        case T_STRING:
-@@ -2456,7 +2645,6 @@ struct mark_tbl_arg {
+@@ -2456,7 +2645,6 @@
  	break;
        case T_ICLASS:
  	/* iClass shares table with the module */
@@ -2082,7 +2063,7 @@ index f307ecb..d471c74 100644
  	break;
  
        case T_FLOAT:
-@@ -2565,7 +2753,7 @@ struct mark_tbl_arg {
+@@ -2565,7 +2753,7 @@
      rb_mark_end_proc();
      rb_gc_mark_global_tbl();
  
@@ -2091,7 +2072,7 @@ index f307ecb..d471c74 100644
  
      /* mark generic instance variables for special constants */
      rb_mark_generic_ivar_tbl();
-@@ -2712,7 +2900,7 @@ struct each_obj_args {
+@@ -2712,7 +2900,7 @@
  objspace_each_objects(VALUE arg)
  {
      size_t i;
@@ -2100,7 +2081,7 @@ index f307ecb..d471c74 100644
      RVALUE *pstart, *pend;
      rb_objspace_t *objspace = &rb_objspace;
      struct each_obj_args *args = (struct each_obj_args *)arg;
-@@ -2720,16 +2908,16 @@ struct each_obj_args {
+@@ -2720,16 +2908,16 @@
  
      i = 0;
      while (i < heaps_used) {
@@ -2122,7 +2103,7 @@ index f307ecb..d471c74 100644
  
  	for (; pstart != pend; pstart++) {
  	    if (pstart->as.basic.flags) {
-@@ -2743,6 +2931,7 @@ struct each_obj_args {
+@@ -2743,6 +2931,7 @@
  	    }
  	}
      }
@@ -2130,7 +2111,7 @@ index f307ecb..d471c74 100644
  
      return Qnil;
  }
-@@ -2986,11 +3175,12 @@ struct os_each_struct {
+@@ -2986,11 +3175,12 @@
  }
  
  static void
@@ -2144,7 +2125,7 @@ index f307ecb..d471c74 100644
  
      if (RARRAY_LEN(table) > 0) {
  	args[1] = rb_obj_freeze(rb_ary_new3(1, objid));
-@@ -3014,13 +3204,11 @@ struct os_each_struct {
+@@ -3014,13 +3204,11 @@
  static void
  run_final(rb_objspace_t *objspace, VALUE obj)
  {
@@ -2158,7 +2139,7 @@ index f307ecb..d471c74 100644
      RBASIC(obj)->klass = 0;
  
      if (RTYPEDDATA_P(obj)) {
-@@ -3035,7 +3223,7 @@ struct os_each_struct {
+@@ -3035,7 +3223,7 @@
  
      key = (st_data_t)obj;
      if (st_delete(finalizer_table, &key, &table)) {
@@ -2167,7 +2148,7 @@ index f307ecb..d471c74 100644
      }
  }
  
-@@ -3053,16 +3241,20 @@ struct os_each_struct {
+@@ -3053,7 +3241,10 @@
  void
  rb_gc_finalize_deferred(void)
  {
@@ -2178,20 +2159,8 @@ index f307ecb..d471c74 100644
 +    ATOMIC_SET(finalizing, 0);
  }
  
- static int
- chain_finalized_object(st_data_t key, st_data_t val, st_data_t arg)
- {
-     RVALUE *p = (RVALUE *)key, **final_list = (RVALUE **)arg;
--    if ((p->as.basic.flags & (FL_FINALIZE|FL_MARK)) == FL_FINALIZE) {
-+    if ((p->as.basic.flags & FL_FINALIZE) == FL_FINALIZE &&
-+        !MARKED_IN_BITMAP(GET_HEAP_BITMAP(p), p)) {
- 	if (BUILTIN_TYPE(p) != T_ZOMBIE) {
--	    p->as.free.flags = FL_MARK | T_ZOMBIE; /* remain marked */
-+	    p->as.free.flags = T_ZOMBIE;
- 	    RDATA(p)->dfree = 0;
- 	}
- 	p->as.free.next = *final_list;
-@@ -3104,6 +3296,8 @@ struct force_finalize_list {
+ struct force_finalize_list {
+@@ -3089,6 +3280,8 @@
  
      rest_sweep(objspace);
  
@@ -2200,7 +2169,7 @@ index f307ecb..d471c74 100644
      /* run finalizers */
      finalize_deferred(objspace);
      assert(deferred_final_list == 0);
-@@ -3114,8 +3308,9 @@ struct force_finalize_list {
+@@ -3099,8 +3292,9 @@
  	st_foreach(finalizer_table, force_chain_object, (st_data_t)&list);
  	while (list) {
  	    struct force_finalize_list *curr = list;
@@ -2212,7 +2181,7 @@ index f307ecb..d471c74 100644
  	    list = curr->next;
  	    xfree(curr);
  	}
-@@ -3126,7 +3321,7 @@ struct force_finalize_list {
+@@ -3111,7 +3305,7 @@
  
      /* run data object's finalizers */
      for (i = 0; i < heaps_used; i++) {
@@ -2221,7 +2190,7 @@ index f307ecb..d471c74 100644
  	while (p < pend) {
  	    if (BUILTIN_TYPE(p) == T_DATA &&
  		DATA_PTR(p) && RANY(p)->as.data.dfree &&
-@@ -3162,6 +3357,7 @@ struct force_finalize_list {
+@@ -3147,6 +3341,7 @@
  
      st_free_table(finalizer_table);
      finalizer_table = 0;
@@ -2229,7 +2198,7 @@ index f307ecb..d471c74 100644
  }
  
  void
-@@ -3169,8 +3365,39 @@ struct force_finalize_list {
+@@ -3154,8 +3349,39 @@
  {
      rb_objspace_t *objspace = &rb_objspace;
      garbage_collect(objspace);
@@ -2271,7 +2240,7 @@ index f307ecb..d471c74 100644
  }
  
  /*
-@@ -3215,11 +3442,10 @@ struct force_finalize_list {
+@@ -3200,11 +3426,10 @@
  	return ID2SYM(symid);
      }
  
@@ -2285,7 +2254,7 @@ index f307ecb..d471c74 100644
  	rb_raise(rb_eRangeError, "%p is recycled object", p0);
      }
      return (VALUE)ptr;
-@@ -3332,7 +3558,7 @@ struct force_finalize_list {
+@@ -3317,7 +3542,7 @@
      VALUE hash;
  
      if (rb_scan_args(argc, argv, "01", &hash) == 1) {
@@ -2294,7 +2263,7 @@ index f307ecb..d471c74 100644
              rb_raise(rb_eTypeError, "non-hash given");
      }
  
-@@ -3343,7 +3569,7 @@ struct force_finalize_list {
+@@ -3328,7 +3553,7 @@
      for (i = 0; i < heaps_used; i++) {
          RVALUE *p, *pend;
  
@@ -2303,7 +2272,7 @@ index f307ecb..d471c74 100644
          for (;p < pend; p++) {
              if (p->as.basic.flags) {
                  counts[BUILTIN_TYPE(p)]++;
-@@ -3352,7 +3578,7 @@ struct force_finalize_list {
+@@ -3337,7 +3562,7 @@
                  freed++;
              }
          }
@@ -2312,7 +2281,7 @@ index f307ecb..d471c74 100644
      }
  
      if (hash == Qnil) {
-@@ -3451,7 +3677,7 @@ struct force_finalize_list {
+@@ -3436,7 +3661,7 @@
      VALUE hash;
  
      if (rb_scan_args(argc, argv, "01", &hash) == 1) {
@@ -2321,7 +2290,7 @@ index f307ecb..d471c74 100644
              rb_raise(rb_eTypeError, "non-hash given");
      }
  
-@@ -3506,6 +3732,33 @@ struct force_finalize_list {
+@@ -3491,6 +3716,33 @@
  }
  #endif
  
@@ -2355,7 +2324,7 @@ index f307ecb..d471c74 100644
  static VALUE
  gc_profile_record_get(void)
  {
-@@ -3698,6 +3951,7 @@ struct force_finalize_list {
+@@ -3683,6 +3935,7 @@
      rb_mProfiler = rb_define_module_under(rb_mGC, "Profiler");
      rb_define_singleton_method(rb_mProfiler, "enabled?", gc_profile_enable_get, 0);
      rb_define_singleton_method(rb_mProfiler, "enable", gc_profile_enable, 0);
@@ -2363,8 +2332,6 @@ index f307ecb..d471c74 100644
      rb_define_singleton_method(rb_mProfiler, "disable", gc_profile_disable, 0);
      rb_define_singleton_method(rb_mProfiler, "clear", gc_profile_clear, 0);
      rb_define_singleton_method(rb_mProfiler, "result", gc_profile_result, 0);
-diff --git a/hash.c b/hash.c
-index fbd8237..4cb2e2d 100644
 --- a/hash.c
 +++ b/hash.c
 @@ -44,7 +44,7 @@
@@ -2417,7 +2384,7 @@ index fbd8237..4cb2e2d 100644
  
  typedef int st_foreach_func(st_data_t, st_data_t, st_data_t);
  
-@@ -124,7 +116,6 @@ struct foreach_safe_arg {
+@@ -124,7 +116,6 @@
  {
      int status;
  
@@ -2425,7 +2392,7 @@ index fbd8237..4cb2e2d 100644
      status = (*arg->func)(key, value, arg->arg);
      if (status == ST_CONTINUE) {
  	return ST_CHECK;
-@@ -140,7 +131,7 @@ struct foreach_safe_arg {
+@@ -140,7 +131,7 @@
      arg.tbl = table;
      arg.func = (st_foreach_func *)func;
      arg.arg = a;
@@ -2434,7 +2401,7 @@ index fbd8237..4cb2e2d 100644
  	rb_raise(rb_eRuntimeError, "hash modified during iteration");
      }
  }
-@@ -154,21 +145,21 @@ struct hash_foreach_arg {
+@@ -154,21 +145,21 @@
  };
  
  static int
@@ -2459,7 +2426,7 @@ index fbd8237..4cb2e2d 100644
        case ST_CONTINUE:
  	break;
        case ST_STOP:
-@@ -184,7 +175,7 @@ struct hash_foreach_arg {
+@@ -184,7 +175,7 @@
  
      if (RHASH(hash)->iter_lev == 0) {
  	if (FL_TEST(hash, HASH_DELETED)) {
@@ -2468,7 +2435,7 @@ index fbd8237..4cb2e2d 100644
  	    FL_UNSET(hash, HASH_DELETED);
  	}
      }
-@@ -192,9 +183,10 @@ struct hash_foreach_arg {
+@@ -192,9 +183,10 @@
  }
  
  static VALUE
@@ -2481,7 +2448,7 @@ index fbd8237..4cb2e2d 100644
  	rb_raise(rb_eRuntimeError, "hash modified during iteration");
      }
      return Qnil;
-@@ -447,7 +439,7 @@ struct st_table *
+@@ -447,7 +439,7 @@
  {
      st_table *tbl = (st_table *)arg;
  
@@ -2490,7 +2457,7 @@ index fbd8237..4cb2e2d 100644
      return ST_CONTINUE;
  }
  
-@@ -490,6 +482,20 @@ struct st_table *
+@@ -490,6 +482,20 @@
      return hash;
  }
  
@@ -2511,7 +2478,7 @@ index fbd8237..4cb2e2d 100644
  /*
   *  call-seq:
   *     hsh[key]    ->  value
-@@ -510,13 +516,7 @@ struct st_table *
+@@ -510,13 +516,7 @@
      st_data_t val;
  
      if (!RHASH(hash)->ntbl || !st_lookup(RHASH(hash)->ntbl, key, &val)) {
@@ -2526,7 +2493,7 @@ index fbd8237..4cb2e2d 100644
      }
      return (VALUE)val;
  }
-@@ -659,7 +659,7 @@ struct st_table *
+@@ -659,7 +659,7 @@
  static VALUE
  rb_hash_set_default(VALUE hash, VALUE ifnone)
  {
@@ -2535,7 +2502,7 @@ index fbd8237..4cb2e2d 100644
      RHASH_IFNONE(hash) = ifnone;
      FL_UNSET(hash, HASH_PROC_DEFAULT);
      return ifnone;
-@@ -707,7 +707,7 @@ struct st_table *
+@@ -707,7 +707,7 @@
  {
      VALUE b;
  
@@ -2544,7 +2511,7 @@ index fbd8237..4cb2e2d 100644
      b = rb_check_convert_type(proc, T_DATA, "Proc", "to_proc");
      if (NIL_P(b) || !rb_obj_is_proc(b)) {
  	rb_raise(rb_eTypeError,
-@@ -776,7 +776,7 @@ struct st_table *
+@@ -776,7 +776,7 @@
      if (!RHASH(hash)->ntbl)
          return Qundef;
      if (RHASH(hash)->iter_lev > 0) {
@@ -2553,7 +2520,7 @@ index fbd8237..4cb2e2d 100644
  	    FL_SET(hash, HASH_DELETED);
  	    return (VALUE)val;
  	}
-@@ -809,7 +809,7 @@ struct st_table *
+@@ -809,7 +809,7 @@
  {
      VALUE val;
  
@@ -2562,7 +2529,7 @@ index fbd8237..4cb2e2d 100644
      val = rb_hash_delete_key(hash, key);
      if (val != Qundef) return val;
      if (rb_block_given_p()) {
-@@ -828,7 +828,6 @@ struct shift_var {
+@@ -828,7 +828,6 @@
  {
      struct shift_var *var = (struct shift_var *)arg;
  
@@ -2570,7 +2537,7 @@ index fbd8237..4cb2e2d 100644
      if (var->key != Qundef) return ST_STOP;
      var->key = key;
      var->val = value;
-@@ -840,7 +839,6 @@ struct shift_var {
+@@ -840,7 +839,6 @@
  {
      struct shift_var *var = (struct shift_var *)arg;
  
@@ -2578,7 +2545,7 @@ index fbd8237..4cb2e2d 100644
      var->key = key;
      var->val = value;
      return ST_STOP;
-@@ -864,29 +862,25 @@ struct shift_var {
+@@ -864,29 +862,25 @@
  {
      struct shift_var var;
  
@@ -2620,7 +2587,7 @@ index fbd8237..4cb2e2d 100644
      if (RTEST(rb_yield_values(2, key, value))) {
  	rb_hash_delete_key(hash, key);
      }
-@@ -912,8 +906,9 @@ struct shift_var {
+@@ -912,8 +906,9 @@
  rb_hash_delete_if(VALUE hash)
  {
      RETURN_ENUMERATOR(hash, 0, 0);
@@ -2632,7 +2599,7 @@ index fbd8237..4cb2e2d 100644
      return hash;
  }
  
-@@ -984,7 +979,6 @@ struct shift_var {
+@@ -984,7 +979,6 @@
  static int
  select_i(VALUE key, VALUE value, VALUE result)
  {
@@ -2640,7 +2607,7 @@ index fbd8237..4cb2e2d 100644
      if (RTEST(rb_yield_values(2, key, value)))
  	rb_hash_aset(result, key, value);
      return ST_CONTINUE;
-@@ -1018,7 +1012,6 @@ struct shift_var {
+@@ -1018,7 +1012,6 @@
  static int
  keep_if_i(VALUE key, VALUE value, VALUE hash)
  {
@@ -2648,7 +2615,7 @@ index fbd8237..4cb2e2d 100644
      if (!RTEST(rb_yield_values(2, key, value))) {
  	return ST_DELETE;
      }
-@@ -1040,7 +1033,7 @@ struct shift_var {
+@@ -1040,7 +1033,7 @@
      st_index_t n;
  
      RETURN_ENUMERATOR(hash, 0, 0);
@@ -2657,7 +2624,7 @@ index fbd8237..4cb2e2d 100644
      if (!RHASH(hash)->ntbl)
          return Qnil;
      n = RHASH(hash)->ntbl->num_entries;
-@@ -1065,8 +1058,9 @@ struct shift_var {
+@@ -1065,8 +1058,9 @@
  rb_hash_keep_if(VALUE hash)
  {
      RETURN_ENUMERATOR(hash, 0, 0);
@@ -2669,7 +2636,7 @@ index fbd8237..4cb2e2d 100644
      return hash;
  }
  
-@@ -1087,7 +1081,7 @@ struct shift_var {
+@@ -1087,7 +1081,7 @@
   *
   */
  
@@ -2678,7 +2645,7 @@ index fbd8237..4cb2e2d 100644
  rb_hash_clear(VALUE hash)
  {
      rb_hash_modify_check(hash);
-@@ -1144,9 +1138,7 @@ struct shift_var {
+@@ -1144,9 +1138,7 @@
  static int
  replace_i(VALUE key, VALUE val, VALUE hash)
  {
@@ -2689,7 +2656,7 @@ index fbd8237..4cb2e2d 100644
  
      return ST_CONTINUE;
  }
-@@ -1227,7 +1219,6 @@ struct shift_var {
+@@ -1227,7 +1219,6 @@
  static int
  each_value_i(VALUE key, VALUE value)
  {
@@ -2697,7 +2664,7 @@ index fbd8237..4cb2e2d 100644
      rb_yield(value);
      return ST_CONTINUE;
  }
-@@ -1262,7 +1253,6 @@ struct shift_var {
+@@ -1262,7 +1253,6 @@
  static int
  each_key_i(VALUE key, VALUE value)
  {
@@ -2705,7 +2672,7 @@ index fbd8237..4cb2e2d 100644
      rb_yield(key);
      return ST_CONTINUE;
  }
-@@ -1296,7 +1286,6 @@ struct shift_var {
+@@ -1296,7 +1286,6 @@
  static int
  each_pair_i(VALUE key, VALUE value)
  {
@@ -2713,7 +2680,7 @@ index fbd8237..4cb2e2d 100644
      rb_yield(rb_assoc_new(key, value));
      return ST_CONTINUE;
  }
-@@ -1334,7 +1323,6 @@ struct shift_var {
+@@ -1334,7 +1323,6 @@
  static int
  to_a_i(VALUE key, VALUE value, VALUE ary)
  {
@@ -2721,7 +2688,7 @@ index fbd8237..4cb2e2d 100644
      rb_ary_push(ary, rb_assoc_new(key, value));
      return ST_CONTINUE;
  }
-@@ -1367,7 +1355,6 @@ struct shift_var {
+@@ -1367,7 +1355,6 @@
  {
      VALUE str2;
  
@@ -2729,7 +2696,7 @@ index fbd8237..4cb2e2d 100644
      str2 = rb_inspect(key);
      if (RSTRING_LEN(str) > 1) {
  	rb_str_cat2(str, ", ");
-@@ -1434,7 +1421,6 @@ struct shift_var {
+@@ -1434,7 +1421,6 @@
  static int
  keys_i(VALUE key, VALUE value, VALUE ary)
  {
@@ -2737,7 +2704,7 @@ index fbd8237..4cb2e2d 100644
      rb_ary_push(ary, key);
      return ST_CONTINUE;
  }
-@@ -1465,7 +1451,6 @@ struct shift_var {
+@@ -1465,7 +1451,6 @@
  static int
  values_i(VALUE key, VALUE value, VALUE ary)
  {
@@ -2745,7 +2712,7 @@ index fbd8237..4cb2e2d 100644
      rb_ary_push(ary, value);
      return ST_CONTINUE;
  }
-@@ -1524,7 +1509,6 @@ struct shift_var {
+@@ -1524,7 +1509,6 @@
  {
      VALUE *data = (VALUE *)arg;
  
@@ -2753,7 +2720,7 @@ index fbd8237..4cb2e2d 100644
      if (rb_equal(value, data[1])) {
  	data[0] = Qtrue;
  	return ST_STOP;
-@@ -1568,7 +1552,6 @@ struct equal_data {
+@@ -1568,7 +1552,6 @@
      struct equal_data *data = (struct equal_data *)arg;
      st_data_t val2;
  
@@ -2761,7 +2728,7 @@ index fbd8237..4cb2e2d 100644
      if (!st_lookup(data->tbl, key, &val2)) {
  	data->result = Qfalse;
  	return ST_STOP;
-@@ -1599,7 +1582,7 @@ struct equal_data {
+@@ -1599,7 +1582,7 @@
      struct equal_data data;
  
      if (hash1 == hash2) return Qtrue;
@@ -2770,7 +2737,7 @@ index fbd8237..4cb2e2d 100644
  	if (!rb_respond_to(hash2, rb_intern("to_hash"))) {
  	    return Qfalse;
  	}
-@@ -1670,7 +1653,6 @@ struct equal_data {
+@@ -1670,7 +1653,6 @@
      st_index_t *hval = (st_index_t *)arg;
      st_index_t hdata[2];
  
@@ -2778,7 +2745,7 @@ index fbd8237..4cb2e2d 100644
      hdata[0] = rb_hash(key);
      hdata[1] = rb_hash(val);
      *hval ^= st_hash(hdata, sizeof(hdata), 0);
-@@ -1711,7 +1693,6 @@ struct equal_data {
+@@ -1711,7 +1693,6 @@
  static int
  rb_hash_invert_i(VALUE key, VALUE value, VALUE hash)
  {
@@ -2786,7 +2753,7 @@ index fbd8237..4cb2e2d 100644
      rb_hash_aset(hash, value, key);
      return ST_CONTINUE;
  }
-@@ -1740,7 +1721,6 @@ struct equal_data {
+@@ -1740,7 +1721,6 @@
  static int
  rb_hash_update_i(VALUE key, VALUE value, VALUE hash)
  {
@@ -2794,7 +2761,7 @@ index fbd8237..4cb2e2d 100644
      hash_update(hash, key);
      st_insert(RHASH(hash)->ntbl, key, value);
      return ST_CONTINUE;
-@@ -1749,7 +1729,6 @@ struct equal_data {
+@@ -1749,7 +1729,6 @@
  static int
  rb_hash_update_block_i(VALUE key, VALUE value, VALUE hash)
  {
@@ -2802,7 +2769,7 @@ index fbd8237..4cb2e2d 100644
      if (rb_hash_has_key(hash, key)) {
  	value = rb_yield_values(3, key, rb_hash_aref(hash, key), value);
      }
-@@ -1806,7 +1785,6 @@ struct update_arg {
+@@ -1806,7 +1785,6 @@
      struct update_arg *arg = (struct update_arg *)arg0;
      VALUE hash = arg->hash;
  
@@ -2810,7 +2777,7 @@ index fbd8237..4cb2e2d 100644
      if (rb_hash_has_key(hash, key)) {
  	value = (*arg->func)(key, rb_hash_aref(hash, key), value);
      }
-@@ -1863,7 +1841,6 @@ struct update_arg {
+@@ -1863,7 +1841,6 @@
  {
      VALUE *args = (VALUE *)arg;
  
@@ -2818,7 +2785,7 @@ index fbd8237..4cb2e2d 100644
      if (RTEST(rb_equal(args[0], key))) {
  	args[1] = rb_assoc_new(key, val);
  	return ST_STOP;
-@@ -1901,7 +1878,6 @@ struct update_arg {
+@@ -1901,7 +1878,6 @@
  {
      VALUE *args = (VALUE *)arg;
  
@@ -2826,7 +2793,7 @@ index fbd8237..4cb2e2d 100644
      if (RTEST(rb_equal(args[0], val))) {
  	args[1] = rb_assoc_new(key, val);
  	return ST_STOP;
-@@ -2198,7 +2174,7 @@ struct update_arg {
+@@ -2198,7 +2174,7 @@
  }
  
  #if defined(_WIN32) || (defined(HAVE_SETENV) && defined(HAVE_UNSETENV))
@@ -2835,7 +2802,7 @@ index fbd8237..4cb2e2d 100644
  static int
  in_origenv(const char *str)
  {
-@@ -2286,7 +2262,7 @@ struct update_arg {
+@@ -2286,7 +2262,7 @@
  	    rb_sys_fail("unsetenv");
  #endif
      }
@@ -2844,7 +2811,7 @@ index fbd8237..4cb2e2d 100644
      size_t len;
      char **env_ptr, *str;
      if (strchr(name, '=')) {
-@@ -3084,11 +3060,9 @@ struct update_arg {
+@@ -3084,11 +3060,9 @@
  static int
  env_replace_i(VALUE key, VALUE val, VALUE keys)
  {
@@ -2859,7 +2826,7 @@ index fbd8237..4cb2e2d 100644
      }
      return ST_CONTINUE;
  }
-@@ -3120,12 +3094,10 @@ struct update_arg {
+@@ -3120,12 +3094,10 @@
  static int
  env_update_i(VALUE key, VALUE val)
  {
@@ -2875,7 +2842,7 @@ index fbd8237..4cb2e2d 100644
      return ST_CONTINUE;
  }
  
-@@ -3150,15 +3122,116 @@ struct update_arg {
+@@ -3150,15 +3122,116 @@
  }
  
  /*
@@ -2998,8 +2965,6 @@ index fbd8237..4cb2e2d 100644
   */
  
  void
-diff --git a/include/ruby/intern.h b/include/ruby/intern.h
-index 9745afd..73f0791 100644
 --- a/include/ruby/intern.h
 +++ b/include/ruby/intern.h
 @@ -56,6 +56,7 @@
@@ -3026,7 +2991,7 @@ index 9745afd..73f0791 100644
  VALUE rb_hash_delete_if(VALUE);
  VALUE rb_hash_delete(VALUE,VALUE);
  typedef VALUE rb_hash_update_func(VALUE newkey, VALUE oldkey, VALUE value);
-@@ -844,7 +847,7 @@ VALUE rb_thread_blocking_region(rb_blocking_function_t *func, void *data1,
+@@ -844,7 +847,7 @@
  VALUE rb_f_untrace_var(int, VALUE*);
  VALUE rb_f_global_variables(void);
  void rb_alias_variable(ID, ID);
@@ -3035,11 +3000,9 @@ index 9745afd..73f0791 100644
  void rb_copy_generic_ivar(VALUE,VALUE);
  void rb_mark_generic_ivar(VALUE);
  void rb_mark_generic_ivar_tbl(void);
-diff --git a/include/ruby/ruby.h b/include/ruby/ruby.h
-index 2f97b33..78a2286 100644
 --- a/include/ruby/ruby.h
 +++ b/include/ruby/ruby.h
-@@ -605,7 +605,7 @@ struct RObject {
+@@ -605,7 +605,7 @@
  	struct {
  	    long numiv;
  	    VALUE *ivptr;
@@ -3048,7 +3011,7 @@ index 2f97b33..78a2286 100644
  	} heap;
  	VALUE ary[ROBJECT_EMBED_LEN_MAX];
      } as;
-@@ -629,9 +629,8 @@ struct RObject {
+@@ -629,9 +629,8 @@
  
  struct RClass {
      struct RBasic basic;
@@ -3059,8 +3022,6 @@ index 2f97b33..78a2286 100644
  };
  #define RCLASS_SUPER(c) rb_class_get_superclass(c)
  #define RMODULE_IV_TBL(m) RCLASS_IV_TBL(m)
-diff --git a/include/ruby/st.h b/include/ruby/st.h
-index 50f2a75..aff94fc 100644
 --- a/include/ruby/st.h
 +++ b/include/ruby/st.h
 @@ -36,7 +36,7 @@
@@ -3072,7 +3033,7 @@ index 50f2a75..aff94fc 100644
  #endif
  #define ST_DATA_T_DEFINED
  
-@@ -74,6 +74,11 @@ struct st_hash_type {
+@@ -74,6 +74,11 @@
  
  #define ST_INDEX_BITS (sizeof(st_index_t) * CHAR_BIT)
  
@@ -3084,7 +3045,7 @@ index 50f2a75..aff94fc 100644
  struct st_table {
      const struct st_hash_type *type;
      st_index_t num_bins;
-@@ -91,8 +96,17 @@ struct st_table {
+@@ -91,8 +96,17 @@
      __extension__
  #endif
      st_index_t num_entries : ST_INDEX_BITS - 1;
@@ -3104,7 +3065,7 @@ index 50f2a75..aff94fc 100644
  };
  
  #define st_is_member(table,key) st_lookup((table),(key),(st_data_t *)0)
-@@ -114,6 +128,7 @@ struct st_table {
+@@ -114,6 +128,7 @@
  int st_lookup(st_table *, st_data_t, st_data_t *);
  int st_get_key(st_table *, st_data_t, st_data_t *);
  int st_foreach(st_table *, int (*)(ANYARGS), st_data_t);
@@ -3112,7 +3073,7 @@ index 50f2a75..aff94fc 100644
  int st_reverse_foreach(st_table *, int (*)(ANYARGS), st_data_t);
  void st_add_direct(st_table *, st_data_t, st_data_t);
  void st_free_table(st_table *);
-@@ -136,6 +151,51 @@ struct st_table {
+@@ -136,6 +151,51 @@
  #pragma GCC visibility pop
  #endif
  
@@ -3164,11 +3125,9 @@ index 50f2a75..aff94fc 100644
  #if defined(__cplusplus)
  #if 0
  { /* satisfy cc-mode */
-diff --git a/internal.h b/internal.h
-index 59c9284..5927d93 100644
 --- a/internal.h
 +++ b/internal.h
-@@ -24,18 +24,19 @@ struct rb_deprecated_classext_struct {
+@@ -24,18 +24,19 @@
  };
  
  struct rb_classext_struct {
@@ -3196,7 +3155,7 @@ index 59c9284..5927d93 100644
  
  struct vtm; /* defined by timev.h */
  
-@@ -94,6 +95,8 @@ struct rb_classext_struct {
+@@ -94,6 +95,8 @@
  VALUE rb_realpath_internal(VALUE basedir, VALUE path, int strict);
  VALUE rb_file_expand_path_fast(VALUE, VALUE);
  VALUE rb_file_expand_path_internal(VALUE, VALUE, int, int, VALUE);
@@ -3205,7 +3164,7 @@ index 59c9284..5927d93 100644
  void Init_File(void);
  
  #ifdef _WIN32
-@@ -119,6 +122,7 @@ struct rb_classext_struct {
+@@ -119,6 +122,7 @@
  
  /* load.c */
  VALUE rb_get_load_path(void);
@@ -3213,8 +3172,6 @@ index 59c9284..5927d93 100644
  
  /* math.c */
  VALUE rb_math_atan2(VALUE, VALUE);
-diff --git a/load.c b/load.c
-index 163ec4c..68caebc 100644
 --- a/load.c
 +++ b/load.c
 @@ -34,21 +34,120 @@
@@ -3502,7 +3459,7 @@ index 163ec4c..68caebc 100644
      }
      return 0;
  }
-@@ -132,7 +339,7 @@ struct loaded_feature_searching {
+@@ -132,7 +339,7 @@
  static int
  rb_feature_p(const char *feature, const char *ext, int rb, int expanded, const char **fn)
  {
@@ -3511,7 +3468,7 @@ index 163ec4c..68caebc 100644
      const char *f, *e;
      long i, len, elen, n;
      st_table *loading_tbl;
-@@ -151,8 +358,39 @@ struct loaded_feature_searching {
+@@ -151,8 +358,39 @@
  	type = 0;
      }
      features = get_loaded_features();
@@ -3553,7 +3510,7 @@ index 163ec4c..68caebc 100644
  	f = StringValuePtr(v);
  	if ((n = RSTRING_LEN(v)) < len) continue;
  	if (strncmp(f, feature, len) != 0) {
-@@ -175,6 +413,7 @@ struct loaded_feature_searching {
+@@ -175,6 +413,7 @@
  	    return 'r';
  	}
      }
@@ -3561,7 +3518,7 @@ index 163ec4c..68caebc 100644
      loading_tbl = get_loading_table();
      if (loading_tbl) {
  	f = 0;
-@@ -183,7 +422,7 @@ struct loaded_feature_searching {
+@@ -183,7 +422,7 @@
  	    fs.name = feature;
  	    fs.len = len;
  	    fs.type = type;
@@ -3570,7 +3527,7 @@ index 163ec4c..68caebc 100644
  	    fs.result = 0;
  	    st_foreach(loading_tbl, loaded_feature_path_i, (st_data_t)&fs);
  	    if ((f = fs.result) != 0) {
-@@ -233,7 +472,7 @@ struct loaded_feature_searching {
+@@ -233,7 +472,7 @@
  
      if (*feature == '.' &&
  	(feature[1] == '/' || strncmp(feature+1, "./", 2) == 0)) {
@@ -3579,7 +3536,7 @@ index 163ec4c..68caebc 100644
  	feature = RSTRING_PTR(fullpath);
      }
      if (ext && !strchr(ext, '/')) {
-@@ -254,11 +493,18 @@ struct loaded_feature_searching {
+@@ -254,11 +493,18 @@
  static void
  rb_provide_feature(VALUE feature)
  {
@@ -3600,7 +3557,7 @@ index 163ec4c..68caebc 100644
  }
  
  void
-@@ -774,10 +1020,15 @@ struct loaded_feature_searching {
+@@ -774,10 +1020,15 @@
      rb_alias_variable(rb_intern("$-I"), id_load_path);
      rb_alias_variable(rb_intern("$LOAD_PATH"), id_load_path);
      vm->load_path = rb_ary_new();
@@ -3616,11 +3573,9 @@ index 163ec4c..68caebc 100644
  
      rb_define_global_function("load", rb_f_load, -1);
      rb_define_global_function("require", rb_f_require, 1);
-diff --git a/marshal.c b/marshal.c
-index 6ae3a55..48d9d9b 100644
 --- a/marshal.c
 +++ b/marshal.c
-@@ -506,7 +506,7 @@ class2path(VALUE klass)
+@@ -506,7 +506,7 @@
  }
  
  static int
@@ -3629,7 +3584,7 @@ index 6ae3a55..48d9d9b 100644
  {
      if (id == rb_id_encoding()) return ST_CONTINUE;
      if (id == rb_intern("E")) return ST_CONTINUE;
-@@ -553,13 +553,13 @@ class2path(VALUE klass)
+@@ -553,13 +553,13 @@
  }
  
  static void
@@ -3645,7 +3600,7 @@ index 6ae3a55..48d9d9b 100644
      }
  }
  
-@@ -586,7 +586,7 @@ class2path(VALUE klass)
+@@ -586,7 +586,7 @@
  w_object(VALUE obj, struct dump_arg *arg, int limit)
  {
      struct dump_call_arg c_arg;
@@ -3654,7 +3609,7 @@ index 6ae3a55..48d9d9b 100644
      st_data_t num;
      int hasiv = 0;
  #define has_ivars(obj, ivtbl) (((ivtbl) = rb_generic_ivar_table(obj)) != 0 || \
-@@ -651,7 +651,7 @@ class2path(VALUE klass)
+@@ -651,7 +651,7 @@
  	}
  	if (rb_respond_to(obj, s_dump)) {
  	    VALUE v;
@@ -3663,11 +3618,9 @@ index 6ae3a55..48d9d9b 100644
              int hasiv2;
  
  	    v = rb_funcall(obj, s_dump, 1, INT2NUM(limit));
-diff --git a/method.h b/method.h
-index 9229896..2fecd57 100644
 --- a/method.h
 +++ b/method.h
-@@ -100,6 +100,6 @@ struct unlinked_method_entry_list_entry {
+@@ -100,6 +100,6 @@
  void rb_mark_method_entry(const rb_method_entry_t *me);
  void rb_free_method_entry(rb_method_entry_t *me);
  void rb_sweep_method_entry(void *vm);
@@ -3675,8 +3628,6 @@ index 9229896..2fecd57 100644
 +void rb_free_m_table(sa_table *tbl);
  
  #endif /* METHOD_H */
-diff --git a/object.c b/object.c
-index 59611fd..4522d08 100644
 --- a/object.c
 +++ b/object.c
 @@ -236,17 +236,8 @@
@@ -3724,9 +3675,6 @@ index 59611fd..4522d08 100644
  	    return Qfalse;
  	arg = RCLASS_SUPER(arg);
      }
-diff --git a/pool_alloc.h b/pool_alloc.h
-new file mode 100644
-index 0000000..957708e
 --- /dev/null
 +++ b/pool_alloc.h
 @@ -0,0 +1,11 @@
@@ -3741,9 +3689,6 @@ index 0000000..957708e
 +#endif
 +
 +#endif
-diff --git a/pool_alloc.inc.h b/pool_alloc.inc.h
-new file mode 100644
-index 0000000..a7879ab
 --- /dev/null
 +++ b/pool_alloc.inc.h
 @@ -0,0 +1,156 @@
@@ -3903,11 +3848,9 @@ index 0000000..a7879ab
 +    }
 +}
 +#endif
-diff --git a/ruby.c b/ruby.c
-index 3ddd96c..7ffc78e 100644
 --- a/ruby.c
 +++ b/ruby.c
-@@ -1366,7 +1366,8 @@ struct cmdline_options {
+@@ -1366,7 +1366,8 @@
  	long i;
  	VALUE load_path = GET_VM()->load_path;
  	for (i = 0; i < RARRAY_LEN(load_path); ++i) {
@@ -3917,9 +3860,6 @@ index 3ddd96c..7ffc78e 100644
  	}
      }
      if (!(opt->disable & DISABLE_BIT(gems))) {
-diff --git a/sp_ar.c b/sp_ar.c
-new file mode 100644
-index 0000000..2ed69bf
 --- /dev/null
 +++ b/sp_ar.c
 @@ -0,0 +1,374 @@
@@ -4297,8 +4237,6 @@ index 0000000..2ed69bf
 +	memcpy(to->entries, from->entries, from->num_bins*sizeof(sa_entry));
 +    }
 +}
-diff --git a/st.c b/st.c
-index fda5784..0194022 100644
 --- a/st.c
 +++ b/st.c
 @@ -7,6 +7,7 @@
@@ -4309,7 +4247,7 @@ index fda5784..0194022 100644
  #endif
  
  #include <stdio.h>
-@@ -25,8 +26,17 @@ struct st_table_entry {
+@@ -25,8 +26,17 @@
      st_table_entry *fore, *back;
  };
  
@@ -4328,7 +4266,7 @@ index fda5784..0194022 100644
  
      /*
       * DEFAULT_MAX_DENSITY is the default for the largest we allow the
-@@ -38,7 +48,8 @@ struct st_table_entry {
+@@ -38,7 +48,8 @@
       *
       */
  
@@ -4338,7 +4276,7 @@ index fda5784..0194022 100644
      st_numcmp,
      st_numhash,
  };
-@@ -61,20 +72,128 @@ struct st_table_entry {
+@@ -61,20 +72,128 @@
  #ifdef RUBY
  #define malloc xmalloc
  #define calloc xcalloc
@@ -4472,7 +4410,7 @@ index fda5784..0194022 100644
  /*
   * MINSIZE is the minimum size of a dictionary.
   */
-@@ -85,8 +204,8 @@ struct st_table_entry {
+@@ -85,8 +204,8 @@
  Table of prime numbers 2^n+a, 2<=n<=30.
  */
  static const unsigned int primes[] = {
@@ -4483,7 +4421,7 @@ index fda5784..0194022 100644
  	32 + 5,
  	64 + 3,
  	128 + 3,
-@@ -161,8 +280,6 @@ struct st_table_entry {
+@@ -161,8 +280,6 @@
  }
  #endif
  
@@ -4492,7 +4430,7 @@ index fda5784..0194022 100644
  st_table*
  st_init_table_with_size(const struct st_hash_type *type, st_index_t size)
  {
-@@ -181,14 +298,19 @@ struct st_table_entry {
+@@ -181,14 +298,19 @@
      }
  #endif
  
@@ -4516,7 +4454,7 @@ index fda5784..0194022 100644
      tbl->head = 0;
      tbl->tail = 0;
  
-@@ -243,17 +365,23 @@ struct st_table_entry {
+@@ -243,17 +365,23 @@
      register st_table_entry *ptr, *next;
      st_index_t i;
  
@@ -4542,7 +4480,7 @@ index fda5784..0194022 100644
  	    ptr = next;
  	}
      }
-@@ -266,14 +394,19 @@ struct st_table_entry {
+@@ -266,14 +394,19 @@
  st_free_table(st_table *table)
  {
      st_clear(table);
@@ -4565,7 +4503,7 @@ index fda5784..0194022 100644
  	return table->num_bins * sizeof (void *) + sizeof(st_table);
      }
      else {
-@@ -306,46 +439,77 @@ struct st_table_entry {
+@@ -306,46 +439,77 @@
  #define FOUND_ENTRY
  #endif
  
@@ -4666,7 +4604,7 @@ index fda5784..0194022 100644
  	return 1;
      }
  }
-@@ -353,22 +517,29 @@ struct st_table_entry {
+@@ -353,22 +517,29 @@
  int
  st_get_key(st_table *table, register st_data_t key, st_data_t *result)
  {
@@ -4706,7 +4644,7 @@ index fda5784..0194022 100644
  
      if (ptr == 0) {
  	return 0;
-@@ -382,85 +553,151 @@ struct st_table_entry {
+@@ -382,85 +553,151 @@
  #undef collision_check
  #define collision_check 1
  
@@ -4914,7 +4852,7 @@ index fda5784..0194022 100644
  	return 0;
      }
      else {
-@@ -473,34 +710,38 @@ struct st_table_entry {
+@@ -473,34 +710,38 @@
  st_insert2(register st_table *table, register st_data_t key, st_data_t value,
  	   st_data_t (*func)(st_data_t))
  {
@@ -4972,7 +4910,7 @@ index fda5784..0194022 100644
  	return 0;
      }
      else {
-@@ -512,36 +753,30 @@ struct st_table_entry {
+@@ -512,36 +753,30 @@
  void
  st_add_direct(st_table *table, st_data_t key, st_data_t value)
  {
@@ -5021,7 +4959,7 @@ index fda5784..0194022 100644
      table->num_bins = new_num_bins;
      table->bins = new_bins;
  
-@@ -558,34 +793,37 @@ struct st_table_entry {
+@@ -558,34 +793,37 @@
  st_copy(st_table *old_table)
  {
      st_table *new_table;
@@ -5067,7 +5005,7 @@ index fda5784..0194022 100644
  	    if (entry == 0) {
  		st_free_table(new_table);
  		return 0;
-@@ -595,8 +833,8 @@ struct st_table_entry {
+@@ -595,8 +833,8 @@
  	    entry->next = new_table->bins[hash_val];
  	    new_table->bins[hash_val] = entry;
  	    entry->back = prev;
@@ -5078,7 +5016,7 @@ index fda5784..0194022 100644
  	} while ((ptr = ptr->fore) != 0);
  	new_table->tail = prev;
      }
-@@ -604,21 +842,22 @@ struct st_table_entry {
+@@ -604,21 +842,22 @@
      return new_table;
  }
  
@@ -5116,7 +5054,7 @@ index fda5784..0194022 100644
  
  int
  st_delete(register st_table *table, register st_data_t *key, st_data_t *value)
-@@ -627,30 +866,38 @@ struct st_table_entry {
+@@ -627,30 +866,38 @@
      st_table_entry **prev;
      register st_table_entry *ptr;
  
@@ -5169,7 +5107,7 @@ index fda5784..0194022 100644
  	    return 1;
  	}
      }
-@@ -665,25 +912,36 @@ struct st_table_entry {
+@@ -665,25 +912,36 @@
      st_index_t hash_val;
      register st_table_entry *ptr;
  
@@ -5216,7 +5154,7 @@ index fda5784..0194022 100644
  	    *key = ptr->key;
  	    if (value != 0) *value = ptr->record;
  	    ptr->key = ptr->record = never;
-@@ -701,17 +959,23 @@ struct st_table_entry {
+@@ -701,17 +959,23 @@
      st_table_entry *ptr, **last, *tmp;
      st_index_t i;
  
@@ -5246,7 +5184,7 @@ index fda5784..0194022 100644
  	table->num_entries = j;
  	return;
      }
-@@ -722,7 +986,7 @@ struct st_table_entry {
+@@ -722,7 +986,7 @@
  	    if (ptr->key == never) {
  		tmp = ptr;
  		*last = ptr = ptr->next;
@@ -5255,7 +5193,7 @@ index fda5784..0194022 100644
  	    }
  	    else {
  		ptr = *(last = &ptr->next);
-@@ -732,50 +996,78 @@ struct st_table_entry {
+@@ -732,50 +996,78 @@
  }
  
  int
@@ -5358,7 +5296,7 @@ index fda5784..0194022 100644
      }
      else {
  	ptr = table->head;
-@@ -783,6 +1075,8 @@ struct st_table_entry {
+@@ -783,6 +1075,8 @@
  
      if (ptr != 0) {
  	do {
@@ -5367,7 +5305,7 @@ index fda5784..0194022 100644
  	    i = ptr->hash % table->num_bins;
  	    retval = (*func)(ptr->key, ptr->record, arg);
  	  unpacked:
-@@ -808,10 +1102,100 @@ struct st_table_entry {
+@@ -808,10 +1102,100 @@
  		for (; (tmp = *last) != 0; last = &tmp->next) {
  		    if (ptr == tmp) {
  			tmp = ptr->fore;
@@ -5471,7 +5409,7 @@ index fda5784..0194022 100644
  			ptr = tmp;
  			break;
  		    }
-@@ -834,13 +1218,13 @@ struct st_table_entry {
+@@ -834,13 +1218,13 @@
          for (i = table->num_entries-1; 0 <= i; i--) {
              int j;
              st_data_t key, val;
@@ -5488,7 +5426,7 @@ index fda5784..0194022 100644
                          break;
                  }
                  if (j == table->num_entries) {
-@@ -854,9 +1238,7 @@ struct st_table_entry {
+@@ -854,9 +1238,7 @@
  	      case ST_STOP:
  		return 0;
  	      case ST_DELETE:
@@ -5499,7 +5437,7 @@ index fda5784..0194022 100644
                  break;
              }
          }
-@@ -889,8 +1271,8 @@ struct st_table_entry {
+@@ -889,8 +1271,8 @@
  		    if (ptr == tmp) {
  			tmp = ptr->back;
  			*last = ptr->next;
@@ -5510,11 +5448,9 @@ index fda5784..0194022 100644
  			ptr = tmp;
  			break;
  		    }
-diff --git a/test/ruby/test_array.rb b/test/ruby/test_array.rb
-index 28d3e41..bcad2c0 100644
 --- a/test/ruby/test_array.rb
 +++ b/test/ruby/test_array.rb
-@@ -414,6 +414,18 @@ def test_ASET # '[]='
+@@ -414,6 +414,18 @@
      a = @cls[1, 2, 3]
      a[-1, 0] = a
      assert_equal([1, 2, 1, 2, 3, 3], a)
@@ -5533,11 +5469,9 @@ index 28d3e41..bcad2c0 100644
    end
  
    def test_assoc
-diff --git a/test/ruby/test_marshal.rb b/test/ruby/test_marshal.rb
-index 0f3f794..5c2e502 100644
 --- a/test/ruby/test_marshal.rb
 +++ b/test/ruby/test_marshal.rb
-@@ -312,7 +312,7 @@ def test_class_nonascii
+@@ -312,7 +312,7 @@
          assert_equal(a.instance_variable_get(i), b.instance_variable_get(i), bug1932)
        end
      end
@@ -5546,11 +5480,9 @@ index 0f3f794..5c2e502 100644
      assert_nothing_raised(bug1932) do
        b = Marshal.load(Marshal.dump(a))
        assert_equal(ClassISO8859_1, b.class, bug1932)
-diff --git a/test/ruby/test_module.rb b/test/ruby/test_module.rb
-index 6176f48..a67d845 100644
 --- a/test/ruby/test_module.rb
 +++ b/test/ruby/test_module.rb
-@@ -870,7 +870,7 @@ def test_method_added
+@@ -870,7 +870,7 @@
        (class << self ; self ; end).class_eval do
          define_method :method_added do |sym|
            memo << sym
@@ -5559,7 +5491,7 @@ index 6176f48..a67d845 100644
            memo << (mod.instance_method(sym) rescue nil)
          end
        end
-@@ -887,10 +887,10 @@ def f
+@@ -887,10 +887,10 @@
      assert_equal [:f, :g], memo.shift
      assert_equal mod.instance_method(:f), memo.shift
      assert_equal :a, memo.shift
@@ -5572,11 +5504,9 @@ index 6176f48..a67d845 100644
      assert_equal mod.instance_method(:a=), memo.shift
    end
  
-diff --git a/test/ruby/test_require.rb b/test/ruby/test_require.rb
-index 58a9ee2..ec75096 100644
 --- a/test/ruby/test_require.rb
 +++ b/test/ruby/test_require.rb
-@@ -356,4 +356,114 @@ def test_loaded_features_encoding
+@@ -356,4 +356,114 @@
      $:.replace(loadpath)
      $".replace(features)
    end
@@ -5691,11 +5621,9 @@ index 58a9ee2..ec75096 100644
 +    }
 +  end
  end
-diff --git a/time.c b/time.c
-index 755812f..83edc83 100644
 --- a/time.c
 +++ b/time.c
-@@ -4712,16 +4712,14 @@ static VALUE find_time_numguess_getter(void)
+@@ -4712,16 +4712,14 @@
      long nsec;
      VALUE submicro, nano_num, nano_den, offset;
      wideval_t timew;
@@ -5713,8 +5641,6 @@ index 755812f..83edc83 100644
      }
  
      get_attr(nano_num, {});
-diff --git a/variable.c b/variable.c
-index 3da500e..4a61453 100644
 --- a/variable.c
 +++ b/variable.c
 @@ -19,15 +19,15 @@
@@ -5737,7 +5663,7 @@ index 3da500e..4a61453 100644
      CONST_ID(autoload, "__autoload__");
      CONST_ID(classpath, "__classpath__");
      CONST_ID(tmp_classpath, "__tmp_classpath__");
-@@ -43,7 +43,7 @@ struct fc_result {
+@@ -43,7 +43,7 @@
  };
  
  static VALUE
@@ -5746,7 +5672,7 @@ index 3da500e..4a61453 100644
  {
      VALUE path, tmp;
  
-@@ -51,8 +51,7 @@ struct fc_result {
+@@ -51,8 +51,7 @@
      while (fc) {
  	st_data_t n;
  	if (fc->track == rb_cObject) break;
@@ -5756,7 +5682,7 @@ index 3da500e..4a61453 100644
  	    tmp = rb_str_dup((VALUE)n);
  	    rb_str_cat2(tmp, "::");
  	    rb_str_append(tmp, path);
-@@ -70,7 +69,7 @@ struct fc_result {
+@@ -70,7 +69,7 @@
  }
  
  static int
@@ -5765,7 +5691,7 @@ index 3da500e..4a61453 100644
  {
      VALUE value = ce->value;
      if (!rb_is_const_id(key)) return ST_CONTINUE;
-@@ -98,7 +97,7 @@ struct fc_result {
+@@ -98,7 +97,7 @@
  	    arg.klass = res->klass;
  	    arg.track = value;
  	    arg.prev = res;
@@ -5774,7 +5700,7 @@ index 3da500e..4a61453 100644
  	    if (arg.path) {
  		res->path = arg.path;
  		return ST_STOP;
-@@ -123,18 +122,14 @@ struct fc_result {
+@@ -123,18 +122,14 @@
      arg.track = rb_cObject;
      arg.prev = 0;
      if (RCLASS_CONST_TBL(rb_cObject)) {
@@ -5797,7 +5723,7 @@ index 3da500e..4a61453 100644
  	return arg.path;
      }
      return Qnil;
-@@ -147,16 +142,15 @@ classname(VALUE klass)
+@@ -147,16 +142,15 @@
      st_data_t n;
  
      if (!klass) klass = rb_cObject;
@@ -5819,7 +5745,7 @@ index 3da500e..4a61453 100644
  	}
  	else {
  	    path = (VALUE)n;
-@@ -192,8 +186,7 @@ classname(VALUE klass)
+@@ -192,8 +186,7 @@
      st_data_t n = (st_data_t)path;
  
      if (!NIL_P(path)) return path;
@@ -5829,7 +5755,7 @@ index 3da500e..4a61453 100644
  	return (VALUE)n;
      }
      else {
-@@ -364,7 +357,7 @@ struct global_entry*
+@@ -364,7 +357,7 @@
      struct global_entry *entry;
      st_data_t data;
  
@@ -5838,7 +5764,7 @@ index 3da500e..4a61453 100644
  	struct global_variable *var;
  	entry = ALLOC(struct global_entry);
  	var = ALLOC(struct global_variable);
-@@ -378,7 +371,7 @@ struct global_entry*
+@@ -378,7 +371,7 @@
  
  	var->block_trace = 0;
  	var->trace = 0;
@@ -5847,7 +5773,7 @@ index 3da500e..4a61453 100644
      }
      else {
  	entry = (struct global_entry *)data;
-@@ -454,8 +447,8 @@ struct global_entry*
+@@ -454,8 +447,8 @@
      rb_name_error(id, "%s is a read-only variable", rb_id2name(id));
  }
  
@@ -5858,7 +5784,7 @@ index 3da500e..4a61453 100644
  {
      struct trace_var *trace;
      struct global_variable *var = entry->var;
-@@ -466,14 +459,14 @@ struct global_entry*
+@@ -466,14 +459,14 @@
  	if (trace->data) rb_gc_mark_maybe(trace->data);
  	trace = trace->next;
      }
@@ -5876,7 +5802,7 @@ index 3da500e..4a61453 100644
  }
  
  static ID
-@@ -635,7 +628,7 @@ struct global_entry*
+@@ -635,7 +628,7 @@
      rb_secure(4);
      rb_scan_args(argc, argv, "11", &var, &cmd);
      id = rb_to_id(var);
@@ -5885,7 +5811,7 @@ index 3da500e..4a61453 100644
  	rb_name_error(id, "undefined global variable %s", rb_id2name(id));
      }
  
-@@ -742,13 +735,6 @@ struct trace_data {
+@@ -742,13 +735,6 @@
      return Qtrue;
  }
  
@@ -5899,7 +5825,7 @@ index 3da500e..4a61453 100644
  /*
   *  call-seq:
   *     global_variables    -> array
-@@ -765,7 +751,9 @@ struct trace_data {
+@@ -765,7 +751,9 @@
      char buf[2];
      int i;
  
@@ -5910,7 +5836,7 @@ index 3da500e..4a61453 100644
      buf[0] = '$';
      for (i = 1; i <= 9; ++i) {
  	buf[1] = (char)(i + '0');
-@@ -784,10 +772,10 @@ struct trace_data {
+@@ -784,10 +772,10 @@
  	rb_raise(rb_eSecurityError, "Insecure: can't alias global variable");
  
      entry2 = rb_global_entry(name2);
@@ -5923,7 +5849,7 @@ index 3da500e..4a61453 100644
      }
      else if ((entry1 = (struct global_entry *)data1)->var != entry2->var) {
  	struct global_variable *var = entry1->var;
-@@ -815,7 +803,7 @@ struct trace_data {
+@@ -815,7 +803,7 @@
  static int special_generic_ivar = 0;
  static st_table *generic_iv_tbl;
  
@@ -5932,7 +5858,7 @@ index 3da500e..4a61453 100644
  rb_generic_ivar_table(VALUE obj)
  {
      st_data_t tbl;
-@@ -823,7 +811,7 @@ struct trace_data {
+@@ -823,7 +811,7 @@
      if (!FL_TEST(obj, FL_EXIVAR)) return 0;
      if (!generic_iv_tbl) return 0;
      if (!st_lookup(generic_iv_tbl, (st_data_t)obj, &tbl)) return 0;
@@ -5941,7 +5867,7 @@ index 3da500e..4a61453 100644
  }
  
  static VALUE
-@@ -833,7 +821,7 @@ struct trace_data {
+@@ -833,7 +821,7 @@
  
      if (generic_iv_tbl) {
  	if (st_lookup(generic_iv_tbl, (st_data_t)obj, &tbl)) {
@@ -5950,7 +5876,7 @@ index 3da500e..4a61453 100644
  		return (VALUE)val;
  	    }
  	}
-@@ -847,7 +835,6 @@ struct trace_data {
+@@ -847,7 +835,6 @@
  static void
  generic_ivar_set(VALUE obj, ID id, VALUE val)
  {
@@ -5958,7 +5884,7 @@ index 3da500e..4a61453 100644
      st_data_t data;
  
      if (rb_special_const_p(obj)) {
-@@ -859,24 +846,22 @@ struct trace_data {
+@@ -859,24 +846,22 @@
      }
      if (!st_lookup(generic_iv_tbl, (st_data_t)obj, &data)) {
  	FL_SET(obj, FL_EXIVAR);
@@ -5989,7 +5915,7 @@ index 3da500e..4a61453 100644
  	return Qtrue;
      }
      return Qfalse;
-@@ -885,18 +870,18 @@ struct trace_data {
+@@ -885,18 +870,18 @@
  static int
  generic_ivar_remove(VALUE obj, ID id, st_data_t *valp)
  {
@@ -6012,7 +5938,7 @@ index 3da500e..4a61453 100644
      }
      return status;
  }
-@@ -908,22 +893,17 @@ struct trace_data {
+@@ -908,22 +893,17 @@
  
      if (!generic_iv_tbl) return;
      if (st_lookup(generic_iv_tbl, (st_data_t)obj, &tbl)) {
@@ -6040,7 +5966,7 @@ index 3da500e..4a61453 100644
      }
      return ST_CONTINUE;
  }
-@@ -943,7 +923,7 @@ struct trace_data {
+@@ -943,7 +923,7 @@
  
      if (!generic_iv_tbl) return;
      if (st_delete(generic_iv_tbl, &key, &tbl))
@@ -6049,7 +5975,7 @@ index 3da500e..4a61453 100644
  }
  
  RUBY_FUNC_EXPORTED size_t
-@@ -951,7 +931,7 @@ struct trace_data {
+@@ -951,7 +931,7 @@
  {
      st_data_t tbl;
      if (st_lookup(generic_iv_tbl, (st_data_t)obj, &tbl))
@@ -6058,7 +5984,7 @@ index 3da500e..4a61453 100644
      return 0;
  }
  
-@@ -970,17 +950,17 @@ struct trace_data {
+@@ -970,17 +950,17 @@
          return;
      }
      if (st_lookup(generic_iv_tbl, (st_data_t)obj, &data)) {
@@ -6080,7 +6006,7 @@ index 3da500e..4a61453 100644
  	    FL_SET(clone, FL_EXIVAR);
  	}
      }
-@@ -990,7 +970,7 @@ struct trace_data {
+@@ -990,7 +970,7 @@
  ivar_get(VALUE obj, ID id, int warn)
  {
      VALUE val, *ptr;
@@ -6089,7 +6015,7 @@ index 3da500e..4a61453 100644
      long len;
      st_data_t index;
  
-@@ -1000,7 +980,7 @@ struct trace_data {
+@@ -1000,7 +980,7 @@
          ptr = ROBJECT_IVPTR(obj);
          iv_index_tbl = ROBJECT_IV_INDEX_TBL(obj);
          if (!iv_index_tbl) break;
@@ -6098,7 +6024,7 @@ index 3da500e..4a61453 100644
          if (len <= (long)index) break;
          val = ptr[index];
          if (val != Qundef)
-@@ -1008,7 +988,7 @@ struct trace_data {
+@@ -1008,7 +988,7 @@
  	break;
        case T_CLASS:
        case T_MODULE:
@@ -6107,7 +6033,7 @@ index 3da500e..4a61453 100644
  	    return (VALUE)index;
  	break;
        default:
-@@ -1037,7 +1017,7 @@ struct trace_data {
+@@ -1037,7 +1017,7 @@
  VALUE
  rb_ivar_set(VALUE obj, ID id, VALUE val)
  {
@@ -6116,7 +6042,7 @@ index 3da500e..4a61453 100644
      st_data_t index;
      long i, len;
      int ivar_extended;
-@@ -1051,14 +1031,11 @@ struct trace_data {
+@@ -1051,14 +1031,11 @@
          if (!iv_index_tbl) {
              VALUE klass = rb_obj_class(obj);
              iv_index_tbl = RCLASS_IV_INDEX_TBL(klass);
@@ -6133,7 +6059,7 @@ index 3da500e..4a61453 100644
              ivar_extended = 1;
          }
          len = ROBJECT_NUMIV(obj);
-@@ -1098,8 +1075,7 @@ struct trace_data {
+@@ -1098,8 +1075,7 @@
  	break;
        case T_CLASS:
        case T_MODULE:
@@ -6143,7 +6069,7 @@ index 3da500e..4a61453 100644
          break;
        default:
  	generic_ivar_set(obj, id, val);
-@@ -1112,13 +1088,13 @@ struct trace_data {
+@@ -1112,13 +1088,13 @@
  rb_ivar_defined(VALUE obj, ID id)
  {
      VALUE val;
@@ -6159,7 +6085,7 @@ index 3da500e..4a61453 100644
          if (ROBJECT_NUMIV(obj) <= (long)index) break;
          val = ROBJECT_IVPTR(obj)[index];
          if (val != Qundef)
-@@ -1126,7 +1102,7 @@ struct trace_data {
+@@ -1126,7 +1102,7 @@
  	break;
        case T_CLASS:
        case T_MODULE:
@@ -6168,7 +6094,7 @@ index 3da500e..4a61453 100644
  	    return Qtrue;
  	break;
        default:
-@@ -1137,40 +1113,26 @@ struct trace_data {
+@@ -1137,40 +1113,26 @@
      return Qfalse;
  }
  
@@ -6222,7 +6148,7 @@ index 3da500e..4a61453 100644
  }
  
  void
-@@ -1182,9 +1144,7 @@ struct obj_ivar_tag {
+@@ -1182,9 +1144,7 @@
  	break;
        case T_CLASS:
        case T_MODULE:
@@ -6233,7 +6159,7 @@ index 3da500e..4a61453 100644
  	break;
        default:
  	if (!generic_iv_tbl) break;
-@@ -1192,7 +1152,7 @@ struct obj_ivar_tag {
+@@ -1192,7 +1152,7 @@
  	    st_data_t tbl;
  
  	    if (st_lookup(generic_iv_tbl, (st_data_t)obj, &tbl)) {
@@ -6242,7 +6168,7 @@ index 3da500e..4a61453 100644
  	    }
  	}
  	break;
-@@ -1202,11 +1162,11 @@ struct obj_ivar_tag {
+@@ -1202,11 +1162,11 @@
  st_index_t
  rb_ivar_count(VALUE obj)
  {
@@ -6256,7 +6182,7 @@ index 3da500e..4a61453 100644
  	    const VALUE *const ivptr = ROBJECT_IVPTR(obj);
  	    for (i = count = 0; i < num; ++i) {
  		if (ivptr[i] != Qundef) {
-@@ -1228,7 +1188,7 @@ struct obj_ivar_tag {
+@@ -1228,7 +1188,7 @@
  	    st_data_t data;
  
  	    if (st_lookup(generic_iv_tbl, (st_data_t)obj, &data) &&
@@ -6265,7 +6191,7 @@ index 3da500e..4a61453 100644
  		return tbl->num_entries;
  	    }
  	}
-@@ -1238,7 +1198,7 @@ struct obj_ivar_tag {
+@@ -1238,7 +1198,7 @@
  }
  
  static int
@@ -6274,7 +6200,7 @@ index 3da500e..4a61453 100644
  {
      if (rb_is_instance_id(key)) {
  	rb_ary_push(ary, ID2SYM(key));
-@@ -1301,7 +1261,7 @@ struct obj_ivar_tag {
+@@ -1301,7 +1261,7 @@
      VALUE val = Qnil;
      const ID id = rb_to_id(name);
      st_data_t n, v;
@@ -6283,7 +6209,7 @@ index 3da500e..4a61453 100644
      st_data_t index;
  
      if (!OBJ_UNTRUSTED(obj) && rb_safe_level() >= 4)
-@@ -1315,7 +1275,7 @@ struct obj_ivar_tag {
+@@ -1315,7 +1275,7 @@
        case T_OBJECT:
          iv_index_tbl = ROBJECT_IV_INDEX_TBL(obj);
          if (!iv_index_tbl) break;
@@ -6292,7 +6218,7 @@ index 3da500e..4a61453 100644
          if (ROBJECT_NUMIV(obj) <= (long)index) break;
          val = ROBJECT_IVPTR(obj)[index];
          if (val != Qundef) {
-@@ -1326,14 +1286,14 @@ struct obj_ivar_tag {
+@@ -1326,14 +1286,14 @@
        case T_CLASS:
        case T_MODULE:
  	n = id;
@@ -6309,7 +6235,7 @@ index 3da500e..4a61453 100644
  		return (VALUE)v;
  	    }
  	}
-@@ -1410,20 +1370,20 @@ struct obj_ivar_tag {
+@@ -1410,20 +1370,20 @@
  static void
  autoload_mark(void *ptr)
  {
@@ -6334,7 +6260,7 @@ index 3da500e..4a61453 100644
  }
  
  static const rb_data_type_t autoload_data_type = {
-@@ -1432,14 +1392,14 @@ struct obj_ivar_tag {
+@@ -1432,14 +1392,14 @@
  };
  
  #define check_autoload_table(av) \
@@ -6351,7 +6277,7 @@ index 3da500e..4a61453 100644
  
      if (!rb_is_const_id(id)) {
  	rb_raise(rb_eNameError, "autoload must be constant name: %s", rb_id2name(id));
-@@ -1448,43 +1408,41 @@ struct obj_ivar_tag {
+@@ -1448,43 +1408,41 @@
  	rb_raise(rb_eArgError, "empty file name");
      }
  
@@ -6406,7 +6332,7 @@ index 3da500e..4a61453 100644
  	}
      }
  
-@@ -1509,14 +1467,14 @@ struct obj_ivar_tag {
+@@ -1509,14 +1467,14 @@
  autoload_node(VALUE mod, ID id, const char **loadingpath)
  {
      VALUE file;
@@ -6424,7 +6350,7 @@ index 3da500e..4a61453 100644
  	return 0;
      }
      load = (NODE *)val;
-@@ -1541,10 +1499,10 @@ struct obj_ivar_tag {
+@@ -1541,10 +1499,10 @@
  static int
  autoload_node_id(VALUE mod, ID id)
  {
@@ -6437,7 +6363,7 @@ index 3da500e..4a61453 100644
  	return 0;
      }
      return 1;
-@@ -1593,7 +1551,7 @@ struct obj_ivar_tag {
+@@ -1593,7 +1551,7 @@
      while (RTEST(tmp)) {
  	VALUE am = 0;
  	st_data_t data;
@@ -6446,7 +6372,7 @@ index 3da500e..4a61453 100644
  	    rb_const_entry_t *ce = (rb_const_entry_t *)data;
  	    if (visibility && ce->flag == CONST_PRIVATE) {
  		rb_name_error(id, "private constant %s::%s referenced", rb_class2name(klass), rb_id2name(id));
-@@ -1686,12 +1644,12 @@ struct obj_ivar_tag {
+@@ -1686,12 +1644,12 @@
  rb_const_remove(VALUE mod, ID id)
  {
      VALUE val;
@@ -6461,7 +6387,7 @@ index 3da500e..4a61453 100644
  	if (rb_const_defined_at(mod, id)) {
  	    rb_name_error(id, "cannot remove %s::%s",
  			  rb_class2name(mod), rb_id2name(id));
-@@ -1711,27 +1669,20 @@ struct obj_ivar_tag {
+@@ -1711,27 +1669,20 @@
      return val;
  }
  
@@ -6497,7 +6423,7 @@ index 3da500e..4a61453 100644
      return tbl;
  }
  
-@@ -1748,25 +1699,21 @@ struct obj_ivar_tag {
+@@ -1748,25 +1699,21 @@
      return data;
  }
  
@@ -6531,7 +6457,7 @@ index 3da500e..4a61453 100644
  
      return ary;
  }
-@@ -1790,7 +1737,7 @@ struct obj_ivar_tag {
+@@ -1790,7 +1737,7 @@
  rb_mod_constants(int argc, VALUE *argv, VALUE mod)
  {
      VALUE inherit;
@@ -6540,7 +6466,7 @@ index 3da500e..4a61453 100644
  
      if (argc == 0) {
  	inherit = Qtrue;
-@@ -1817,7 +1764,7 @@ struct obj_ivar_tag {
+@@ -1817,7 +1764,7 @@
      tmp = klass;
    retry:
      while (tmp) {
@@ -6549,7 +6475,7 @@ index 3da500e..4a61453 100644
  	    rb_const_entry_t *ce = (rb_const_entry_t *)value;
  	    if (visibility && ce->flag == CONST_PRIVATE) {
  		return (int)Qfalse;
-@@ -1885,6 +1832,7 @@ struct obj_ivar_tag {
+@@ -1885,6 +1832,7 @@
  rb_const_set(VALUE klass, ID id, VALUE val)
  {
      rb_const_entry_t *ce;
@@ -6557,7 +6483,7 @@ index 3da500e..4a61453 100644
      VALUE visibility = CONST_PUBLIC;
  
      if (NIL_P(klass)) {
-@@ -1893,21 +1841,14 @@ struct obj_ivar_tag {
+@@ -1893,21 +1841,14 @@
      }
  
      check_before_mod_set(klass, id, val, "constant");
@@ -6587,7 +6513,7 @@ index 3da500e..4a61453 100644
      }
  
      rb_vm_change_state();
-@@ -1916,7 +1857,7 @@ struct obj_ivar_tag {
+@@ -1916,7 +1857,7 @@
      ce->flag = (rb_const_flag_t)visibility;
      ce->value = val;
  
@@ -6596,7 +6522,7 @@ index 3da500e..4a61453 100644
  }
  
  void
-@@ -1958,8 +1899,7 @@ struct obj_ivar_tag {
+@@ -1958,8 +1899,7 @@
      for (i = 0; i < argc; i++) {
  	VALUE val = argv[i];
  	id = rb_to_id(val);
@@ -6606,7 +6532,7 @@ index 3da500e..4a61453 100644
  	    ((rb_const_entry_t*)v)->flag = flag;
  	}
  	else {
-@@ -2008,7 +1948,7 @@ struct obj_ivar_tag {
+@@ -2008,7 +1948,7 @@
  }
  
  #define CVAR_LOOKUP(v,r) do {\
@@ -6615,7 +6541,7 @@ index 3da500e..4a61453 100644
  	r;\
      }\
      if (FL_TEST(klass, FL_SINGLETON) ) {\
-@@ -2027,7 +1967,7 @@ struct obj_ivar_tag {
+@@ -2027,7 +1967,7 @@
  	klass = RCLASS_SUPER(klass);\
      }\
      while (klass) {\
@@ -6624,7 +6550,7 @@ index 3da500e..4a61453 100644
  	    r;\
  	}\
  	klass = RCLASS_SUPER(klass);\
-@@ -2043,15 +1983,13 @@ struct obj_ivar_tag {
+@@ -2043,15 +1983,13 @@
      CVAR_LOOKUP(0, {if (!front) front = klass; target = klass;});
      if (target) {
  	if (front && target != front) {
@@ -6641,7 +6567,7 @@ index 3da500e..4a61453 100644
  	    }
  	}
      }
-@@ -2060,11 +1998,7 @@ struct obj_ivar_tag {
+@@ -2060,11 +1998,7 @@
      }
  
      check_before_mod_set(target, id, val, "class variable");
@@ -6654,7 +6580,7 @@ index 3da500e..4a61453 100644
  }
  
  VALUE
-@@ -2080,15 +2014,13 @@ struct obj_ivar_tag {
+@@ -2080,15 +2014,13 @@
  		      rb_id2name(id), rb_class2name(tmp));
      }
      if (front && target != front) {
@@ -6671,7 +6597,7 @@ index 3da500e..4a61453 100644
  	}
      }
      return (VALUE)value;
-@@ -2134,7 +2066,7 @@ struct obj_ivar_tag {
+@@ -2134,7 +2066,7 @@
  }
  
  static int
@@ -6680,7 +6606,7 @@ index 3da500e..4a61453 100644
  {
      if (rb_is_class_id(key)) {
  	VALUE kval = ID2SYM(key);
-@@ -2167,7 +2099,7 @@ struct obj_ivar_tag {
+@@ -2167,7 +2099,7 @@
      VALUE ary = rb_ary_new();
  
      if (RCLASS_IV_TBL(obj)) {
@@ -6689,7 +6615,7 @@ index 3da500e..4a61453 100644
      }
      return ary;
  }
-@@ -2196,7 +2128,7 @@ struct obj_ivar_tag {
+@@ -2196,7 +2128,7 @@
  rb_mod_remove_cvar(VALUE mod, VALUE name)
  {
      const ID id = rb_to_id(name);
@@ -6698,7 +6624,7 @@ index 3da500e..4a61453 100644
  
      if (!rb_is_class_id(id)) {
  	rb_name_error(id, "wrong class variable name %s", rb_id2name(id));
-@@ -2204,7 +2136,7 @@ struct obj_ivar_tag {
+@@ -2204,7 +2136,7 @@
      if (!OBJ_UNTRUSTED(mod) && rb_safe_level() >= 4)
  	rb_raise(rb_eSecurityError, "Insecure: can't remove class variable");
      rb_check_frozen(mod);
@@ -6707,8 +6633,6 @@ index 3da500e..4a61453 100644
  	return (VALUE)val;
      }
      if (rb_cvar_defined(mod, id)) {
-diff --git a/vm.c b/vm.c
-index 4c44aa4..fe37621 100644
 --- a/vm.c
 +++ b/vm.c
 @@ -1055,7 +1055,7 @@
@@ -6720,7 +6644,7 @@ index 4c44aa4..fe37621 100644
  	me->def->type == VM_METHOD_TYPE_CFUNC) {
  	st_insert(vm_opt_method_table, (st_data_t)me, (st_data_t)bop);
      }
-@@ -1591,7 +1591,12 @@
+@@ -1592,7 +1592,12 @@
  	RUBY_MARK_UNLESS_NULL(vm->thgroup_default);
  	RUBY_MARK_UNLESS_NULL(vm->mark_object_ary);
  	RUBY_MARK_UNLESS_NULL(vm->load_path);
@@ -6733,11 +6657,9 @@ index 4c44aa4..fe37621 100644
  	RUBY_MARK_UNLESS_NULL(vm->top_self);
  	RUBY_MARK_UNLESS_NULL(vm->coverages);
  	rb_gc_mark_locations(vm->special_exceptions, vm->special_exceptions + ruby_special_error_count);
-diff --git a/vm_core.h b/vm_core.h
-index dfc0e3c..70c5f5c 100644
 --- a/vm_core.h
 +++ b/vm_core.h
-@@ -299,7 +299,12 @@ enum ruby_special_exceptions {
+@@ -299,7 +299,12 @@
      /* load */
      VALUE top_self;
      VALUE load_path;
@@ -6750,11 +6672,9 @@ index dfc0e3c..70c5f5c 100644
      struct st_table *loading_table;
  
      /* signal */
-diff --git a/vm_insnhelper.c b/vm_insnhelper.c
-index 4f709e6..1bfd131 100644
 --- a/vm_insnhelper.c
 +++ b/vm_insnhelper.c
-@@ -1183,7 +1183,7 @@
+@@ -1179,7 +1179,7 @@
  		st_data_t data;
  	      search_continue:
  		if (RCLASS_CONST_TBL(klass) &&
@@ -6763,7 +6683,7 @@ index 4f709e6..1bfd131 100644
  		    val = ((rb_const_entry_t*)data)->value;
  		    if (val == Qundef) {
  			if (am == klass) break;
-@@ -1293,10 +1293,10 @@
+@@ -1289,10 +1289,10 @@
  	    st_data_t index;
  	    long len = ROBJECT_NUMIV(obj);
  	    VALUE *ptr = ROBJECT_IVPTR(obj);
@@ -6776,7 +6696,7 @@ index 4f709e6..1bfd131 100644
  		    if ((long)index < len) {
  			val = ptr[index];
  		    }
-@@ -1346,9 +1346,9 @@
+@@ -1342,9 +1342,9 @@
  	    }
  	}
  	else {
@@ -6788,11 +6708,9 @@ index 4f709e6..1bfd131 100644
  		ic->ic_class = klass;
  		ic->ic_value.index = index;
  		ic->ic_vmstat = GET_VM_STATE_VERSION();
-diff --git a/vm_method.c b/vm_method.c
-index 6e33603..f1d1774 100644
 --- a/vm_method.c
 +++ b/vm_method.c
-@@ -162,7 +162,7 @@ struct cache_entry {		/* method hash table. */
+@@ -162,7 +162,7 @@
  		     rb_method_definition_t *def, rb_method_flag_t noex)
  {
      rb_method_entry_t *me;
@@ -6801,7 +6719,7 @@ index 6e33603..f1d1774 100644
      st_data_t data;
  
      if (NIL_P(klass)) {
-@@ -190,7 +190,7 @@ struct cache_entry {		/* method hash table. */
+@@ -190,7 +190,7 @@
      mtbl = RCLASS_M_TBL(klass);
  
      /* check re-definition */
@@ -6810,7 +6728,7 @@ index 6e33603..f1d1774 100644
  	rb_method_entry_t *old_me = (rb_method_entry_t *)data;
  	rb_method_definition_t *old_def = old_me->def;
  
-@@ -248,7 +248,7 @@ struct cache_entry {		/* method hash table. */
+@@ -248,7 +248,7 @@
  	}
      }
  
@@ -6819,7 +6737,7 @@ index 6e33603..f1d1774 100644
  
      return me;
  }
-@@ -371,7 +371,7 @@ struct cache_entry {		/* method hash table. */
+@@ -371,7 +371,7 @@
  	return 0;
      }
  
@@ -6828,7 +6746,7 @@ index 6e33603..f1d1774 100644
  	klass = RCLASS_SUPER(klass);
  	if (!klass) {
  	    return 0;
-@@ -429,7 +429,7 @@ struct cache_entry {		/* method hash table. */
+@@ -429,7 +429,7 @@
  static void
  remove_method(VALUE klass, ID mid)
  {
@@ -6837,7 +6755,7 @@ index 6e33603..f1d1774 100644
      rb_method_entry_t *me = 0;
  
      if (klass == rb_cObject) {
-@@ -443,14 +443,13 @@ struct cache_entry {		/* method hash table. */
+@@ -443,14 +443,13 @@
  	rb_warn("removing `%s' may cause serious problems", rb_id2name(mid));
      }
  
