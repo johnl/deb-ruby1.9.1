@@ -762,7 +762,7 @@
  string.$(OBJEXT): {$(VPATH)}string.c $(RUBY_H_INCLUDES) {$(VPATH)}re.h \
 --- a/configure.in
 +++ b/configure.in
-@@ -1270,6 +1270,30 @@
+@@ -1285,6 +1285,30 @@
    AC_DEFINE_UNQUOTED(STACK_END_ADDRESS, $rb_cv_stack_end_address)
  fi
  
@@ -793,7 +793,7 @@
  dnl Checks for library functions.
  AC_TYPE_GETGROUPS
  AC_TYPE_SIGNAL
-@@ -1369,7 +1393,8 @@
+@@ -1384,7 +1408,8 @@
  	      setsid telldir seekdir fchmod cosh sinh tanh log2 round\
  	      setuid setgid daemon select_large_fdset setenv unsetenv\
                mktime timegm gmtime_r clock_gettime gettimeofday poll ppoll\
@@ -854,7 +854,7 @@
  	size += rb_str_memsize(obj);
 --- a/file.c
 +++ b/file.c
-@@ -149,40 +149,60 @@
+@@ -153,40 +153,60 @@
      return name;
  }
  
@@ -924,7 +924,7 @@
  VALUE
  rb_get_path_no_checksafe(VALUE obj)
  {
-@@ -3250,7 +3270,6 @@
+@@ -3254,7 +3274,6 @@
  VALUE
  rb_file_expand_path_fast(VALUE fname, VALUE dname)
  {
@@ -932,7 +932,7 @@
      return rb_file_expand_path_internal(fname, dname, 0, 0, EXPAND_PATH_BUFFER());
  }
  
-@@ -5241,7 +5260,7 @@
+@@ -5245,7 +5264,7 @@
  	rb_raise(rb_eSecurityError, "loading from non-absolute path %s", f);
      }
  
@@ -941,7 +941,7 @@
      if (!load_path) return 0;
  
      fname = rb_str_dup(*filep);
-@@ -5306,7 +5325,7 @@
+@@ -5310,7 +5329,7 @@
  	rb_raise(rb_eSecurityError, "loading from non-absolute path %s", f);
      }
  
@@ -2967,7 +2967,7 @@
  void
 --- a/include/ruby/intern.h
 +++ b/include/ruby/intern.h
-@@ -56,6 +56,7 @@
+@@ -65,6 +65,7 @@
  void rb_ary_free(VALUE);
  void rb_ary_modify(VALUE);
  VALUE rb_ary_freeze(VALUE);
@@ -2975,7 +2975,7 @@
  VALUE rb_ary_aref(int, VALUE*, VALUE);
  VALUE rb_ary_subseq(VALUE, long, long);
  void rb_ary_store(VALUE, long, VALUE);
-@@ -414,6 +415,7 @@
+@@ -423,6 +424,7 @@
  int rb_during_gc(void);
  void rb_gc_mark_locations(VALUE*, VALUE*);
  void rb_mark_tbl(struct st_table*);
@@ -2983,7 +2983,7 @@
  void rb_mark_set(struct st_table*);
  void rb_mark_hash(struct st_table*);
  void rb_gc_mark_maybe(VALUE);
-@@ -441,6 +443,7 @@
+@@ -450,6 +452,7 @@
  VALUE rb_hash_lookup2(VALUE, VALUE, VALUE);
  VALUE rb_hash_fetch(VALUE, VALUE);
  VALUE rb_hash_aset(VALUE, VALUE, VALUE);
@@ -2991,7 +2991,7 @@
  VALUE rb_hash_delete_if(VALUE);
  VALUE rb_hash_delete(VALUE,VALUE);
  typedef VALUE rb_hash_update_func(VALUE newkey, VALUE oldkey, VALUE value);
-@@ -844,7 +847,7 @@
+@@ -853,7 +856,7 @@
  VALUE rb_f_untrace_var(int, VALUE*);
  VALUE rb_f_global_variables(void);
  void rb_alias_variable(ID, ID);
@@ -4924,7 +4924,7 @@
 +    }
  
      if (table->entries_packed) {
--        int i;
+-        st_index_t i;
 -        if (MORE_PACKABLE_P(table)) {
 -            i = table->num_entries++;
 -            table->bins[i*2] = (struct st_table_entry*)key;
@@ -5623,7 +5623,7 @@
  end
 --- a/time.c
 +++ b/time.c
-@@ -4712,16 +4712,14 @@
+@@ -4745,16 +4745,14 @@
      long nsec;
      VALUE submicro, nano_num, nano_den, offset;
      wideval_t timew;
