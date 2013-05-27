@@ -1,0 +1,620 @@
+diff --git a/bin/gem b/bin/gem
+index a4ec754..7cea2a5 100755
+--- a/bin/gem
++++ b/bin/gem
+@@ -5,6 +5,15 @@
+ # See LICENSE.txt for permissions.
+ #++
+ 
++# The prelude in 1.9.1 injects rubygems.rb into $LOADED_FEATURES
++# which prevents the `require 'rubygems'` from actually loading
++# the site's version of rubygems. So we have to use it's API
++# to get it's prelude out of the way.
++#
++if RUBY_VERSION =~ /^1\.9\.1/ && defined?(Gem::QuickLoader)
++  Gem::QuickLoader.load_full_rubygems_library
++end
++
+ require 'rubygems'
+ require 'rubygems/gem_runner'
+ require 'rubygems/exceptions'
+diff --git a/lib/rubygems.rb b/lib/rubygems.rb
+index 7ed2746..f6fece6 100644
+--- a/lib/rubygems.rb
++++ b/lib/rubygems.rb
+@@ -121,7 +121,7 @@ require "rubygems/deprecate"
+ # -The RubyGems Team
+ 
+ module Gem
+-  VERSION = '1.8.23'
++  VERSION = '1.8.25'
+ 
+   ##
+   # Raised when RubyGems is unable to load or activate a gem.  Contains the
+diff --git a/lib/rubygems/commands/setup_command.rb b/lib/rubygems/commands/setup_command.rb
+index 0c95739..cf0fdd0 100644
+--- a/lib/rubygems/commands/setup_command.rb
++++ b/lib/rubygems/commands/setup_command.rb
+@@ -165,7 +165,7 @@ By default, this RubyGems will install gem as:
+                              end
+ 
+         dest_file = File.join bin_dir, bin_file_formatted
+-        bin_tmp_file = File.join Dir.tmpdir, bin_file
++        bin_tmp_file = File.join Dir.tmpdir, "#{bin_file}.#{$$}"
+ 
+         begin
+           bin = File.readlines bin_file
+@@ -209,7 +209,10 @@ TEXT
+     say "Installing RubyGems" if @verbose
+ 
+     Dir.chdir 'lib' do
+-      lib_files = Dir[File.join('**', '*rb')]
++      lib_files =  Dir[File.join('**', '*rb')]
++
++      # Be sure to include our SSL ca bundles
++      lib_files += Dir[File.join('**', '*pem')]
+ 
+       lib_files.each do |lib_file|
+         dest_file = File.join lib_dir, lib_file
+diff --git a/lib/rubygems/indexer.rb b/lib/rubygems/indexer.rb
+index e87e5a3..ddd4435 100644
+--- a/lib/rubygems/indexer.rb
++++ b/lib/rubygems/indexer.rb
+@@ -584,6 +584,9 @@ class Gem::Indexer
+     specs = map_gems_to_specs updated_gems
+     prerelease, released = specs.partition { |s| s.version.prerelease? }
+ 
++    Gem::Specification.dirs = []
++    Gem::Specification.add_specs(*specs)
++
+     files = build_marshal_gemspecs
+ 
+     Gem.time 'Updated indexes' do
+diff --git a/lib/rubygems/package/tar_input.rb b/lib/rubygems/package/tar_input.rb
+index 77b4d69..5d79938 100644
+--- a/lib/rubygems/package/tar_input.rb
++++ b/lib/rubygems/package/tar_input.rb
+@@ -5,7 +5,6 @@
+ #--
+ 
+ require 'zlib'
+-Gem.load_yaml
+ 
+ class Gem::Package::TarInput
+ 
+diff --git a/lib/rubygems/psych_additions.rb b/lib/rubygems/psych_additions.rb
+index 6a46bda..08a5cb3 100644
+--- a/lib/rubygems/psych_additions.rb
++++ b/lib/rubygems/psych_additions.rb
+@@ -7,12 +7,3 @@ module Psych
+   class PrivateType
+   end
+ end
+-# This exists just to satify bugs in marshal'd gemspecs that
+-# contain a reference to YAML::PrivateType. We prune these out
+-# in Specification._load, but if we don't have the constant, Marshal
+-# blows up.
+-
+-module Psych
+-  class PrivateType
+-  end
+-end
+diff --git a/lib/rubygems/psych_tree.rb b/lib/rubygems/psych_tree.rb
+index d73541e..eca8249 100644
+--- a/lib/rubygems/psych_tree.rb
++++ b/lib/rubygems/psych_tree.rb
+@@ -25,30 +25,3 @@ module Gem
+     end
+   end
+ end
+-module Gem
+-  if defined? ::Psych::Visitors
+-    class NoAliasYAMLTree < Psych::Visitors::YAMLTree
+-      def visit_String(str)
+-        return super unless str == '=' # or whatever you want
+-
+-        quote = Psych::Nodes::Scalar::SINGLE_QUOTED
+-        @emitter.scalar str, nil, nil, false, true, quote
+-      end
+-
+-      # Noop this out so there are no anchors
+-      def register(target, obj)
+-      end
+-
+-      # This is ported over from the yaml_tree in 1.9.3
+-      def format_time time
+-        if time.utc?
+-          time.strftime("%Y-%m-%d %H:%M:%S.%9N Z")
+-        else
+-          time.strftime("%Y-%m-%d %H:%M:%S.%9N %:z")
+-        end
+-      end
+-
+-      private :format_time
+-    end
+-  end
+-end
+diff --git a/lib/rubygems/remote_fetcher.rb b/lib/rubygems/remote_fetcher.rb
+index 9827e66..37699d1 100644
+--- a/lib/rubygems/remote_fetcher.rb
++++ b/lib/rubygems/remote_fetcher.rb
+@@ -176,7 +176,7 @@ class Gem::RemoteFetcher
+ 
+       begin
+         FileUtils.cp source_path, local_gem_path unless
+-          File.expand_path(source_path) == File.expand_path(local_gem_path)
++          File.identical?(source_path, local_gem_path)
+       rescue Errno::EACCES
+         local_gem_path = source_uri.to_s
+       end
+@@ -321,13 +321,24 @@ class Gem::RemoteFetcher
+ 
+     if https?(uri) and !connection.started? then
+       configure_connection_for_https(connection)
+-    end
+ 
+-    connection.start unless connection.started?
++      # Don't refactor this with the else branch. We don't want the
++      # http-only code path to not depend on anything in OpenSSL.
++      #
++      begin
++        connection.start
++      rescue OpenSSL::SSL::SSLError, Errno::EHOSTDOWN => e
++        raise FetchError.new(e.message, uri)
++      end
++    else
++      begin
++        connection.start unless connection.started?
++      rescue Errno::EHOSTDOWN => e
++        raise FetchError.new(e.message, uri)
++      end
++    end
+ 
+     connection
+-  rescue OpenSSL::SSL::SSLError, Errno::EHOSTDOWN => e
+-    raise FetchError.new(e.message, uri)
+   end
+ 
+   def configure_connection_for_https(connection)
+diff --git a/lib/rubygems/requirement.rb b/lib/rubygems/requirement.rb
+index 7abff01..efde4fd 100644
+--- a/lib/rubygems/requirement.rb
++++ b/lib/rubygems/requirement.rb
+@@ -135,6 +135,7 @@ class Gem::Requirement
+       instance_variable_set "@#{ivar}", val
+     end
+ 
++    Gem.load_yaml
+     fix_syck_default_key_in_requirements
+   end
+ 
+diff --git a/lib/rubygems/specification.rb b/lib/rubygems/specification.rb
+index 70a3fd0..1a0130c 100644
+--- a/lib/rubygems/specification.rb
++++ b/lib/rubygems/specification.rb
+@@ -1,3 +1,4 @@
++# -*- coding: utf-8 -*-
+ #--
+ # Copyright 2006 by Chad Fowler, Rich Kilmer, Jim Weirich and others.
+ # All rights reserved.
+@@ -1720,7 +1721,9 @@ class Gem::Specification
+     when Numeric           then obj.inspect
+     when true, false, nil  then obj.inspect
+     when Gem::Platform     then "Gem::Platform.new(#{obj.to_a.inspect})"
+-    when Gem::Requirement  then "Gem::Requirement.new(#{obj.to_s.inspect})"
++    when Gem::Requirement  then
++      list = obj.as_list
++      "Gem::Requirement.new(#{ruby_code(list.size == 1 ? obj.to_s : list)})"
+     else raise Gem::Exception, "ruby_code case not handled: #{obj.class}"
+     end
+   end
+@@ -1946,6 +1949,7 @@ class Gem::Specification
+       ast = builder.tree
+ 
+       io = StringIO.new
++      io.set_encoding Encoding::UTF_8 if Object.const_defined? :Encoding
+ 
+       Psych::Visitors::Emitter.new(io).accept(ast)
+ 
+diff --git a/lib/rubygems/syck_hack.rb b/lib/rubygems/syck_hack.rb
+index 1971165..9c6f4a2 100644
+--- a/lib/rubygems/syck_hack.rb
++++ b/lib/rubygems/syck_hack.rb
+@@ -72,74 +72,3 @@ module Gem
+ end
+ 
+ # :startdoc:
+-# :stopdoc:
+-
+-# Hack to handle syck's DefaultKey bug
+-#
+-# This file is always loaded AFTER either syck or psych are already
+-# loaded. It then looks at what constants are available and creates
+-# a consistent view on all rubys.
+-#
+-# All this is so that there is always a YAML::Syck::DefaultKey
+-# class no matter if the full yaml library has loaded or not.
+-#
+-
+-module YAML
+-  # In newer 1.9.2, there is a Syck toplevel constant instead of it
+-  # being underneith YAML. If so, reference it back under YAML as
+-  # well.
+-  if defined? ::Syck
+-    # for tests that change YAML::ENGINE
+-    remove_const :Syck if const_defined? :Syck, false
+-    
+-    Syck = ::Syck
+-
+-  # JRuby's "Syck" is called "Yecht"
+-  elsif defined? YAML::Yecht
+-    Syck = YAML::Yecht
+-
+-  # Otherwise, if there is no YAML::Syck, then we've got just psych
+-  # loaded, so lets define a stub for DefaultKey.
+-  elsif !defined? YAML::Syck
+-    module Syck
+-      class DefaultKey
+-      end
+-    end
+-  end
+-
+-  # Now that we've got something that is always here, define #to_s
+-  # so when code tries to use this, it at least just shows up like it
+-  # should.
+-  module Syck
+-    class DefaultKey
+-      def to_s
+-        '='
+-      end
+-    end
+-  end
+-end
+-
+-# Sometime in the 1.9 dev cycle, the Syck constant was moved from under YAML
+-# to be a toplevel constant. So gemspecs created under these versions of Syck
+-# will have references to Syck::DefaultKey.
+-#
+-# So we need to be sure that we reference Syck at the toplevel too so that
+-# we can always load these kind of gemspecs.
+-#
+-if !defined?(Syck)
+-  Syck = YAML::Syck
+-end
+-
+-# Now that we've got Syck setup in all the right places, store
+-# a reference to the DefaultKey class inside Gem. We do this so that
+-# if later on YAML, etc are redefined, we've still got a consistent
+-# place to find the DefaultKey class for comparison.
+-
+-module Gem
+-  # for tests that change YAML::ENGINE
+-  remove_const :SyckDefaultKey if const_defined? :SyckDefaultKey
+-
+-  SyckDefaultKey = YAML::Syck::DefaultKey
+-end
+-
+-# :startdoc:
+diff --git a/lib/rubygems/test_case.rb b/lib/rubygems/test_case.rb
+index 9fbdfca..3e5821a 100644
+--- a/lib/rubygems/test_case.rb
++++ b/lib/rubygems/test_case.rb
+@@ -417,6 +417,11 @@ class Gem::TestCase < MiniTest::Unit::TestCase
+     end
+   end
+ 
++  def util_remove_gem(spec)
++    FileUtils.rm_rf spec.cache_file
++    FileUtils.rm_rf spec.spec_file
++  end
++
+   ##
+   # Removes all installed gems from +@gemhome+.
+ 
+diff --git a/lib/rubygems/version.rb b/lib/rubygems/version.rb
+index 2ced9cc..d215a81 100644
+--- a/lib/rubygems/version.rb
++++ b/lib/rubygems/version.rb
+@@ -187,7 +187,7 @@ class Gem::Version
+     raise ArgumentError, "Malformed version number string #{version}" unless
+       self.class.correct?(version)
+ 
+-    @version = version.to_s
++    @version = version.to_s.dup
+     @version.strip!
+   end
+ 
+diff --git a/test/rubygems/test_gem_indexer.rb b/test/rubygems/test_gem_indexer.rb
+index f5bef8f..47dbf1d 100644
+--- a/test/rubygems/test_gem_indexer.rb
++++ b/test/rubygems/test_gem_indexer.rb
+@@ -494,6 +494,20 @@ eighty characters.&lt;/pre&gt;
+                  prerelease_specs
+   end
+ 
++  ##
++  # Emulate the starting state of Gem::Specification in a live environment,
++  # where it will carry the list of system gems
++  def with_system_gems
++    Gem::Specification.reset
++
++    sys_gem = quick_spec 'systemgem', '1.0'
++    util_build_gem sys_gem
++    Gem::Specification.add_spec sys_gem
++    yield
++    util_remove_gem sys_gem
++  end
++
++
+   def test_update_index
+     use_ui @ui do
+       @indexer.generate_index
+@@ -518,30 +532,32 @@ eighty characters.&lt;/pre&gt;
+     FileUtils.mv @d2_1.cache_file, gems
+     FileUtils.mv @d2_1_a.cache_file, gems
+ 
+-    use_ui @ui do
+-      @indexer.update_index
+-    end
++    with_system_gems do
++      use_ui @ui do
++        @indexer.update_index
++      end
+ 
+-    assert_indexed marshal_quickdir, "#{File.basename(@d2_1.spec_file)}.rz"
++      assert_indexed marshal_quickdir, "#{File.basename(@d2_1.spec_file)}.rz"
+ 
+-    specs_index = Marshal.load Gem.read_binary(@indexer.dest_specs_index)
++      specs_index = Marshal.load Gem.read_binary(@indexer.dest_specs_index)
+ 
+-    assert_includes specs_index, @d2_1_tuple
+-    refute_includes specs_index, @d2_1_a_tuple
++      assert_includes specs_index, @d2_1_tuple
++      refute_includes specs_index, @d2_1_a_tuple
+ 
+-    latest_specs_index = Marshal.load \
+-      Gem.read_binary(@indexer.dest_latest_specs_index)
++      latest_specs_index = Marshal.load \
++        Gem.read_binary(@indexer.dest_latest_specs_index)
+ 
+-    assert_includes latest_specs_index, @d2_1_tuple
+-    assert_includes latest_specs_index,
+-                    [@d2_0.name, @d2_0.version, @d2_0.original_platform]
+-    refute_includes latest_specs_index, @d2_1_a_tuple
++      assert_includes latest_specs_index, @d2_1_tuple
++      assert_includes latest_specs_index,
++                      [@d2_0.name, @d2_0.version, @d2_0.original_platform]
++      refute_includes latest_specs_index, @d2_1_a_tuple
+ 
+-    pre_specs_index = Marshal.load \
+-      Gem.read_binary(@indexer.dest_prerelease_specs_index)
++      pre_specs_index = Marshal.load \
++        Gem.read_binary(@indexer.dest_prerelease_specs_index)
+ 
+-    assert_includes pre_specs_index, @d2_1_a_tuple
+-    refute_includes pre_specs_index, @d2_1_tuple
++      assert_includes pre_specs_index, @d2_1_a_tuple
++      refute_includes pre_specs_index, @d2_1_tuple
++    end
+   end
+ 
+   def assert_indexed(dir, name)
+diff --git a/test/rubygems/test_gem_installer.rb b/test/rubygems/test_gem_installer.rb
+index 9b36120..bf0dceb 100644
+--- a/test/rubygems/test_gem_installer.rb
++++ b/test/rubygems/test_gem_installer.rb
+@@ -229,7 +229,8 @@ load Gem.bin_path('a', 'executable', version)
+   def test_generate_bin_bindir_with_user_install_warning
+     util_setup_install
+ 
+-    bin_dir = Gem.win_platform? ? File.expand_path(ENV["WINDIR"]) : "/usr/bin"
++    bin_dir = Gem.win_platform? ? File.expand_path(ENV["WINDIR"]).upcase :
++                                  "/usr/bin"
+ 
+     options = {
+       :bin_dir => bin_dir,
+@@ -747,8 +748,7 @@ load Gem.bin_path('a', 'executable', version)
+ 
+     exe = File.join @gemhome, 'bin', 'executable'
+ 
+-    extra_arg = "\xE4pfel".force_encoding("UTF-8")
+-    ARGV.unshift extra_arg
++    ARGV.unshift "\xE4pfel".force_encoding("UTF-8")
+ 
+     begin
+       Gem::Specification.reset
+@@ -757,7 +757,7 @@ load Gem.bin_path('a', 'executable', version)
+         instance_eval File.read(exe)
+       end
+     ensure
+-      ARGV.shift if ARGV.first == extra_arg
++      ARGV.shift if ARGV.first == "\xE4pfel"
+     end
+ 
+     assert_match(/ran executable/, e.message)
+@@ -1218,7 +1218,7 @@ load Gem.bin_path('a', 'executable', version)
+   def test_dir
+     util_setup_install
+ 
+-    assert_match @installer.dir, %r!/installer/gems/a-2$!
++    assert_match %r!/installer/gems/a-2$!, @installer.dir
+   end
+ 
+   def old_ruby_required
+diff --git a/test/rubygems/test_gem_platform.rb b/test/rubygems/test_gem_platform.rb
+index f3b94ea..0350d5f 100644
+--- a/test/rubygems/test_gem_platform.rb
++++ b/test/rubygems/test_gem_platform.rb
+@@ -207,64 +207,71 @@ class TestGemPlatform < Gem::TestCase
+   def test_equals_tilde
+     util_set_arch 'i386-mswin32'
+ 
+-    assert_match 'mswin32',      Gem::Platform.local
+-    assert_match 'i386-mswin32', Gem::Platform.local
++    assert_local_match 'mswin32'
++    assert_local_match 'i386-mswin32'
+ 
+     # oddballs
+-    assert_match 'i386-mswin32-mq5.3', Gem::Platform.local
+-    assert_match 'i386-mswin32-mq6',   Gem::Platform.local
+-    refute_match 'win32-1.8.2-VC7',    Gem::Platform.local
+-    refute_match 'win32-1.8.4-VC6',    Gem::Platform.local
+-    refute_match 'win32-source',       Gem::Platform.local
+-    refute_match 'windows',            Gem::Platform.local
++    assert_local_match 'i386-mswin32-mq5.3'
++    assert_local_match 'i386-mswin32-mq6'
++    refute_local_match 'win32-1.8.2-VC7'
++    refute_local_match 'win32-1.8.4-VC6'
++    refute_local_match 'win32-source'
++    refute_local_match 'windows'
+ 
+     util_set_arch 'i686-linux'
+-    assert_match 'i486-linux', Gem::Platform.local
+-    assert_match 'i586-linux', Gem::Platform.local
+-    assert_match 'i686-linux', Gem::Platform.local
++    assert_local_match 'i486-linux'
++    assert_local_match 'i586-linux'
++    assert_local_match 'i686-linux'
+ 
+     util_set_arch 'i686-darwin8'
+-    assert_match 'i686-darwin8.4.1', Gem::Platform.local
+-    assert_match 'i686-darwin8.8.2', Gem::Platform.local
++    assert_local_match 'i686-darwin8.4.1'
++    assert_local_match 'i686-darwin8.8.2'
+ 
+     util_set_arch 'java'
+-    assert_match 'java',  Gem::Platform.local
+-    assert_match 'jruby', Gem::Platform.local
++    assert_local_match 'java'
++    assert_local_match 'jruby'
+ 
+     util_set_arch 'universal-dotnet2.0'
+-    assert_match 'universal-dotnet',     Gem::Platform.local
+-    assert_match 'universal-dotnet-2.0', Gem::Platform.local
+-    refute_match 'universal-dotnet-4.0', Gem::Platform.local
+-    assert_match 'dotnet',               Gem::Platform.local
+-    assert_match 'dotnet-2.0',           Gem::Platform.local
+-    refute_match 'dotnet-4.0',           Gem::Platform.local
++    assert_local_match 'universal-dotnet'
++    assert_local_match 'universal-dotnet-2.0'
++    refute_local_match 'universal-dotnet-4.0'
++    assert_local_match 'dotnet'
++    assert_local_match 'dotnet-2.0'
++    refute_local_match 'dotnet-4.0'
+ 
+     util_set_arch 'universal-dotnet4.0'
+-    assert_match 'universal-dotnet',      Gem::Platform.local
+-    refute_match 'universal-dotnet-2.0',  Gem::Platform.local
+-    assert_match 'universal-dotnet-4.0',  Gem::Platform.local
+-    assert_match 'dotnet',                Gem::Platform.local
+-    refute_match 'dotnet-2.0',            Gem::Platform.local
+-    assert_match 'dotnet-4.0',            Gem::Platform.local
++    assert_local_match 'universal-dotnet'
++    refute_local_match 'universal-dotnet-2.0'
++    assert_local_match 'universal-dotnet-4.0'
++    assert_local_match 'dotnet'
++    refute_local_match 'dotnet-2.0'
++    assert_local_match 'dotnet-4.0'
+ 
+     util_set_arch 'universal-macruby-1.0'
+-    assert_match 'universal-macruby',      Gem::Platform.local
+-    assert_match 'macruby',                Gem::Platform.local
+-    refute_match 'universal-macruby-0.10', Gem::Platform.local
+-    assert_match 'universal-macruby-1.0',  Gem::Platform.local
++    assert_local_match 'universal-macruby'
++    assert_local_match 'macruby'
++    refute_local_match 'universal-macruby-0.10'
++    assert_local_match 'universal-macruby-1.0'
+ 
+     util_set_arch 'powerpc-darwin'
+-    assert_match 'powerpc-darwin', Gem::Platform.local
++    assert_local_match 'powerpc-darwin'
+ 
+     util_set_arch 'powerpc-darwin7'
+-    assert_match 'powerpc-darwin7.9.0', Gem::Platform.local
++    assert_local_match 'powerpc-darwin7.9.0'
+ 
+     util_set_arch 'powerpc-darwin8'
+-    assert_match 'powerpc-darwin8.10.0', Gem::Platform.local
++    assert_local_match 'powerpc-darwin8.10.0'
+ 
+     util_set_arch 'sparc-solaris2.8'
+-    assert_match 'sparc-solaris2.8-mq5.3', Gem::Platform.local
++    assert_local_match 'sparc-solaris2.8-mq5.3'
+   end
+ 
++  def assert_local_match name
++    assert_match Gem::Platform.local, name
++  end
++
++  def refute_local_match name
++    refute_match Gem::Platform.local, name
++  end
+ end
+ 
+diff --git a/test/rubygems/test_gem_remote_fetcher.rb b/test/rubygems/test_gem_remote_fetcher.rb
+index 6d370cf..30d49f6 100644
+--- a/test/rubygems/test_gem_remote_fetcher.rb
++++ b/test/rubygems/test_gem_remote_fetcher.rb
+@@ -815,11 +815,11 @@ gems:
+   end
+ 
+   def assert_data_from_server(data)
+-    assert_block("Data is not from server") { data =~ /0\.4\.11/ }
++    assert_match(/0\.4\.11/, data, "Data is not from server")
+   end
+ 
+   def assert_data_from_proxy(data)
+-    assert_block("Data is not from proxy") { data =~ /0\.4\.2/ }
++    assert_match(/0\.4\.2/, data, "Data is not from proxy")
+   end
+ 
+   class Conn
+diff --git a/test/rubygems/test_gem_specification.rb b/test/rubygems/test_gem_specification.rb
+index aa648c9..bf8183a 100644
+--- a/test/rubygems/test_gem_specification.rb
++++ b/test/rubygems/test_gem_specification.rb
+@@ -1,3 +1,5 @@
++# coding: UTF-8
++
+ require 'rubygems/test_case'
+ require 'stringio'
+ require 'rubygems/specification'
+@@ -131,7 +133,6 @@ end
+   end
+ 
+   def test_self_from_yaml_syck_default_key_bug
+-    skip 'syck default_key bug is only for ruby 1.8' unless RUBY_VERSION < '1.9'
+     # This is equivalent to (and totally valid) psych 1.0 output and
+     # causes parse errors on syck.
+     yaml = <<-YAML
+@@ -1176,6 +1177,15 @@ end
+     assert_equal @a1, same_spec
+   end
+ 
++  def test_to_yaml_encoding
++    @a1.description = 'π'
++
++    yaml_str = @a1.to_yaml
++    same_spec = Gem::Specification.from_yaml(yaml_str)
++
++    assert_equal @a1.description, same_spec.description
++  end
++
+   def test_to_yaml_fancy
+     @a1.platform = Gem::Platform.local
+     yaml_str = @a1.to_yaml
+diff --git a/test/rubygems/test_gem_version.rb b/test/rubygems/test_gem_version.rb
+index f578063..3c26cf8 100644
+--- a/test/rubygems/test_gem_version.rb
++++ b/test/rubygems/test_gem_version.rb
+@@ -33,6 +33,9 @@ class TestGemVersion < Gem::TestCase
+     assert_same  fake, Gem::Version.create(fake)
+     assert_nil   Gem::Version.create(nil)
+     assert_equal v("5.1"), Gem::Version.create("5.1")
++    
++    ver = '1.1'.freeze
++    assert_equal v('1.1'), Gem::Version.create(ver)
+   end
+ 
+   def test_eql_eh

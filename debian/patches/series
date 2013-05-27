@@ -16,3 +16,4 @@
 hurd-path-max.diff
 130212_funny_falcon_performance_with_gc_backport.patch
 121113-brightbox-version.diff
+20130527-rubygems-1.8.25.patch
