@@ -2,7 +2,7 @@
 
   objspace.c - ObjectSpace extender for MRI.
 
-  $Author: ktsj $
+  $Author: usa $
   created at: Wed Jun 17 07:39:17 2009
 
   NOTE: This extension library is not expected to exist except C Ruby.
@@ -531,7 +531,7 @@ count_nodes(int argc, VALUE *argv, VALUE os)
 		COUNT_NODE(NODE_LAMBDA);
 		COUNT_NODE(NODE_OPTBLOCK);
 #undef COUNT_NODE
-	      default: node = INT2FIX(nodes[i]);
+	      default: node = INT2FIX(i);
 	    }
 	    rb_hash_aset(hash, node, SIZET2NUM(nodes[i]));
 	}

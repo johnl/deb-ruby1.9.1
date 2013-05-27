@@ -668,6 +668,7 @@ rubyw_install_name
 RUBY_INSTALL_NAME
 LIBRUBY_DLDFLAGS
 LIBRUBY_LDSHARED
+EXTDLDFLAGS
 XLDFLAGS
 XCFLAGS
 warnflags
@@ -823,6 +824,7 @@ with_baseruby
 with_gcc
 with_arch
 enable_load_relative
+enable_werror
 enable_largefile
 enable_win95
 enable_pthread
@@ -1484,6 +1486,9 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-load-relative  resolve load paths at run time
+  --disable-werror        don't make warnings into errors even if a compiler
+                          support -Werror feature [[disabled by default unless
+                          development version]]
   --disable-largefile     omit support for large files
   --enable-win95          enable Windows 95 series support
   --enable-pthread        obsolete, and ignored
@@ -2780,6 +2785,7 @@ RUBY_PROGRAM_VERSION=`sed -n 's/^#define RUBY_VERSION "\(.*\)"/\1/p' $srcdir/ver
 
 RUBY_RELEASE_DATE=`sed -n 's/^#define RUBY_RELEASE_DATE "\(.*\)"/\1/p' $srcdir/version.h`
 
+RUBY_PATCHLEVEL=`sed -n 's/^#define RUBY_PATCHLEVEL //p' $srcdir/version.h`
 if test "$MAJOR" = "1"; then
   $as_echo "#define CANONICALIZATION_FOR_MATHN 1" >>confdefs.h
 
@@ -6250,20 +6256,29 @@ $as_echo "$CHDIR" >&6; }
 
 
 
+case $RUBY_PATCHLEVEL in #(
+  -*) :
+    particular_werror_flags=yes ;; #(
+  *) :
+    particular_werror_flags=no ;;
+esac
+# Check whether --enable-werror was given.
+if test "${enable_werror+set}" = set; then :
+  enableval=$enable_werror; particular_werror_flags=$enableval
+fi
+
+
 rb_cv_warnflags="$warnflags"
 if test "$GCC:${warnflags+set}:no" = yes::no; then
-    particular_werror_flags=yes
     for wflag in -Wno-unused-parameter -Wno-parentheses -Wno-long-long \
 		 -Wno-missing-field-initializers \
 		 -Werror=pointer-arith \
 		 -Werror=write-strings \
 		 -Werror=declaration-after-statement \
 		 -Werror=shorten-64-to-32 \
-		 -Werror-implicit-function-declaration \
+		 -Werror=implicit-function-declaration \
 		 ; do
-	if test "$particular_werror_flags" = yes; then
-	    wflag=`echo x$wflag | sed 's/^x-Werror-/-Werror=/;s/^x//'`
-	else
+	if test "$particular_werror_flags" != yes; then
 	    wflag=`echo x$wflag | sed 's/^x-Werror=/-W/;s/^x//'`
 	fi
 	ok=no
@@ -10678,6 +10693,7 @@ esac
 		ac_cv_func_fcntl=yes
 		ac_cv_func_flock=yes
 		rb_cv_large_fd_select=yes
+		ac_cv_type_struct_timeval=yes
 		case " $LIBOBJS " in
   *" langinfo.$ac_objext "* ) ;;
   *) LIBOBJS="$LIBOBJS langinfo.$ac_objext"
@@ -11322,7 +11338,7 @@ for ac_header in limits.h sys/file.h sys/ioctl.h sys/syscall.h\
 		 syscall.h pwd.h grp.h a.out.h utime.h direct.h sys/resource.h \
 		 sys/mkdev.h sys/utime.h xti.h netinet/in_systm.h float.h ieeefp.h \
 		 ucontext.h intrinsics.h langinfo.h locale.h sys/sendfile.h time.h \
-		 net/socket.h sys/socket.h process.h
+		 net/socket.h sys/socket.h process.h atomic.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
@@ -12044,6 +12060,23 @@ if test "x$ac_cv_member_struct_stat_st_ctimensec" = xyes; then :
 
 cat >>confdefs.h <<_ACEOF
 #define HAVE_STRUCT_STAT_ST_CTIMENSEC 1
+_ACEOF
+
+
+fi
+
+
+ac_fn_c_check_type "$LINENO" "struct timeval" "ac_cv_type_struct_timeval" "#ifdef HAVE_TIME_H
+#include <time.h>
+#endif
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+"
+if test "x$ac_cv_type_struct_timeval" = xyes; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_STRUCT_TIMEVAL 1
 _ACEOF
 
 
@@ -16281,7 +16314,7 @@ esac ;; #(
   aix*) :
     	: ${LDSHARED='$(CC)'}
 			LDSHARED="$LDSHARED ${linker_flag}-G"
-			DLDFLAGS='-eInit_$(TARGET)'
+			EXTDLDFLAGS='-e$(TARGET_ENTRY)'
 			XLDFLAGS="${linker_flag}"'-bE:$(ARCHFILE)'" ${linker_flag}-brtl"
 			XLDFLAGS="$XLDFLAGS ${linker_flag}-blibpath:${prefix}/lib:${LIBPATH:-/usr/lib:/lib}"
 			: ${ARCHFILE="ruby.imp"}
@@ -16301,7 +16334,8 @@ esac ;; #(
   powerpc*) :
 
 			    : ${LDSHARED="ld -xms"}
-			    DLDFLAGS="$DLDFLAGS "'-export Init_$(TARGET) -lbe -lroot glue-noinit.a init_term_dyn.o start_dyn.o'
+			    EXTDLDFLAGS='-export $(TARGET_ENTRY)'
+			    DLDFLAGS="$DLDFLAGS -lbe -lroot glue-noinit.a init_term_dyn.o start_dyn.o"
 			    LDFLAGS="$LDFLAGS -L/boot/home/config/lib -lbe -lroot"
 			     ;; #(
   i586*) :
@@ -16320,7 +16354,8 @@ esac
   powerpc*) :
 
 			    : ${LDSHARED="ld -xms"}
-			    DLDFLAGS="$DLDFLAGS "'-export Init_$(TARGET) -lbe -lroot glue-noinit.a init_term_dyn.o start_dyn.o'
+			    EXTDLDFLAGS='-export $(TARGET_ENTRY)'
+			    DLDFLAGS="$DLDFLAGS -lbe -lroot glue-noinit.a init_term_dyn.o start_dyn.o"
                              ;; #(
   i586*) :
 
