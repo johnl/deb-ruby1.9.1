@@ -1,3 +1,10 @@
+ruby1.9.1 (1.9.3.194-9+wheezy1) stable-security; urgency=low
+
+  * debian/patches/CVE-2013-2065.patch: add upstream patch to fix object taint
+    bypassing in libraries to handle native code through dlopen().
+
+ -- Antonio Terceiro <terceiro@debian.org>  Thu, 30 May 2013 23:21:11 -0300
+
 ruby1.9.1 (1.9.3.194-8.1) unstable; urgency=high
 
   * Non-maintainer upload.
