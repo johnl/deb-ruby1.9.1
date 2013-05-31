@@ -2,7 +2,7 @@
 
   time.c -
 
-  $Author: ayumin $
+  $Author: usa $
   created at: Tue Dec 28 14:31:59 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -25,6 +25,10 @@
 
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
+#endif
+
+#if defined(HAVE_SYS_TIME_H)
+#include <sys/time.h>
 #endif
 
 #include "timev.h"
@@ -679,7 +683,9 @@ num_exact(VALUE v)
 
       default:
         if ((tmp = rb_check_funcall(v, rb_intern("to_r"), 0, NULL)) != Qundef) {
-            if (rb_respond_to(v, rb_intern("to_str"))) goto typeerror;
+            /* test to_int method availability to reject non-Numeric
+             * objects such as String, Time, etc which have to_r method. */
+            if (!rb_respond_to(v, rb_intern("to_int"))) goto typeerror;
             v = tmp;
             break;
         }
@@ -1803,10 +1809,11 @@ struct time_object {
     int tm_got;
 };
 
-#define GetTimeval(obj, tobj) \
-    TypedData_Get_Struct((obj), struct time_object, &time_data_type, (tobj))
+#define GetTimeval(obj, tobj) ((tobj) = get_timeval(obj))
+#define GetNewTimeval(obj, tobj) ((tobj) = get_new_timeval(obj))
 
 #define IsTimeval(obj) rb_typeddata_is_kind_of((obj), &time_data_type)
+#define TIME_INIT_P(tobj) ((tobj)->gmt != -1)
 
 #define TIME_UTC_P(tobj) ((tobj)->gmt == 1)
 #define TIME_SET_UTC(tobj) ((tobj)->gmt = 1)
@@ -1869,10 +1876,33 @@ time_s_alloc(VALUE klass)
     struct time_object *tobj;
 
     obj = TypedData_Make_Struct(klass, struct time_object, &time_data_type, tobj);
+    tobj->gmt = -1;
     tobj->tm_got=0;
     tobj->timew = WINT2FIXWV(0);
 
     return obj;
+}
+
+static struct time_object *
+get_timeval(VALUE obj)
+{
+    struct time_object *tobj;
+    TypedData_Get_Struct(obj, struct time_object, &time_data_type, tobj);
+    if (!TIME_INIT_P(tobj)) {
+	rb_raise(rb_eTypeError, "uninitialized %"PRIiVALUE, CLASS_OF(obj));
+    }
+    return tobj;
+}
+
+static struct time_object *
+get_new_timeval(VALUE obj)
+{
+    struct time_object *tobj;
+    TypedData_Get_Struct(obj, struct time_object, &time_data_type, tobj);
+    if (TIME_INIT_P(tobj)) {
+	rb_raise(rb_eTypeError, "already initialized %"PRIiVALUE, CLASS_OF(obj));
+    }
+    return tobj;
 }
 
 static void
@@ -1941,7 +1971,8 @@ time_init_0(VALUE time)
     struct timespec ts;
 
     time_modify(time);
-    GetTimeval(time, tobj);
+    GetNewTimeval(time, tobj);
+    tobj->gmt = 0;
     tobj->tm_got=0;
     tobj->timew = WINT2FIXWV(0);
 #ifdef HAVE_CLOCK_GETTIME
@@ -2182,7 +2213,8 @@ time_init_1(int argc, VALUE *argv, VALUE time)
     validate_vtm(&vtm);
 
     time_modify(time);
-    GetTimeval(time, tobj);
+    GetNewTimeval(time, tobj);
+    tobj->gmt = 0;
     tobj->tm_got=0;
     tobj->timew = WINT2FIXWV(0);
 
@@ -2298,7 +2330,8 @@ time_new_timew(VALUE klass, wideval_t timew)
     VALUE time = time_s_alloc(klass);
     struct time_object *tobj;
 
-    GetTimeval(time, tobj);
+    tobj = DATA_PTR(time);	/* skip type check */
+    tobj->gmt = 0;
     tobj->timew = timew;
 
     return time;
@@ -3424,7 +3457,7 @@ time_init_copy(VALUE copy, VALUE time)
     if (copy == time) return copy;
     time_modify(copy);
     GetTimeval(time, tobj);
-    GetTimeval(copy, tcopy);
+    GetNewTimeval(copy, tcopy);
     MEMCPY(tcopy, tobj, struct time_object, 1);
 
     return copy;
@@ -4801,7 +4834,8 @@ end_submicro: ;
         timew = timegmw(&vtm);
     }
 
-    GetTimeval(time, tobj);
+    GetNewTimeval(time, tobj);
+    tobj->gmt = 0;
     tobj->tm_got = 0;
     tobj->timew = timew;
     if (gmt) {

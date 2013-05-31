@@ -468,9 +468,17 @@ vm_collect_local_variables_in_heap(rb_thread_t *th, VALUE *dfp, VALUE ary)
 }
 
 static VALUE vm_make_proc_from_block(rb_thread_t *th, rb_block_t *block);
+static VALUE vm_make_env_object(rb_thread_t * th, rb_control_frame_t *cfp, VALUE *blockprocptr);
 
 VALUE
 rb_vm_make_env_object(rb_thread_t * th, rb_control_frame_t *cfp)
+{
+    VALUE blockprocval;
+    return vm_make_env_object(th, cfp, &blockprocval);
+}
+
+static VALUE
+vm_make_env_object(rb_thread_t *th, rb_control_frame_t *cfp, VALUE *blockprocptr)
 {
     VALUE envval;
     VALUE *lfp;
@@ -489,6 +497,7 @@ rb_vm_make_env_object(rb_thread_t * th, rb_control_frame_t *cfp)
 	rb_proc_t *p;
 	GetProcPtr(blockprocval, p);
 	lfp[0] = GC_GUARDED_PTR(&p->block);
+	*blockprocptr = blockprocval;
     }
 
     envval = vm_make_env_each(th, cfp, cfp->dfp, cfp->lfp);
@@ -559,7 +568,7 @@ rb_vm_make_proc(rb_thread_t *th, const rb_block_t *block, VALUE klass)
 	rb_bug("rb_vm_make_proc: Proc value is already created.");
     }
 
-    envval = rb_vm_make_env_object(th, cfp);
+    envval = vm_make_env_object(th, cfp, &blockprocval);
 
     if (PROCDEBUG) {
 	check_env_value(envval);
@@ -1361,6 +1370,7 @@ vm_exec(rb_thread_t *th)
 			    *th->cfp->sp++ = (GET_THROWOBJ_VAL(err));
 #endif
 			}
+			th->state = 0;
 			th->errinfo = Qnil;
 			goto vm_loop_start;
 		    }
@@ -1415,10 +1425,10 @@ vm_exec(rb_thread_t *th)
 
 	    switch (VM_FRAME_TYPE(th->cfp)) {
 	      case VM_FRAME_MAGIC_METHOD:
-		EXEC_EVENT_HOOK(th, RUBY_EVENT_RETURN, th->cfp->self, 0, 0);
+		EXEC_EVENT_HOOK_AND_POP_FRAME(th, RUBY_EVENT_RETURN, th->cfp->self, 0, 0);
 		break;
 	      case VM_FRAME_MAGIC_CLASS:
-		EXEC_EVENT_HOOK(th, RUBY_EVENT_END, th->cfp->self, 0, 0);
+		EXEC_EVENT_HOOK_AND_POP_FRAME(th, RUBY_EVENT_END, th->cfp->self, 0, 0);
 		break;
 	    }
 

@@ -11,7 +11,7 @@
 # modify this program under the same terms as Ruby itself,
 # Ruby Distribute License or GNU General Public License.
 #
-# $Id: protocol.rb 31860 2011-05-31 08:10:42Z nahi $
+# $Id: protocol.rb 38830 2013-01-15 07:23:48Z usa $
 #++
 #
 # WARNING: This file is going to remove.
@@ -310,7 +310,7 @@ module Net # :nodoc:
 
     def each_crlf_line(src)
       buffer_filling(@wbuf, src) do
-        while line = @wbuf.slice!(/\A.*(?:\n|\r\n|\r(?!\z))/n)
+        while line = @wbuf.slice!(/\A[^\r\n]*(?:\n|\r(?:\n|(?!\z)))/)
           yield line.chomp("\n") + "\r\n"
         end
       end

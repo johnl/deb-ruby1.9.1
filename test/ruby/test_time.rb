@@ -14,6 +14,20 @@ class TestTime < Test::Unit::TestCase
     $VERBOSE = @verbose
   end
 
+  def no_leap_seconds?
+    # 1972-06-30T23:59:60Z is the first leap second.
+    Time.utc(1972, 7, 1, 0, 0, 0) - Time.utc(1972, 6, 30, 23, 59, 59) == 1
+  end
+
+  def get_t2000
+    if no_leap_seconds?
+      # Sat Jan 01 00:00:00 UTC 2000
+      Time.at(946684800).gmtime
+    else
+      Time.utc(2000, 1, 1)
+    end
+  end
+
   def test_new
     assert_equal(Time.utc(2000,2,10), Time.new(2000,2,10, 11,0,0, 3600*11))
     assert_equal(Time.utc(2000,2,10), Time.new(2000,2,9, 13,0,0, -3600*11))
@@ -324,6 +338,7 @@ class TestTime < Test::Unit::TestCase
     end
     assert_raise(ArgumentError) { Time.gm(2000, 1, 1, 0, 0, -(2**31), :foo, :foo) }
     o = Object.new
+    def o.to_int; 0; end
     def o.to_r; nil; end
     assert_raise(TypeError) { Time.gm(2000, 1, 1, 0, 0, o, :foo, :foo) }
     def o.to_r; ""; end
@@ -375,6 +390,15 @@ class TestTime < Test::Unit::TestCase
 
   def test_hash
     assert_kind_of(Integer, T2000.hash)
+  end
+
+  def test_reinitialize
+    bug8099 = '[ruby-core:53436] [Bug #8099]'
+    t2000 = get_t2000
+    assert_raise(TypeError, bug8099) {
+      t2000.send(:initialize, 2013, 03, 14)
+    }
+    assert_equal(get_t2000, t2000, bug8099)
   end
 
   def test_init_copy

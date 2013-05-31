@@ -39,6 +39,7 @@ win32 = /mswin/ =~ arch
 universal = /universal.*darwin/ =~ arch
 v_fast = []
 v_others = []
+v_runtime = {}
 vars = {}
 continued_name = nil
 continued_line = nil
@@ -112,8 +113,15 @@ File.foreach "config.status" do |line|
       end
     end
     if name == "configure_args"
-      val.gsub!(/ +(?!-)/, "=") if win32
+      if win32
+        val.gsub!(/\G(--[-a-z0-9]+)((=\S+)|(?:\s+(?!-)\S+)+)?(\s*)/) {
+          _, opt, list, arg, sep = *$~
+          "#{opt}#{arg || list && list.sub(/^\s+/, '=').tr_s(' ', ',')}#{sep}"
+        }
+      end
       val.gsub!(/--with-out-ext/, "--without-ext")
+    elsif name == "libdir"
+      v_runtime[:libdir] = val[/\$(\(exec_prefix\)|\{exec_prefix\})\/(.*)/, 2]
     end
     val = val.gsub(/\$(?:\$|\{?(\w+)\}?)/) {$1 ? "$(#{$1})" : $&}.dump
     case name
@@ -145,7 +153,7 @@ end
 
 drive = File::PATH_SEPARATOR == ';'
 
-prefix = "/lib/ruby/#{version}/#{arch}"
+prefix = "/#{v_runtime[:libdir] || 'lib'}/ruby/#{version}/#{arch}"
 print "  TOPDIR = File.dirname(__FILE__).chomp!(#{prefix.dump})\n"
 print "  DESTDIR = ", (drive ? "TOPDIR && TOPDIR[/\\A[a-z]:/i] || " : ""), "'' unless defined? DESTDIR\n"
 print <<'ARCH' if universal
