@@ -14,7 +14,7 @@
 # NOTE: You can find Japanese version of this document at:
 # http://www.ruby-lang.org/ja/man/html/net_smtp.html
 #
-# $Id: smtp.rb 31710 2011-05-23 00:21:10Z drbrain $
+# $Id: smtp.rb 40712 2013-05-14 01:33:34Z usa $
 #
 # See Net::SMTP for documentation.
 #
@@ -172,7 +172,7 @@ module Net
   #
   class SMTP
 
-    Revision = %q$Revision: 31710 $.split[1]
+    Revision = %q$Revision: 40712 $.split[1]
 
     # The default SMTP port number, 25.
     def SMTP.default_port
@@ -364,12 +364,12 @@ module Net
 
     # Seconds to wait while attempting to open a connection.
     # If the connection cannot be opened within this time, a
-    # TimeoutError is raised.
+    # TimeoutError is raised. The default value is 30 seconds.
     attr_accessor :open_timeout
 
     # Seconds to wait while reading one block (by one read(2) call).
     # If the read(2) call does not complete within this time, a
-    # TimeoutError is raised.
+    # TimeoutError is raised. The default value is 60 seconds.
     attr_reader :read_timeout
 
     # Set the number of seconds to wait until timing-out a read(2)

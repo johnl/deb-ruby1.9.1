@@ -3,7 +3,7 @@
 
   thread_pthread.c -
 
-  $Author: kosaki $
+  $Author: usa $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -23,6 +23,9 @@
 #include <fcntl.h>
 #elif HAVE_SYS_FCNTL_H
 #include <sys/fcntl.h>
+#endif
+#if defined(HAVE_SYS_TIME_H)
+#include <sys/time.h>
 #endif
 
 static void native_mutex_lock(pthread_mutex_t *lock);
@@ -140,6 +143,7 @@ gvl_init(rb_vm_t *vm)
     vm->gvl.acquired = 0;
     vm->gvl.waiting = 0;
     vm->gvl.need_yield = 0;
+    vm->gvl.wait_yield = 0;
 }
 
 static void

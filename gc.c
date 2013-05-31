@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <setjmp.h>
 #include <sys/types.h>
+#include <assert.h>
 
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
@@ -3055,21 +3056,6 @@ rb_gc_finalize_deferred(void)
     finalize_deferred(&rb_objspace);
 }
 
-static int
-chain_finalized_object(st_data_t key, st_data_t val, st_data_t arg)
-{
-    RVALUE *p = (RVALUE *)key, **final_list = (RVALUE **)arg;
-    if ((p->as.basic.flags & (FL_FINALIZE|FL_MARK)) == FL_FINALIZE) {
-	if (BUILTIN_TYPE(p) != T_ZOMBIE) {
-	    p->as.free.flags = FL_MARK | T_ZOMBIE; /* remain marked */
-	    RDATA(p)->dfree = 0;
-	}
-	p->as.free.next = *final_list;
-	*final_list = p;
-    }
-    return ST_CONTINUE;
-}
-
 struct force_finalize_list {
     VALUE obj;
     VALUE table;
@@ -3101,18 +3087,12 @@ rb_objspace_call_finalizer(rb_objspace_t *objspace)
     RVALUE *final_list = 0;
     size_t i;
 
-    /* run finalizers */
     rest_sweep(objspace);
 
-    do {
-	/* XXX: this loop will make no sense */
-	/* because mark will not be removed */
-	finalize_deferred(objspace);
-	mark_tbl(objspace, finalizer_table);
-	gc_mark_stacked_objects(objspace);
-	st_foreach(finalizer_table, chain_finalized_object,
-		   (st_data_t)&deferred_final_list);
-    } while (deferred_final_list);
+    /* run finalizers */
+    finalize_deferred(objspace);
+    assert(deferred_final_list == 0);
+
     /* force to run finalizer */
     while (finalizer_table->num_entries) {
 	struct force_finalize_list *list = 0;

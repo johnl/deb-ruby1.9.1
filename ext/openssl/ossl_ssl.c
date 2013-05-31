@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_ssl.c 34524 2012-02-09 17:04:41Z emboss $
+ * $Id: ossl_ssl.c 40717 2013-05-14 02:35:39Z usa $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2000-2002  GOTOU Yuuzou <gotoyuzo@notwork.org>
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
@@ -995,7 +995,6 @@ ossl_ssl_shutdown(SSL *ssl)
 static void
 ossl_ssl_free(SSL *ssl)
 {
-    ossl_ssl_shutdown(ssl);
     SSL_free(ssl);
 }
 
@@ -1405,9 +1404,16 @@ ossl_ssl_close(VALUE self)
     SSL *ssl;
 
     Data_Get_Struct(self, SSL, ssl);
-    ossl_ssl_shutdown(ssl);
-    if (RTEST(ossl_ssl_get_sync_close(self)))
-	rb_funcall(ossl_ssl_get_io(self), rb_intern("close"), 0);
+    if (ssl) {
+	VALUE io = ossl_ssl_get_io(self);
+	if (!RTEST(rb_funcall(io, rb_intern("closed?"), 0))) {
+	    ossl_ssl_shutdown(ssl);
+	    SSL_free(ssl);
+	    DATA_PTR(self) = NULL;
+	    if (RTEST(ossl_ssl_get_sync_close(self)))
+		rb_funcall(io, rb_intern("close"), 0);
+	}
+    }
 
     return Qnil;
 }
