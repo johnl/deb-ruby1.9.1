@@ -1,10 +1,10 @@
-ruby1.9.1 (1.9.3.362-1) UNRELEASED; urgency=low
+ruby1.9.1 (1.9.3.429-1) UNRELEASED; urgency=low
 
   [ Antonio Terceiro ]
+  * New upstream release
   * move logic to skip DRB tests inside debian/run-test-suites.bash
 
   [ James Healy ]
-  * New upstream release: 1.9.3p362
   * debian/libruby1.9.1.symbols: update with new symbols added in
     1.9.3p327 upstream release.
 
