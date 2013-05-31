@@ -2,7 +2,7 @@
 
   vm.c -
 
-  $Author: naruse $
+  $Author: usa $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -424,8 +424,6 @@ vm_make_env_each(rb_thread_t * const th, rb_control_frame_t * const cfp,
     if (!RUBY_VM_NORMAL_ISEQ_P(cfp->iseq)) {
 	/* TODO */
 	env->block.iseq = 0;
-    } else {
-	rb_vm_rewrite_dfp_in_errinfo(th, cfp);
     }
     return envval;
 }
@@ -469,17 +467,32 @@ vm_collect_local_variables_in_heap(rb_thread_t *th, VALUE *dfp, VALUE ary)
     }
 }
 
+static VALUE vm_make_proc_from_block(rb_thread_t *th, rb_block_t *block);
+
 VALUE
 rb_vm_make_env_object(rb_thread_t * th, rb_control_frame_t *cfp)
 {
     VALUE envval;
+    VALUE *lfp;
+    rb_block_t *blockptr;
 
     if (VM_FRAME_TYPE(cfp) == VM_FRAME_MAGIC_FINISH) {
 	/* for method_missing */
 	cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(cfp);
     }
 
+    lfp = cfp->lfp;
+    blockptr = GC_GUARDED_PTR_REF(lfp[0]);
+
+    if (blockptr && !(lfp[0] & 0x02)) {
+	VALUE blockprocval = vm_make_proc_from_block(th, blockptr);
+	rb_proc_t *p;
+	GetProcPtr(blockprocval, p);
+	lfp[0] = GC_GUARDED_PTR(&p->block);
+    }
+
     envval = vm_make_env_each(th, cfp, cfp->dfp, cfp->lfp);
+    rb_vm_rewrite_dfp_in_errinfo(th);
 
     if (PROCDEBUG) {
 	check_env_value(envval);
@@ -489,24 +502,28 @@ rb_vm_make_env_object(rb_thread_t * th, rb_control_frame_t *cfp)
 }
 
 void
-rb_vm_rewrite_dfp_in_errinfo(rb_thread_t *th, rb_control_frame_t *cfp)
+rb_vm_rewrite_dfp_in_errinfo(rb_thread_t *th)
 {
-    /* rewrite dfp in errinfo to point to heap */
-    if (RUBY_VM_NORMAL_ISEQ_P(cfp->iseq) &&
-	(cfp->iseq->type == ISEQ_TYPE_RESCUE ||
-	 cfp->iseq->type == ISEQ_TYPE_ENSURE)) {
-	VALUE errinfo = cfp->dfp[-2]; /* #$! */
-	if (RB_TYPE_P(errinfo, T_NODE)) {
-	    VALUE *escape_dfp = GET_THROWOBJ_CATCH_POINT(errinfo);
-	    if (! ENV_IN_HEAP_P(th, escape_dfp)) {
-		VALUE dfpval = *escape_dfp;
-		if (CLASS_OF(dfpval) == rb_cEnv) {
-		    rb_env_t *dfpenv;
-		    GetEnvPtr(dfpval, dfpenv);
-		    SET_THROWOBJ_CATCH_POINT(errinfo, (VALUE)(dfpenv->env + dfpenv->local_size));
+    rb_control_frame_t *cfp = th->cfp;
+    while (!RUBY_VM_CONTROL_FRAME_STACK_OVERFLOW_P(th, cfp)) {
+	/* rewrite dfp in errinfo to point to heap */
+	if (RUBY_VM_NORMAL_ISEQ_P(cfp->iseq) &&
+	    (cfp->iseq->type == ISEQ_TYPE_RESCUE ||
+	     cfp->iseq->type == ISEQ_TYPE_ENSURE)) {
+	    VALUE errinfo = cfp->dfp[-2]; /* #$! */
+	    if (RB_TYPE_P(errinfo, T_NODE)) {
+		VALUE *escape_dfp = GET_THROWOBJ_CATCH_POINT(errinfo);
+		if (! ENV_IN_HEAP_P(th, escape_dfp)) {
+		    VALUE dfpval = *escape_dfp;
+		    if (CLASS_OF(dfpval) == rb_cEnv) {
+			rb_env_t *dfpenv;
+			GetEnvPtr(dfpval, dfpenv);
+			SET_THROWOBJ_CATCH_POINT(errinfo, (VALUE)(dfpenv->env + dfpenv->local_size));
+		    }
 		}
 	    }
 	}
+	cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(cfp);
     }
 }
 
@@ -540,16 +557,6 @@ rb_vm_make_proc(rb_thread_t *th, const rb_block_t *block, VALUE klass)
 
     if (block->proc) {
 	rb_bug("rb_vm_make_proc: Proc value is already created.");
-    }
-
-    if (GC_GUARDED_PTR_REF(cfp->lfp[0])) {
-	rb_proc_t *p;
-
-	blockprocval = vm_make_proc_from_block(
-	    th, (rb_block_t *)GC_GUARDED_PTR_REF(*cfp->lfp));
-
-	GetProcPtr(blockprocval, p);
-	*cfp->lfp = GC_GUARDED_PTR(&p->block);
     }
 
     envval = rb_vm_make_env_object(th, cfp);
@@ -996,7 +1003,7 @@ rb_vm_jump_tag_but_local_jump(int state, VALUE val)
 {
     if (val != Qnil) {
 	VALUE exc = rb_vm_make_jump_tag_but_local_jump(state, val);
-	rb_exc_raise(exc);
+	if (!NIL_P(exc)) rb_exc_raise(exc);
     }
     JUMP_TAG(state);
 }

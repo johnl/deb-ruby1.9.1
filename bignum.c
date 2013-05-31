@@ -2,7 +2,7 @@
 
   bignum.c -
 
-  $Author: mrkn $
+  $Author: usa $
   created at: Fri Jun 10 00:48:55 JST 1994
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -13,6 +13,9 @@
 #include "ruby/util.h"
 #include "internal.h"
 
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
+#endif
 #include <math.h>
 #include <float.h>
 #include <ctype.h>
@@ -1625,7 +1628,7 @@ rb_big_eq(VALUE x, VALUE y)
  *     68719476736.eql?(68719476736.0)   #=> false
  */
 
-static VALUE
+VALUE
 rb_big_eql(VALUE x, VALUE y)
 {
     if (TYPE(y) != T_BIGNUM) return Qfalse;
@@ -2416,7 +2419,7 @@ bigmul1_toom3(VALUE x, VALUE y)
     z2 = bigtrunc(bigadd(u2, u0, 0));
 
     /* z3 <- (z2 - z3) / 2 + 2 * z(inf) == (z2 - z3) / 2 + 2 * u4 */
-    z3 = bigadd(z2, z3, 0);
+    z3 = bigtrunc(bigadd(z2, z3, 0));
     bigrsh_bang(BDIGITS(z3), RBIGNUM_LEN(z3), 1);
     t = big_lshift(u4, 1); /* TODO: combining with next addition */
     z3 = bigtrunc(bigadd(z3, t, 1));
@@ -3079,10 +3082,11 @@ rb_big_pow(VALUE x, VALUE y)
 	else {
 	    VALUE z = 0;
 	    SIGNED_VALUE mask;
-	    const long BIGLEN_LIMIT = 1024*1024 / SIZEOF_BDIGITS;
+	    const long xlen = RBIGNUM_LEN(x) - 1;
+	    const long xbits = ffs(RBIGNUM_DIGITS(x)[xlen]) + SIZEOF_BDIGITS*BITSPERDIG*xlen;
+	    const long BIGLEN_LIMIT = BITSPERDIG*1024*1024;
 
-	    if ((RBIGNUM_LEN(x) > BIGLEN_LIMIT) ||
-		(RBIGNUM_LEN(x) > BIGLEN_LIMIT / yy)) {
+	    if ((xbits > BIGLEN_LIMIT) || (xbits * yy > BIGLEN_LIMIT)) {
 		rb_warn("in a**b, b may be too big");
 		d = (double)yy;
 		break;

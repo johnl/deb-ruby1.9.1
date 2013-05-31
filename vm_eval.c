@@ -2,7 +2,7 @@
 
   vm_eval.c -
 
-  $Author: nobu $
+  $Author: usa $
   created at: Sat May 24 16:02:32 JST 2008
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -1212,7 +1212,7 @@ rb_eval_cmd(VALUE cmd, VALUE arg, int level)
     POP_TAG();
 
     rb_set_safe_level_force(safe);
-    if (state) rb_vm_jump_tag_but_local_jump(state, val);
+    if (state) JUMP_TAG(state);
     return val;
 }
 

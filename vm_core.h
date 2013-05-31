@@ -2,7 +2,7 @@
 
   vm_core.h -
 
-  $Author: marcandre $
+  $Author: usa $
   created at: 04/01/01 19:41:38 JST
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -22,7 +22,7 @@
 #include "vm_opts.h"
 #include "id.h"
 #include "method.h"
-#include "atomic.h"
+#include "ruby_atomic.h"
 
 #if   defined(_WIN32)
 #include "thread_win32.h"
@@ -651,7 +651,7 @@ VALUE rb_vm_invoke_proc(rb_thread_t *th, rb_proc_t *proc, VALUE self,
 			int argc, const VALUE *argv, const rb_block_t *blockptr);
 VALUE rb_vm_make_proc(rb_thread_t *th, const rb_block_t *block, VALUE klass);
 VALUE rb_vm_make_env_object(rb_thread_t *th, rb_control_frame_t *cfp);
-void rb_vm_rewrite_dfp_in_errinfo(rb_thread_t *th, rb_control_frame_t *cfp);
+void rb_vm_rewrite_dfp_in_errinfo(rb_thread_t *th);
 void rb_vm_inc_const_missing_count(void);
 void rb_vm_gvl_destroy(rb_vm_t *vm);
 VALUE rb_vm_call(rb_thread_t *th, VALUE recv, VALUE id, int argc,

@@ -409,6 +409,8 @@ dnl }
 dnl compiler section {
 
 AC_DEFUN([RUBY_WERROR_FLAG], [dnl
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $rb_cv_warnflags"
 if test "${ac_c_werror_flag+set}"; then
   rb_c_werror_flag="$ac_c_werror_flag"
 else
@@ -416,6 +418,8 @@ else
 fi
 ac_c_werror_flag=yes
 $1
+CFLAGS="$save_CFLAGS"
+save_CFLAGS=
 if test "${rb_c_werror_flag+set}"; then
   ac_c_werror_flag="$rb_c_werror_flag"
 else
@@ -423,18 +427,15 @@ else
 fi])
 
 AC_DEFUN(RUBY_TRY_CFLAGS, [
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="[$]CFLAGS $1"
     AC_MSG_CHECKING([whether ]$1[ is accepted])
     RUBY_WERROR_FLAG([
+    CFLAGS="[$]CFLAGS $1"
     AC_TRY_COMPILE([$4], [$5],
 	[$2
 	AC_MSG_RESULT(yes)],
 	[$3
 	AC_MSG_RESULT(no)])
     ])
-    CFLAGS="$save_CFLAGS"
-    save_CFLAGS=
 ])
 
 AC_DEFUN(RUBY_TRY_LDFLAGS, [
@@ -478,7 +479,7 @@ if test "$GCC:${warnflags+set}:no" = yes::no; then
 	    ])
 	])
     done
-    AS_CASE([" $warnflags "],[*" -Wno-missing-field-initializers "*], [wflag=-Wextra],
+    AS_CASE([" $warnflags "],[*" -Wno-missing-field-initializers "*], [wflag="-Wall -Wextra"],
                              [wflag=-Wall])
     RUBY_TRY_CFLAGS($wflag, [warnflags="$wflag${warnflags+ $warnflags}"])
     # Disable warnflags while conftest. -Werror=* flags might make bad OS capability guess.
@@ -495,7 +496,15 @@ if test "$GCC" = ""; then
     AS_CASE(["$target_os"],[aix*],[warnflags="-qinfo=por"])
 fi
 if test "$GCC" = yes; then
-    RUBY_TRY_CFLAGS(-fvisibility=hidden, [RUBY_APPEND_OPTION(XCFLAGS, -fvisibility=hidden)])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+	@%:@if !(defined __GNUC__ && __GNUC__ >= 4)
+	@%:@error not GCC 4 or later
+	>>>not GCC 4 or later<<<
+	@%:@endif])],
+	[visibility_option=yes], [visibility_option=no])
+    if test "$visibility_option" = yes; then
+	RUBY_TRY_CFLAGS(-fvisibility=hidden, [visibility_option=yes], [visibility_option=no])
+    fi
     AC_SUBST(WERRORFLAG, "-Werror")
     if test "$visibility_option" = yes; then
 	RUBY_APPEND_OPTION(XCFLAGS, -fvisibility=hidden)
@@ -1059,7 +1068,7 @@ main()
 		AC_CHECK_FUNCS(cygwin_conv_path)
 		AC_LIBOBJ([langinfo])
 		],
-[mingw*], [	LIBS="-lshell32 -lws2_32 -limagehlp $LIBS"
+[mingw*], [	LIBS="-lshell32 -lws2_32 -limagehlp -lshlwapi $LIBS"
 		ac_cv_header_a_out_h=no
 		ac_cv_header_pwd_h=no
 		ac_cv_header_utime_h=no
@@ -1258,63 +1267,6 @@ done])
 if test $rb_cv_stack_end_address != no; then
   AC_DEFINE_UNQUOTED(STACK_END_ADDRESS, $rb_cv_stack_end_address)
 fi
-
-AC_CACHE_CHECK(for gc_mark and gc_children stack frame approximate size(word), rb_cv_gc_mark_stackframe_word,
-[save_CFLAGS="$CFLAGS"
-CFLAGS="-O0"
-AC_TRY_RUN([
-int word;
-char *stack_start;
-
-void
-set_stackframe_word()
-{
-    int dumy = 42;
-    int diff;
-
-    if (stack_start < (char *)&dumy) {
-        diff = (int)((char *)&dumy - stack_start);
-    }
-    else {
-        diff = (int)(stack_start - (char *)&dumy);
-    }
-    word = (diff/sizeof(void *));
-    if ((diff % sizeof(void *)) != 0) {
-        word++;
-    }
-}
-
-void
-gc_mark_children(void *p1, void *p2, int lev)
-{
-    void *obj = p2;
-
-    set_stackframe_word(p1,p2,lev);
-}
-
-void
-gc_mark(void *p1, void *p2, int lev)
-{
-    void *obj = p2;
-
-    gc_mark_children(p1,p2,lev++);
-}
-
-int
-main() {
-  int dumy = 42;
-
-  stack_start = (char *)&dumy;
-  gc_mark(0, 0, 255);
-  return word;
-}
-],
-  [rb_cv_gc_mark_stackframe_word="$?"],
-  [rb_cv_gc_mark_stackframe_word="$?"],
-  [rb_cv_gc_mark_stackframe_word="30"])
-CFLAGS="$save_CFLAGS"])
-AC_DEFINE_UNQUOTED(GC_MARK_STACKFRAME_WORD, $rb_cv_gc_mark_stackframe_word)
-
 
 dnl Checks for library functions.
 AC_TYPE_GETGROUPS
@@ -2354,6 +2306,13 @@ AS_CASE("$enable_shared", [yes], [
   if test "$rb_cv_binary_elf" = yes; then
     SOLIBS='$(LIBS)'
   fi
+  # libdir can be overridden in config.site file (on OpenSUSE at least).
+  libdir_basename=lib
+  if test "$bindir" = '${exec_prefix}/bin'; then
+    AS_CASE(["$libdir"], ['${exec_prefix}/'*], [libdir_basename=`basename "$libdir"`])
+  fi
+  AC_DEFINE_UNQUOTED(LIBDIR_BASENAME, ["${libdir_basename}"])
+
   AS_CASE(["$target_os"],
     [sunos4*], [
 	LIBRUBY_ALIASES='lib$(RUBY_SO_NAME).so.$(MAJOR).$(MINOR) lib$(RUBY_SO_NAME).so'
@@ -2362,7 +2321,7 @@ AS_CASE("$enable_shared", [yes], [
 	LIBRUBY_DLDFLAGS='-Wl,-soname,lib$(RUBY_SO_NAME).so.$(MAJOR).$(MINOR)'
 	LIBRUBY_ALIASES='lib$(RUBY_SO_NAME).so.$(MAJOR).$(MINOR) lib$(RUBY_SO_NAME).so'
 	if test "$load_relative" = yes; then
-	    LIBRUBY_RPATHFLAGS="'-Wl,-rpath,\$\${ORIGIN}/../lib'"
+	    LIBRUBY_RPATHFLAGS="'-Wl,-rpath,\$\${ORIGIN}/../${libdir_basename}'"
 	    LIBRUBY_RELATIVE=yes
 	fi
 	],
@@ -2419,7 +2378,7 @@ AS_CASE("$enable_shared", [yes], [
 	RUBY_SO_NAME="$RUBY_SO_NAME"'.$(MAJOR).$(MINOR).$(TEENY)'
 	LIBRUBY_LDSHARED='$(CC) -dynamiclib'
 	if test "$load_relative" = yes; then
-	    libprefix='@executable_path/../lib'
+	    libprefix="@executable_path/../${libdir_basename}"
 	    LIBRUBY_RELATIVE=yes
 	fi
 	LIBRUBY_DLDFLAGS="$LIBRUBY_DLDFLAGS "'-install_name '${libprefix}'/$(LIBRUBY_SO)'
@@ -2578,11 +2537,13 @@ AS_CASE(["$target_os"],
 	    fi
 	    EXPORT_PREFIX=' '
 	    DLDFLAGS="${DLDFLAGS}"' $(DEFFILE)'
-	    AC_LIBOBJ([win32])
+	    AC_LIBOBJ([win32/win32])
+	    AC_LIBOBJ([win32/file])
 	    COMMON_LIBS=m
 #	    COMMON_MACROS="WIN32_LEAN_AND_MEAN="
 	    COMMON_HEADERS="winsock2.h windows.h"
 	    THREAD_MODEL=win32
+	    PLATFORM_DIR=win32
 	    ])
 	LIBRUBY_ALIASES=''
 	FIRSTMAKEFILE=GNUmakefile:cygwin/GNUmakefile.in
@@ -2735,6 +2696,7 @@ AC_SUBST(EXPORT_PREFIX)
 AC_SUBST(SYMBOL_PREFIX)
 AC_SUBST(MINIOBJS)
 AC_SUBST(THREAD_MODEL)
+AC_SUBST(PLATFORM_DIR)
 
 MAKEFILES="Makefile `echo $FIRSTMAKEFILE | sed 's/:.*//'`"
 MAKEFILES="`echo $MAKEFILES`"
@@ -2937,7 +2899,20 @@ AC_SUBST(sitehdrdir)dnl
 AC_SUBST(vendorhdrdir)dnl
 
 AC_ARG_WITH(opt-dir,
-	AS_HELP_STRING([--with-opt-dir=DIR], [add optional headers and libraries DIR]))
+	AS_HELP_STRING([--with-opt-dir=DIR-LIST],
+		       [add optional headers and libraries directories separated by $PATH_SEPARATOR]),
+	[
+		CPPFLAGS="$CPPFLAGS `echo \"$PATH_SEPARATOR$withval\" | sed \"s|$PATH_SEPARATOR\([[^$PATH_SEPARATOR]*]\)| -I\1/include|g;s/^ //\"`"
+		set -x
+		val=`IFS="$PATH_SEPARATOR"
+		    for dir in $withval; do
+			echo x ${LIBPATHFLAG} ${RPATHFLAG} |
+			sed -E 's/^x *//;s'"${PATH_SEPARATOR}"'%1\\$-s|%s'"${IFS}${dir}/lib${IFS}g"
+		    done | tr '\012' ' '`
+		set +x
+		LDFLAGS="$LDFLAGS${LDFLAGS:+ }$val"
+		DLDFLAGS="$DLDFLAGS${DLDFLAGS:+ }$val"
+	])
 
 AC_ARG_WITH(mantype,
 	AS_HELP_STRING([--with-mantype=TYPE], [specify man page type; TYPE is one of man and doc]),
@@ -3037,7 +3012,10 @@ AC_CONFIG_FILES(Makefile, [{
     }],
 [EXEEXT='$EXEEXT' gnumake='$gnumake'])
 
-ruby_pc="${RUBY_BASE_NAME}-${MAJOR}.${MINOR}.pc"
+AC_ARG_WITH([ruby-pc],
+	    AC_HELP_STRING([pc file basename]),
+	    [ruby_pc="$withval"],
+	    [ruby_pc="${RUBY_BASE_NAME}-${MAJOR}.${MINOR}.pc"])
 AC_SUBST(ruby_pc)
 AC_SUBST(exec, [exec])
 

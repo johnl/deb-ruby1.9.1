@@ -79,7 +79,7 @@ setlocal
  */
 DEFINE_INSN
 getspecial
-(VALUE key, rb_num_t type)
+(rb_num_t key, rb_num_t type)
 ()
 (VALUE val)
 {
@@ -93,7 +93,7 @@ getspecial
  */
 DEFINE_INSN
 setspecial
-(VALUE key)
+(rb_num_t key)
 (VALUE obj)
 ()
 {
@@ -532,6 +532,9 @@ splatarray
     VALUE tmp = rb_check_convert_type(ary, T_ARRAY, "Array", "to_a");
     if (NIL_P(tmp)) {
 	tmp = rb_ary_new3(1, ary);
+    }
+    else if (RTEST(flag)) {
+	tmp = rb_ary_dup(tmp);
     }
     obj = tmp;
 }

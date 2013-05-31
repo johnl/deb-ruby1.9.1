@@ -2,7 +2,7 @@
 
   thread.c -
 
-  $Author: kosaki $
+  $Author: usa $
 
   Copyright (C) 2004-2007 Koichi Sasada
 
@@ -3532,6 +3532,13 @@ lock_interrupt(void *ptr)
 }
 
 /*
+ * At maximum, only one thread can use cond_timedwait and watch deadlock
+ * periodically. Multiple polling thread (i.e. concurrent deadlock check)
+ * introduces new race conditions. [Bug #6278] [ruby-core:44275]
+ */
+rb_thread_t *patrol_thread = NULL;
+
+/*
  * call-seq:
  *    mutex.lock  -> self
  *
@@ -3568,13 +3575,19 @@ rb_mutex_lock(VALUE self)
 	     * vm->sleepr is unstable value. we have to avoid both deadlock
 	     * and busy loop.
 	     */
-	    if (vm_living_thread_num(th->vm) == th->vm->sleeper) {
+	    if ((vm_living_thread_num(th->vm) == th->vm->sleeper) &&
+		!patrol_thread) {
 		timeout_ms = 100;
+		patrol_thread = th;
 	    }
+
 	    GVL_UNLOCK_BEGIN();
 	    interrupted = lock_func(th, mutex, timeout_ms);
 	    native_mutex_unlock(&mutex->lock);
 	    GVL_UNLOCK_END();
+
+	    if (patrol_thread == th)
+		patrol_thread = NULL;
 
 	    reset_unblock_function(th, &oldubf);
 
@@ -3842,17 +3855,24 @@ recursive_list_access(void)
 static VALUE
 recursive_check(VALUE list, VALUE obj_id, VALUE paired_obj_id)
 {
+#if SIZEOF_LONG == SIZEOF_VOIDP
+  #define OBJ_ID_EQL(obj_id, other) ((obj_id) == (other))
+#elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
+  #define OBJ_ID_EQL(obj_id, other) (RB_TYPE_P((obj_id), T_BIGNUM) ? \
+    rb_big_eql((obj_id), (other)) : ((obj_id) == (other)))
+#endif
+
     VALUE pair_list = rb_hash_lookup2(list, obj_id, Qundef);
     if (pair_list == Qundef)
 	return Qfalse;
     if (paired_obj_id) {
 	if (TYPE(pair_list) != T_HASH) {
-	if (pair_list != paired_obj_id)
-	    return Qfalse;
+	    if (!OBJ_ID_EQL(paired_obj_id, pair_list))
+		return Qfalse;
 	}
 	else {
-	if (NIL_P(rb_hash_lookup(pair_list, paired_obj_id)))
-	    return Qfalse;
+	    if (NIL_P(rb_hash_lookup(pair_list, paired_obj_id)))
+		return Qfalse;
 	}
     }
     return Qtrue;
@@ -4125,16 +4145,25 @@ set_threads_event_flags(int flag)
 static inline int
 exec_event_hooks(const rb_event_hook_t *hook, rb_event_flag_t flag, VALUE self, ID id, VALUE klass)
 {
-    int removed = 0;
+    volatile int removed = 0;
+    const rb_event_hook_t *volatile hnext = 0;
+    int state;
+
+    PUSH_TAG();
+    if ((state = EXEC_TAG()) != 0) {
+	hook = hnext;
+    }
     for (; hook; hook = hook->next) {
 	if (hook->flag & RUBY_EVENT_REMOVED) {
 	    removed++;
 	    continue;
 	}
 	if (flag & hook->flag) {
+	    hnext = hook->next;
 	    (*hook->func)(flag, hook->data, self, id, klass);
 	}
     }
+    POP_TAG();
     return removed;
 }
 
@@ -4780,6 +4809,7 @@ rb_check_deadlock(rb_vm_t *vm)
 
     if (vm_living_thread_num(vm) > vm->sleeper) return;
     if (vm_living_thread_num(vm) < vm->sleeper) rb_bug("sleeper must not be more than vm_living_thread_num(vm)");
+    if (patrol_thread && patrol_thread != GET_THREAD()) return;
 
     st_foreach(vm->living_threads, check_deadlock_i, (st_data_t)&found);
 

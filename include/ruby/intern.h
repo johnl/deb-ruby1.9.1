@@ -2,7 +2,7 @@
 
   intern.h -
 
-  $Author: nobu $
+  $Author: usa $
   created at: Thu Jun 10 14:22:17 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -122,6 +122,7 @@ VALUE rb_dbl2big(double);
 double rb_big2dbl(VALUE);
 VALUE rb_big_cmp(VALUE, VALUE);
 VALUE rb_big_eq(VALUE, VALUE);
+VALUE rb_big_eql(VALUE, VALUE);
 VALUE rb_big_plus(VALUE, VALUE);
 VALUE rb_big_minus(VALUE, VALUE);
 VALUE rb_big_mul(VALUE, VALUE);
@@ -402,15 +403,9 @@ int rb_find_file_ext_safe(VALUE*, const char* const*, int);
 VALUE rb_find_file_safe(VALUE, int);
 int rb_find_file_ext(VALUE*, const char* const*);
 VALUE rb_find_file(VALUE);
-char *rb_path_next(const char *);
-char *rb_path_skip_prefix(const char *);
-char *rb_path_last_separator(const char *);
-char *rb_path_end(const char *);
 VALUE rb_file_directory_p(VALUE,VALUE);
 VALUE rb_str_encode_ospath(VALUE);
 int rb_is_absolute_path(const char *);
-const char *ruby_find_basename(const char *name, long *baselen, long *alllen);
-const char *ruby_find_extname(const char *name, long *len);
 /* gc.c */
 void ruby_set_stack_size(size_t);
 NORETURN(void rb_memerror(void));
@@ -492,7 +487,7 @@ VALUE rb_marshal_dump(VALUE, VALUE);
 VALUE rb_marshal_load(VALUE);
 void rb_marshal_define_compat(VALUE newclass, VALUE oldclass, VALUE (*dumper)(VALUE), VALUE (*loader)(VALUE, VALUE));
 /* numeric.c */
-void rb_num_zerodiv(void);
+NORETURN(void rb_num_zerodiv(void));
 #define RB_NUM_COERCE_FUNCS_NEED_OPID 1
 VALUE rb_num_coerce_bin(VALUE, VALUE, ID);
 VALUE rb_num_coerce_cmp(VALUE, VALUE, ID);
