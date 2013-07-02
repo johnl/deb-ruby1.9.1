@@ -406,7 +406,7 @@ class TestMethod < Test::Unit::TestCase
     obj = a.new
     assert_equal([:a], obj.public_methods(false), bug)
     obj.extend(m)
-    assert_equal([:m1, :a], obj.public_methods(false), bug)
+    assert_equal([:a, :m1], obj.public_methods(false).sort, bug)
   end
 
   def test_visibility
