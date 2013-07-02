@@ -24,18 +24,19 @@ struct rb_deprecated_classext_struct {
 };
 
 struct rb_classext_struct {
-    VALUE super;
-    struct st_table *iv_tbl;
-    struct st_table *const_tbl;
+    sa_table m_tbl;
+    sa_table iv_tbl;
+    sa_table const_tbl;
+    sa_table iv_index_tbl;
 };
 
 #undef RCLASS_SUPER
 #define RCLASS_EXT(c) (RCLASS(c)->ptr)
-#define RCLASS_SUPER(c) (RCLASS_EXT(c)->super)
-#define RCLASS_IV_TBL(c) (RCLASS_EXT(c)->iv_tbl)
-#define RCLASS_CONST_TBL(c) (RCLASS_EXT(c)->const_tbl)
-#define RCLASS_M_TBL(c) (RCLASS(c)->m_tbl)
-#define RCLASS_IV_INDEX_TBL(c) (RCLASS(c)->iv_index_tbl)
+#define RCLASS_SUPER(c) (RCLASS(c)->super)
+#define RCLASS_IV_TBL(c) (&RCLASS_EXT(c)->iv_tbl)
+#define RCLASS_CONST_TBL(c) (&RCLASS_EXT(c)->const_tbl)
+#define RCLASS_M_TBL(c) (&RCLASS_EXT(c)->m_tbl)
+#define RCLASS_IV_INDEX_TBL(c) (&RCLASS_EXT(c)->iv_index_tbl)
 
 struct vtm; /* defined by timev.h */
 
@@ -94,6 +95,8 @@ VALUE rb_home_dir(const char *user, VALUE result);
 VALUE rb_realpath_internal(VALUE basedir, VALUE path, int strict);
 VALUE rb_file_expand_path_fast(VALUE, VALUE);
 VALUE rb_file_expand_path_internal(VALUE, VALUE, int, int, VALUE);
+VALUE rb_get_path_check_to_string(VALUE, int);
+VALUE rb_get_path_check_convert(VALUE, VALUE, int);
 void Init_File(void);
 
 #ifdef _WIN32
@@ -119,6 +122,7 @@ VALUE rb_iseq_clone(VALUE iseqval, VALUE newcbase);
 
 /* load.c */
 VALUE rb_get_load_path(void);
+VALUE rb_get_expanded_load_path(void);
 
 /* math.c */
 VALUE rb_math_atan2(VALUE, VALUE);
