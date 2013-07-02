@@ -1,3 +1,11 @@
+ruby1.9.1 (1:1.9.3.429-1bbox1~raring1) raring; urgency=high
+
+  * New upstream release, 1.9.3-p429 with security fixes
+  * Fixes CVE-2013-2065
+  * Upgrades rubygems from 1.8.23 to 1.8.25
+
+ -- John Leach <john@brightbox.co.uk>  Mon, 27 May 2013 13:35:31 +0100
+
 ruby1.9.1 (1:1.9.3.392-1bbox1) precise; urgency=high
 
   * New upstream release, 1.9.3-p392 with security fixes
