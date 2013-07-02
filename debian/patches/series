@@ -14,6 +14,10 @@
 110829-freebsd_assert_normal_exit.patch
 110829-hurd_dirent_usage.patch
 hurd-path-max.diff
-130212_funny_falcon_performance_with_gc_backport.patch
+20130602_funnyfalcon_gc_backport.patch
+09-faster-loading.patch
+10-falcon-st-opt.patch
+11-falcon-sparse-array.patch
+12-falcon-array-queue.patch
 121113-brightbox-version.diff
 20130527-rubygems-1.8.25.patch
