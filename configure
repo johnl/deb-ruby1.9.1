@@ -712,6 +712,7 @@ ARCH_FLAG
 DLDFLAGS
 ALLOCA
 LIBOBJS
+POSTLINK
 WERRORFLAG
 CHDIR
 RMALL
@@ -10320,6 +10321,8 @@ case "$target_os" in #(
   *) :
     ac_cv_func_daemon=no ;;
 esac
+
+POSTLINK=:
 
 case "$target_os" in #(
   solaris*) :

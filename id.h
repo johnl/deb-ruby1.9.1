@@ -3,7 +3,7 @@
 
   id.h -
 
-  $Author: akr $
+  $Author: usa $
   created at: Sun Oct 19 21:12:51 2008
 
   Copyright (C) 2007 Koichi Sasada
@@ -104,6 +104,7 @@ enum ruby_method_ids {
     tGets,
     tSucc,
     tEach,
+    tProc,
     tLambda,
     tSend,
     t__send__,
@@ -126,6 +127,7 @@ enum ruby_method_ids {
     TOKEN2ID(Gets),
     TOKEN2ID(Succ),
     TOKEN2ID(Each),
+    TOKEN2ID(Proc),
     TOKEN2ID(Lambda),
     TOKEN2ID(Send),
     TOKEN2ID(__send__),

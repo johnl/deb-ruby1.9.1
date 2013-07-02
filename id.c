@@ -2,7 +2,7 @@
 
   id.c -
 
-  $Author: nobu $
+  $Author: usa $
   created at: Thu Jul 12 04:37:51 2007
 
   Copyright (C) 2004-2007 Koichi Sasada
@@ -35,6 +35,7 @@ Init_id(void)
     REGISTER_SYMID(idEach, "each");
     REGISTER_SYMID(idLength, "length");
     REGISTER_SYMID(idSize, "size");
+    REGISTER_SYMID(idProc, "proc");
     REGISTER_SYMID(idLambda, "lambda");
     REGISTER_SYMID(idIntern, "intern");
     REGISTER_SYMID(idGets, "gets");
