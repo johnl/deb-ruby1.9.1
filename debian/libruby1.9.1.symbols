@@ -176,7 +176,6 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_ary_delete@Base 1.9.2.0
  rb_ary_delete_at@Base 1.9.2.0
  rb_ary_dup@Base 1.9.2.0
- rb_ary_dup_of_p@Base 1.9.3.374
  rb_ary_each@Base 1.9.2.0
  rb_ary_entry@Base 1.9.2.0
  rb_ary_free@Base 1.9.2.0
@@ -197,6 +196,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_ary_resize@Base 1.9.3~rc1
  rb_ary_resurrect@Base 1.9.2.0
  rb_ary_reverse@Base 1.9.2.0
+ rb_ary_shared_with_p@Base 1.9.3.448
  rb_ary_shift@Base 1.9.2.0
  rb_ary_sort@Base 1.9.2.0
  rb_ary_sort_bang@Base 1.9.2.0
@@ -256,6 +256,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_binding_new@Base 1.9.2.0
  rb_block_call@Base 1.9.2.0
  rb_block_given_p@Base 1.9.2.0
+ rb_block_lambda@Base 1.9.3.448
  rb_block_proc@Base 1.9.2.0
  rb_bug@Base 1.9.2.0
  rb_bug_errno@Base 1.9.2.0
@@ -548,7 +549,6 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_f_exit@Base 1.9.2.0
  rb_f_global_variables@Base 1.9.2.0
  rb_f_kill@Base 1.9.2.0
- rb_f_lambda@Base 1.9.2.0
  rb_f_notimplement@Base 1.9.2.0
  rb_f_require@Base 1.9.2.0
  rb_f_sprintf@Base 1.9.2.0
@@ -607,6 +607,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_funcall3@Base 1.9.2.0
  rb_funcall@Base 1.9.2.0
  rb_funcall_passing_block@Base 1.9.2.290
+ rb_funcall_with_block@Base 1.9.3.448
  rb_gc@Base 1.9.2.0
  rb_gc_call_finalizer_at_exit@Base 1.9.2.0
  rb_gc_copy_finalizer@Base 1.9.2.0
@@ -819,6 +820,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_method_basic_definition_p@Base 1.9.2.0
  rb_method_boundp@Base 1.9.2.0
  rb_method_call@Base 1.9.2.0
+ rb_method_call_with_block@Base 1.9.3.448
  rb_method_get_iseq@Base 1.9.2.0
  rb_mod_ancestors@Base 1.9.2.0
  rb_mod_class_variables@Base 1.9.2.0
@@ -1298,6 +1300,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  st_memsize@Base 1.9.2.0
  st_numcmp@Base 1.9.2.0
  st_numhash@Base 1.9.2.0
+ st_shift@Base 1.9.3.448
  st_strcasecmp@Base 1.9.2.0
  st_strncasecmp@Base 1.9.2.0
  strlcat@Base 1.9.2.0
