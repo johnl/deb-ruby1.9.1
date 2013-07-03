@@ -1,3 +1,15 @@
+ruby1.9.1 (1:1.9.3.448-1bbox1~precise1) precise; urgency=high
+
+  * New upstream release, 1.9.3-p448 with security fixes
+  * Fixes CVE-2013-4073
+  * Updated funnyfalcon GC backport patch, now includes backported fix for
+    Ruby bug #8095
+  * Updated funnyfalon performance patches, fixes a memory leak.
+  * Switch to using Greg Price's require performance improvements (from
+    funnyfalcons) as they're accepted upstream now.
+
+ -- John Leach <john@brightbox.co.uk>  Wed, 03 Jul 2013 13:29:31 +0100
+
 ruby1.9.1 (1:1.9.3.429-1bbox1~raring1) raring; urgency=high
 
   * New upstream release, 1.9.3-p429 with security fixes
