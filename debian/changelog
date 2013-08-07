@@ -1,3 +1,16 @@
+ruby1.9.1 (1.9.2.0-2+deb6u1) oldstable-security; urgency=low
+
+  * Team upload
+  * CVE-2013-1821
+    debian/patches/CVE-2013-1821.patch: fix Entity expansion DoS vulnerability
+    in REXML (Closes: #702525)
+  * CVE-2013-4073
+    debian/patches/CVE-2013-4073.patch: fix hostname checking bypassing
+    vulnerabability in SSL client. Patch prepared by Salvatore Bonaccorso,
+    thanks (Closes: #714543)
+
+ -- Antonio Terceiro <terceiro@debian.org>  Wed, 07 Aug 2013 20:37:26 +0200
+
 ruby1.9.1 (1.9.2.0-2) unstable; urgency=low
 
   * Clarify versioning in package description to reduce 1.9.1 <-> 1.9.2
