@@ -26,3 +26,4 @@
 20100829-rubygems_disable_update_system.diff
 20100829-rubygems_default_dir.diff
 CVE-2013-1821.patch
+CVE-2013-4073.patch
