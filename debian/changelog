@@ -1,4 +1,4 @@
-ruby1.9.1 (1.9.2.0-2+deb6u1) oldstable-security; urgency=low
+ruby1.9.1 (1.9.2.0-2+deb6u1) oldstable-security; urgency=high
 
   * Team upload
   * CVE-2013-1821
