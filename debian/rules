@@ -270,6 +270,7 @@ clean::
 	rm -rf \
 	    .installed.list \
 	    .ext \
+	    exts.mk \
 	    prelude.c \
 	    debian/libruby$(ruby_libpkgsfx).postinst \
 	    debian/libruby$(ruby_libpkgsfx).prerm \
