@@ -16,3 +16,4 @@
 110829-hurd_dirent_usage.patch
 hurd-path-max.diff
 20121014_bison_2_6_fix.diff
+2013-09-08-restore-rb_f_lambda-declaration.patch
