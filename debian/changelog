@@ -6,6 +6,7 @@ ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
   * Acknowledge security-related NMU's by Salvatore Bonaccorso.
     + Both CVE-2013-1821.patch and CVE-2013-4073.patch already applied in this
       upstream version, not included anymore
+  * debian/rules: acknowledge reality, put myself as maintainer.
 
   [ James Healy ]
   * debian/libruby1.9.1.symbols: update with new symbols added in
