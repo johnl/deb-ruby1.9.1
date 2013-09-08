@@ -1,3 +1,125 @@
+Thu Jun 27 20:11:52 2013  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ext/openssl/lib/openssl/ssl-inernal.rb (verify_certificate_identity):
+	  fix hostname verification. Patched by nahi.
+
+	* test/openssl/test_ssl.rb (test_verify_certificate_identity): test for
+	  above.
+
+Wed Jun 26 18:28:29 2013  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/ruby/test_m17n.rb: assert_predicate and assert_not_predicate
+	  is not available on 1.9.3.
+
+Wed Jun 26 17:08:13 2013  Kazuki Tsujimoto  <kazuki@callcc.net>
+
+	* include/ruby/ruby.h, vm_eval.c (rb_funcall_with_block):
+	  new function to invoke a method with a block passed
+	  as an argument.
+
+	* string.c (sym_call): use the above function to avoid
+	  a block sharing. [ruby-dev:47438] [Bug #8531]
+
+	* vm_insnhelper.c (vm_yield_with_cfunc): don't set block
+	  in the frame.
+
+	* test/ruby/test_symbol.rb (TestSymbol#test_block_given_to_proc):
+	  run related tests.
+
+Wed Jun 26 17:01:22 2013  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* benchmark/bm_hash_shift.rb: add benchmark for Hash#shift
+
+	* hash.c (rb_hash_shift): use st_shift if hash is not being iterated to
+	  delete element without iterating the whole hash.
+
+	* hash.c (shift_i): remove function
+
+	* include/ruby/st.h (st_shift): add st_shift function
+
+	* st.c (st_shift): ditto
+
+	[Backport #8328] [ruby-core:55250] Patch by funny-falcon
+
+Wed Jun 26 16:52:57 2013  Kazuki Tsujimoto  <kazuki@callcc.net>
+
+	* test/ruby/test_proc.rb (TestProc#test_block_given_method_to_proc):
+	  run test for r41359.
+
+Wed Jun 26 16:52:57 2013  Kazuki Tsujimoto  <kazuki@callcc.net>
+
+	* include/ruby/intern.h, proc.c (rb_method_call_with_block):
+	  new function to invoke a Method object with a block passed
+	  as an argument.
+
+	* proc.c (bmcall): use the above function to avoid a block sharing.
+	  [ruby-core:54626] [Bug #8341]
+
+	* test/ruby/test_proc.rb (TestProc#test_block_persist_between_calls):
+	  run related tests.
+
+Wed Jun 26 16:36:39 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* defs/id.def (predefined): add "idProc".
+
+	* proc.c (mnew, mproc, mlambda): use predefined IDs.
+
+	* vm.c (Init_VM): ditto.
+
+Wed Jun 26 16:36:39 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* include/ruby/intern.h (rb_block_lambda): add declaration instead of
+	  deprecated rb_f_lambda.
+
+Wed Jun 26 16:31:49 2013  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* lib/net/imap.rb (capability_response): should ignore trailing
+	  spaces.  Thanks, Peter Kovacs.  [ruby-core:55024] [Bug #8415]
+
+	* test/net/imap/test_imap_response_parser.rb: related test.
+
+Wed Jun 26 16:29:41 2013  Charlie Somerville  <charliesome@ruby-lang.org>
+
+	* intern.h: remove dangling rb_class_init_copy declaration
+	  [ruby-core:55120] [Bug #8434]
+
+Wed Jun 26 16:22:12 2013  Charlie Somerville  <charliesome@ruby-lang.org>
+
+	* class.c (include_modules_at): invalidate method cache if included
+	  module contains constants
+
+	* test/ruby/test_module.rb: add test
+
+Wed Jun 26 16:13:25 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* io.c (io_getc): fix 7bit coderange condition, check if ascii read
+	  data instead of read length. [ruby-core:55444] [Bug #8516]
+
+Wed Jun 26 16:10:01 2013  Eric Hodel  <drbrain@segment7.net>
+
+	* ext/socket/extconf.rb:  Enable RFC 3542 IPV6 socket options for OS X
+	  10.7+.  [ruby-trunk - Bug #8517]
+
+Wed Jun  5 12:38:14 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* win32/win32.c (setup_overlapped, finish_overlapped): extract from
+	  rb_w32_read() and rb_w32_write().
+
+Wed May 29 21:03:08 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* configure.in (POSTLINK): default to : command to get rid of flag
+	  only command, since BSD make does not work with it.
+
+Wed May 29 20:59:38 2013  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* lib/yaml.rb: documentation updates, patched by zzak.
+	  [ruby-core:54735] [Backport #8356]
+
+Wed May 15 14:04:39 2013  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* Makefile.in (miniruby): 1.9.3 doesn't have POSTLINK macro.
+	  reported by Takahiro Kambe at [ruby-list:49362].
+
 Wed May 15 01:06:26 2013  NAKAMURA Usaku  <usa@ruby-lang.org>
 
 	* include/ruby/intern.h: should include sys/time.h for struct timeval
