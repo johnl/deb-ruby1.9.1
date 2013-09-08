@@ -548,7 +548,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_f_exit@Base 1.9.2.0
  rb_f_global_variables@Base 1.9.2.0
  rb_f_kill@Base 1.9.2.0
-#MISSING: 1.9.3.448-1# rb_f_lambda@Base 1.9.2.0
+ rb_f_lambda@Base 1.9.2.0
  rb_f_notimplement@Base 1.9.2.0
  rb_f_require@Base 1.9.2.0
  rb_f_sprintf@Base 1.9.2.0
