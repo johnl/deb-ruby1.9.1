@@ -3,12 +3,35 @@ ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
   [ Antonio Terceiro ]
   * New upstream release
   * move logic to skip DRB tests inside debian/run-test-suites.bash
+  * Acknowledge security-related NMU's by Salvatore Bonaccorso.
+    + Both CVE-2013-1821.patch and CVE-2013-4073.patch already applied in this
+      upstream version, not included anymore
 
   [ James Healy ]
   * debian/libruby1.9.1.symbols: update with new symbols added in
     1.9.3p327 upstream release.
 
  -- James Healy <james@yob.id.au>  Fri, 28 Dec 2012 17:40:00 +0100
+
+ruby1.9.1 (1.9.3.194-8.2) unstable; urgency=high
+
+  * Non-maintainer upload.
+  * Add CVE-2013-4073.patch patch.
+    CVE-2013-4073: Fix hostname check bypassing vulnerability in SSL client.
+    (Closes: #714543)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Sun, 07 Jul 2013 10:37:03 +0200
+
+ruby1.9.1 (1.9.3.194-8.1) unstable; urgency=high
+
+  * Non-maintainer upload.
+  * Add CVE-2013-1821.patch patch.
+    CVE-2013-1821: Fix entity expansion DoS vulnerability in REXML. When
+    reading text nodes from an XML document, the REXML parser could be
+    coerced into allocating extremely large string objects which could
+    consume all available memory on the system. (Closes: #702525)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Fri, 08 Mar 2013 21:48:20 +0100
 
 ruby1.9.1 (1.9.3.194-5) unstable; urgency=high
 
