@@ -5,11 +5,9 @@
 ## DP: 1.9.3p286 doesn't build cleanly against bison 2.6. This patch is
 ## DP: backported from upstream changeset 36532. This can probably be
 ## DP: removed with the next upstream release
-Index: a/tool/ytab.sed
-===================================================================
---- a/tool/ytab.sed	(revision 36532)
-+++ b/tool/ytab.sed	(revision 36533)
-@@ -5,6 +5,12 @@
+--- a/tool/ytab.sed
++++ b/tool/ytab.sed
+@@ -11,6 +11,12 @@ i\
  a\
  #endif
  }

@@ -1,11 +1,9 @@
 Description: run tests in verbose mode
 Author: Lucas Nussbaum <lucas@debian.org>
 
-Index: ruby1.9.1-1.9.3~preview1+svn33029/common.mk
-===================================================================
---- ruby1.9.1-1.9.3~preview1+svn33029.orig/common.mk	2011-08-25 18:10:42.000000000 +0200
-+++ ruby1.9.1-1.9.3~preview1+svn33029/common.mk	2011-08-25 18:10:06.000000000 +0200
-@@ -488,15 +488,15 @@
+--- a/common.mk
++++ b/common.mk
+@@ -492,15 +492,15 @@ test: test-sample btest-ruby test-knownb
  
  test-all: $(TEST_RUNNABLE)-test-all
  yes-test-all: PHONY

@@ -58,7 +58,7 @@
    end
  
    ##
-@@ -77,12 +82,16 @@ module Gem
+@@ -84,12 +89,16 @@ module Gem
  
    ##
    # The default directory for binaries
@@ -79,7 +79,7 @@
  
 --- a/test/rubygems/test_gem.rb
 +++ b/test/rubygems/test_gem.rb
-@@ -498,7 +498,7 @@ class TestGem < Gem::TestCase
+@@ -521,7 +521,7 @@ class TestGem < Gem::TestCase
      assert_equal File.join(@gemhome, 'bin'), Gem.bindir(Pathname.new(Gem.dir))
    end
  
@@ -88,7 +88,7 @@
      default = Gem.default_dir
      bindir = if defined?(RUBY_FRAMEWORK_VERSION) then
                 '/usr/bin'
-@@ -550,7 +550,7 @@ class TestGem < Gem::TestCase
+@@ -573,7 +573,7 @@ class TestGem < Gem::TestCase
      assert_nil Gem.datadir('xyzzy')
    end
  

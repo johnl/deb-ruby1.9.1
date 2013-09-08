@@ -5,6 +5,7 @@ ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
     + debian/patches/2013-09-08-restore-rb_f_lambda-declaration.patch:
       backport upstream patch to reintroduce the declaration of rb_f_lamdba
       for backwards compatibility.
+    * Dropped patches already applied upstream; refreshed all others.
   * move logic to skip DRB tests inside debian/run-test-suites.bash
   * Acknowledge security-related NMU's by Salvatore Bonaccorso.
     + Both CVE-2013-1821.patch and CVE-2013-4073.patch already applied in this

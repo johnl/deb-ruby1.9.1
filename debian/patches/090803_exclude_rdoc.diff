@@ -7,7 +7,7 @@
 @DPATCH@
 --- a/common.mk
 +++ b/common.mk
-@@ -402,7 +402,7 @@ post-install-doc::
+@@ -404,7 +404,7 @@ post-install-doc::
  
  rdoc: PHONY main
  	@echo Generating RDoc documentation

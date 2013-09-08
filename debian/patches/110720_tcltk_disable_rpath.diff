@@ -1,7 +1,7 @@
 ext/tk/extconf.rb uses rpath by default. Disable that.
 --- a/ext/tk/extconf.rb
 +++ b/ext/tk/extconf.rb
-@@ -612,7 +612,7 @@ def libcheck_for_tclConfig(tcldir, tkdir
+@@ -614,7 +614,7 @@ def libcheck_for_tclConfig(tcldir, tkdir
            $INCFLAGS << " -I" << File.join(File.dirname(File.dirname(file)),"include") if is_win32?
          else
            tcllibs = append_library($libs, libname)
@@ -10,7 +10,7 @@ ext/tk/extconf.rb uses rpath by default. Disable that.
  
            # FIX ME: avoid pathname trouble (fail to find) on MinGW.
            $INCFLAGS << " -I" << File.join(File.dirname(tcldir),"include") if is_win32?
-@@ -654,7 +654,7 @@ def libcheck_for_tclConfig(tcldir, tkdir
+@@ -656,7 +656,7 @@ def libcheck_for_tclConfig(tcldir, tkdir
          else
            tklibs = append_library("", libname)
            #tklibs = append_library("", $1)
@@ -19,7 +19,7 @@ ext/tk/extconf.rb uses rpath by default. Disable that.
  
            # FIX ME: avoid pathname trouble (fail to find) on MinGW.
            $INCFLAGS << " -I" << File.join(File.dirname(tcldir),"include") if is_win32?
-@@ -1123,7 +1123,7 @@ def find_tcl(tcllib, stubs, version, *op
+@@ -1125,7 +1125,7 @@ def find_tcl(tcllib, stubs, version, *op
                    tcllibs = libs_param + " -DSTATIC_BUILD " + fname.quote
                  else
                    tcllibs = append_library($libs, lib_w_sufx)
@@ -28,7 +28,7 @@ ext/tk/extconf.rb uses rpath by default. Disable that.
                  end
                  if try_func(func, tcllibs, ["tcl.h"])
                    return [true, path, nil, tcllibs, *inc]
-@@ -1262,7 +1262,7 @@ def find_tk(tklib, stubs, version, *opt_
+@@ -1264,7 +1264,7 @@ def find_tk(tklib, stubs, version, *opt_
                    tklibs = libs_param + " -DSTATIC_BUILD " + fname.quote
                  else
                    tklibs = append_library($libs, lib_w_sufx)
@@ -37,7 +37,7 @@ ext/tk/extconf.rb uses rpath by default. Disable that.
                  end
                  if try_func(func, tklibs, ["tcl.h", "tk.h"])
                    return [true, path, nil, tklibs, *inc]
-@@ -1945,7 +1945,7 @@ $defs += collect_tcltk_defs(TclConfig_In
+@@ -1947,7 +1947,7 @@ $defs += collect_tcltk_defs(TclConfig_In
  # MacOS X Frameworks?
  if TkLib_Config["tcltk-framework"]
    puts("Use MacOS X Frameworks.")
@@ -46,7 +46,7 @@ ext/tk/extconf.rb uses rpath by default. Disable that.
  
    if tcl_cfg_dir
      TclConfig_Info['TCL_LIBS'] ||= ""
-@@ -1970,7 +1970,7 @@ if TkLib_Config["tcltk-framework"]
+@@ -1972,7 +1972,7 @@ if TkLib_Config["tcltk-framework"]
      end
    end
  
