@@ -1,6 +1,5 @@
 ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
 
-  [ Antonio Terceiro ]
   * New upstream release
     + Includes fix for potential thread deadlock after fork()
       Closes: #698208
@@ -13,17 +12,15 @@ ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
       backport upstream patch to reintroduce the declaration of rb_f_lamdba
       for backwards compatibility.
     + Dropped patches already applied upstream; refreshed all others.
+  * Review of remaining patches in debian/patches/series:
+    + 909_update_lib_README.diff: obsolete and ultimately wrong. Removed
   * move logic to skip DRB tests inside debian/run-test-suites.bash
   * Acknowledge security-related NMU's by Salvatore Bonaccorso.
     + Both CVE-2013-1821.patch and CVE-2013-4073.patch already applied in this
       upstream version, not included anymore
   * debian/rules: acknowledge reality, put myself as maintainer.
 
-  [ James Healy ]
-  * debian/libruby1.9.1.symbols: update with new symbols added in
-    1.9.3p327 upstream release.
-
- -- James Healy <james@yob.id.au>  Fri, 28 Dec 2012 17:40:00 +0100
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 08 Sep 2013 20:36:43 -0300
 
 ruby1.9.1 (1.9.3.194-8.2) unstable; urgency=high
 
