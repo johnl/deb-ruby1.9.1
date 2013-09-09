@@ -19,6 +19,11 @@ ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
     + Both CVE-2013-1821.patch and CVE-2013-4073.patch already applied in this
       upstream version, not included anymore
   * debian/rules: acknowledge reality, put myself as maintainer.
+  * debian/rules: dropped --with-baseruby=/usr/bin/ruby1.8. This way the build
+    will just use `ruby` for bootstrapping. Also, build-depend on ruby |
+    ruby-interpreter instead of ruby1.8; this way ruby1.9.1 can be
+    bootstrapped with any Ruby interpreter, and we can leave ruby1.8 Rest In
+    Peace.
 
  -- Antonio Terceiro <terceiro@debian.org>  Sun, 08 Sep 2013 20:36:43 -0300
 
