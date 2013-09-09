@@ -34,6 +34,7 @@ ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
     Closes: #688002
   * debian/libruby1.9.1.symbols: removed debian revision from version numbers
     for symbols introduced in 1.9.3.194
+  * debian/control: bump Standards-Version to 3.9.4. No changes needed.
 
  -- Antonio Terceiro <terceiro@debian.org>  Sun, 08 Sep 2013 20:36:43 -0300
 
