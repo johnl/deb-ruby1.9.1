@@ -29,6 +29,9 @@ ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
     ruby-interpreter instead of ruby1.8; this way ruby1.9.1 can be
     bootstrapped with any Ruby interpreter, and we can leave ruby1.8 Rest In
     Peace.
+  * debian/rules: applied patch from Timothy Pearson to install pkg-config
+    file.
+    Closes: #688002
   * debian/libruby1.9.1.symbols: removed debian revision from version numbers
     for symbols introduced in 1.9.3.194
 
