@@ -203,7 +203,8 @@ binary-install/ruby$(ruby_ver)-dev::
 	dh_movefiles -p$(cdbs_curpkg) \
 	    usr/lib/libruby-$(ruby_ver).so \
 	    usr/lib/libruby-$(ruby_ver)-static.a \
-	    $(ruby_libdir)/mkmf.rb
+	    $(ruby_libdir)/mkmf.rb \
+	    usr/lib/pkgconfig/ruby-1.9.pc
 	(cd $(CURDIR)/debian/tmp && \
 	    find usr/include/ruby-$(ruby_ver) -name '*.h' -type f) | \
 	    xargs dh_movefiles -p$(cdbs_curpkg)
