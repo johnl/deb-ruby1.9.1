@@ -3,7 +3,6 @@
 #940_test_thread_mutex_sync_shorter.diff
 #100518_r27464_threading_non-nptl.diff
 100731_disable-tests.diff
-903_skip_base_ruby_check.diff
 20100829-rubygems_disable_update_system.diff
 20100829-rubygems_default_dir.diff
 110720_tcltk_disable_rpath.diff
