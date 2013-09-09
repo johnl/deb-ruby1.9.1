@@ -1,4 +1,4 @@
-ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
+ruby1.9.1 (1.9.3.448-1) unstable; urgency=low
 
   * New upstream release
     + Includes fix for potential thread deadlock after fork()
@@ -37,7 +37,7 @@ ruby1.9.1 (1.9.3.448-1) UNRELEASED; urgency=low
   * debian/control: bump Standards-Version to 3.9.4. No changes needed.
   * debian/control: remove -1 from build dependency on coreutils
 
- -- Antonio Terceiro <terceiro@debian.org>  Sun, 08 Sep 2013 20:36:43 -0300
+ -- Antonio Terceiro <terceiro@debian.org>  Sun, 08 Sep 2013 22:57:14 -0300
 
 ruby1.9.1 (1.9.3.194-8.2) unstable; urgency=high
 
