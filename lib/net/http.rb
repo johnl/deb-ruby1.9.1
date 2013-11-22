@@ -361,7 +361,7 @@ module Net   #:nodoc:
   class HTTP < Protocol
 
     # :stopdoc:
-    Revision = %q$Revision: 40712 $.split[1]
+    Revision = %q$Revision: 42461 $.split[1]
     HTTPVersion = '1.1'
     begin
       require 'zlib'
@@ -1948,7 +1948,7 @@ module Net   #:nodoc:
       wait_for_continue sock, ver if sock.continue_timeout
       if chunked?
         while s = f.read(1024)
-          sock.write(sprintf("%x\r\n", s.length) << s << "\r\n")
+          sock.write(sprintf("%x\r\n", s.bytesize) << s << "\r\n")
         end
         sock.write "0\r\n\r\n"
       else

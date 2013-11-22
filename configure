@@ -14471,6 +14471,18 @@ case "$target_os" in #(
   *) :
      ;;
 esac
+for ac_header in sys/pstat.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "sys/pstat.h" "ac_cv_header_sys_pstat_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_pstat_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SYS_PSTAT_H 1
+_ACEOF
+
+fi
+
+done
+
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for signbit" >&5
