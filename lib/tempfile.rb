@@ -1,7 +1,7 @@
 #
 # tempfile - manipulates temporary files
 #
-# $Id: tempfile.rb 34572 2012-02-12 07:54:28Z knu $
+# $Id: tempfile.rb 43490 2013-10-31 14:44:40Z usa $
 #
 
 require 'delegate'
@@ -190,7 +190,6 @@ class Tempfile < DelegateClass(File)
   def close!
     _close
     unlink
-    ObjectSpace.undefine_finalizer(self)
   end
 
   # Unlinks (deletes) the file from the filesystem. One should always unlink
@@ -238,6 +237,7 @@ class Tempfile < DelegateClass(File)
     # remove tmpname from remover
     @data[0] = @data[1] = nil
     @tmpname = nil
+    ObjectSpace.undefine_finalizer(self)
   end
   alias delete unlink
 

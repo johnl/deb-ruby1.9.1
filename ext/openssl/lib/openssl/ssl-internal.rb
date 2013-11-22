@@ -11,7 +11,7 @@
   (See the file 'LICENCE'.)
 
 = Version
-  $Id: ssl-internal.rb 41673 2013-06-27 11:13:08Z usa $
+  $Id: ssl-internal.rb 42016 2013-07-17 01:19:39Z usa $
 =end
 
 require "openssl/buffering"
@@ -88,7 +88,7 @@ module OpenSSL
       should_verify_common_name = true
       cert.extensions.each{|ext|
         next if ext.oid != "subjectAltName"
-        id, ostr = OpenSSL::ASN1.decode(ext.to_der).value
+        ostr = OpenSSL::ASN1.decode(ext.to_der).value.last
         sequence = OpenSSL::ASN1.decode(ostr.value)
         sequence.value.each{|san|
           case san.tag
