@@ -1,5 +1,6 @@
 require 'test/unit'
 require 'continuation'
+require_relative "envutil"
 
 class TestHash < Test::Unit::TestCase
 
@@ -116,6 +117,12 @@ class TestHash < Test::Unit::TestCase
 
   end
 
+  def test_self_initialize_copy
+    h = @cls[1=>2]
+    h.instance_eval {initialize_copy(h)}
+    assert_equal(2, h[1])
+  end
+
   def test_AREF # '[]'
     t = Time.now
     h = @cls[
@@ -144,8 +151,6 @@ class TestHash < Test::Unit::TestCase
     assert_equal('nil',    h1[nil])
     assert_equal(nil,      h1['nil'])
     assert_equal(:default, h1['koala'])
-
-
   end
 
   def test_ASET # '[]='
@@ -919,5 +924,33 @@ class TestHash < Test::Unit::TestCase
     [{1=>2}, {123=>"abc"}].each do |h|
       assert_not_equal(h.hash, h.invert.hash, feature4262)
     end
+  end
+
+  def test_exception_in_rehash
+    bug9187 = '[ruby-core:58728] [Bug #9187]'
+
+    prepare = <<-EOS
+    class Foo
+      def initialize
+        @raise = false
+      end
+
+      def hash
+        raise if @raise
+        @raise = true
+        return 0
+      end
+    end
+    EOS
+
+    code = <<-EOS
+    h = {Foo.new => true}
+    10_0000.times do
+      h.rehash rescue nil
+    end
+    GC.start
+    EOS
+
+    assert_no_memory_leak([], prepare, code, bug9187)
   end
 end

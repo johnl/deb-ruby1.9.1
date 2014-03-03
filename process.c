@@ -2,7 +2,7 @@
 
   process.c -
 
-  $Author: naruse $
+  $Author: usa $
   created at: Tue Aug 10 14:30:50 JST 1993
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
@@ -1949,16 +1949,28 @@ redirect_dup(int oldfd)
     ttyprintf("dup(%d) => %d\n", oldfd, ret);
     return ret;
 }
+#else
+#define redirect_dup(oldfd) dup(oldfd)
+#endif
 
+#if defined(DEBUG_REDIRECT) || defined(_WIN32)
 static int
 redirect_dup2(int oldfd, int newfd)
 {
     int ret;
     ret = dup2(oldfd, newfd);
+    if (newfd >= 0 && newfd <= 2)
+	SetStdHandle(newfd == 0 ? STD_INPUT_HANDLE : newfd == 1 ? STD_OUTPUT_HANDLE : STD_ERROR_HANDLE, (HANDLE)rb_w32_get_osfhandle(newfd));
+#if defined(DEBUG_REDIRECT)
     ttyprintf("dup2(%d, %d)\n", oldfd, newfd);
+#endif
     return ret;
 }
+#else
+#define redirect_dup2(oldfd, newfd) dup2((oldfd), (newfd))
+#endif
 
+#if defined(DEBUG_REDIRECT)
 static int
 redirect_close(int fd)
 {
@@ -1978,8 +1990,6 @@ redirect_open(const char *pathname, int flags, mode_t perm)
 }
 
 #else
-#define redirect_dup(oldfd) dup(oldfd)
-#define redirect_dup2(oldfd, newfd) dup2((oldfd), (newfd))
 #define redirect_close(fd) close(fd)
 #define redirect_open(pathname, flags, perm) open((pathname), (flags), (perm))
 #endif
@@ -4905,29 +4915,23 @@ rb_daemon(int nochdir, int noclose)
     before_fork();
     err = daemon(nochdir, noclose);
     after_fork();
+    rb_thread_atfork();
 #else
     int n;
 
-    switch (rb_fork(0, 0, 0, Qnil)) {
-      case -1:
-	rb_sys_fail("daemon");
-      case 0:
-	break;
-      default:
-	_exit(EXIT_SUCCESS);
+#define fork_daemon() \
+    switch (rb_fork(0, 0, 0, Qnil)) { \
+      case -1: return -1; \
+      case 0:  rb_thread_atfork(); break; \
+      default: _exit(EXIT_SUCCESS); \
     }
 
-    proc_setsid();
+    fork_daemon();
+
+    if (setsid() < 0) return -1;
 
     /* must not be process-leader */
-    switch (rb_fork(0, 0, 0, Qnil)) {
-      case -1:
-	return -1;
-      case 0:
-	break;
-      default:
-	_exit(EXIT_SUCCESS);
-    }
+    fork_daemon();
 
     if (!nochdir)
 	err = chdir("/");

@@ -2,17 +2,19 @@
 
   enumerator.c - provides Enumerator class
 
-  $Author: marcandre $
+  $Author: usa $
 
   Copyright (C) 2001-2003 Akinori MUSHA
 
   $Idaemons: /home/cvs/rb/enumerator/enumerator.c,v 1.1.1.1 2001/07/15 10:12:48 knu Exp $
   $RoughId: enumerator.c,v 1.6 2003/07/27 11:03:24 nobu Exp $
-  $Id: enumerator.c 34713 2012-02-20 23:55:19Z marcandre $
+  $Id: enumerator.c 44749 2014-01-29 10:23:19Z usa $
 
 ************************************************/
 
 #include "ruby/ruby.h"
+#include "node.h"
+#include "internal.h"
 
 /*
  * Document-class: Enumerator
@@ -368,11 +370,9 @@ enumerator_each(VALUE obj)
 static VALUE
 enumerator_with_index_i(VALUE val, VALUE m, int argc, VALUE *argv)
 {
-    VALUE idx;
-    VALUE *memo = (VALUE *)m;
-
-    idx = INT2FIX(*memo);
-    ++*memo;
+    NODE *memo = (NODE *)m;
+    VALUE idx = memo->u1.value;
+    memo->u1.value = rb_int_succ(idx);
 
     if (argc <= 1)
 	return rb_yield_values(2, val, idx);
@@ -399,8 +399,11 @@ enumerator_with_index(int argc, VALUE *argv, VALUE obj)
 
     rb_scan_args(argc, argv, "01", &memo);
     RETURN_ENUMERATOR(obj, argc, argv);
-    memo = NIL_P(memo) ? 0 : (VALUE)NUM2LONG(memo);
-    return enumerator_block_call(obj, enumerator_with_index_i, (VALUE)&memo);
+    if (NIL_P(memo))
+	memo = INT2FIX(0);
+    else
+	memo = rb_to_int(memo);
+    return enumerator_block_call(obj, enumerator_with_index_i, (VALUE)NEW_MEMO(memo, 0, 0));
 }
 
 /*

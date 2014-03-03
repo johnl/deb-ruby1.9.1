@@ -1,3 +1,441 @@
+Mon Feb 24 12:42:01 2014  Zachary Scott  <e@zzak.io>
+
+	* lib/open-uri.rb: [DOC] use lower case version of core classes, same
+	  as commit r44878, based on patch by Jonathan Jackson [Bug #9483]
+
+Mon Feb 24 12:42:01 2014  Zachary Scott  <e@zzak.io>
+
+	* ext/ripper/lib/ripper/lexer.rb: [DOC] use lower case version of core
+	  classes when referring to return value, since we aren't directly
+	  talking about the class. Patch by Jonathan Jackson [Bug #9483]
+
+Mon Feb 24 12:39:11 2014  Zachary Scott  <e@zzak.io>
+
+	* ext/openssl/ossl_pkey_dh.c: Fixed typo by Sandor Szuecs [Bug #9243]
+
+Mon Feb 24 12:33:38 2014  Zachary Scott  <e@zzak.io>
+
+	* lib/net/smtp.rb: [DOC] Remove dead link to RAA by Giorgos Tsiftsis
+	  Fixes the following bugs: [Bug #9152] [Bug #9268] [Bug #9394]
+	* lib/open-uri.rb: ditto
+
+Sat Feb 22 19:14:25 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ext/io/console/console.c (console_dev): need read access for conout$
+	  because some functions need it.  [Bug#9554]
+
+Sat Feb 22 10:09:42 2014  Eric Wong  <e@80x24.org>
+
+	* ext/socket/ancdata.c (bsock_sendmsg_internal): only retry on error
+	  (bsock_recvmsg_internal): ditto
+	* test/socket/test_unix.rb: test above for infinite loop
+
+Sat Feb 22 09:51:53 2014  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* ext/socket/init.c (wait_connectable): break if the socket is
+	  writable to avoid infinite loops on FreeBSD and other platforms
+	  which conforms to SUSv3.  This problem cannot be reproduced with
+	  loopback interfaces, so it's hard to write test code.
+	  rsock_connect() and wait_connectable() are overly complicated, so
+	  they should be refactored, but I commit this fix as a workaround
+	  for the release of Ruby 1.9.3 scheduled on Feb 24.
+	  [ruby-core:60940] [Bug #9547]
+
+Sat Feb 22 09:26:05 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* class.c (rb_mod_init_copy): do nothing if copying self.
+	  [ruby-dev:47989] [Bug #9535]
+
+Tue Feb 18 22:53:34 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ruby_atomic.h: fixed merge mistake of r44946.  reported by ngoto at
+	  [ruby-dev:47980] [Backport #9530]
+
+Mon Feb 17 18:04:40 2014  Aaron Pfeifer  <aaron.pfeifer@gmail.com>
+
+	* thread.c (terminate_atfork_i): fix locking mutexes not unlocked in
+	  forks when not tracked in thread.  [ruby-core:55102] [Bug #8433]
+
+Fri Feb 14 21:01:12 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ext/socket: revert r44943 because it causes errors on some linux
+	  platforms.
+
+Fri Feb 14 20:52:31 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* configure.in (ARCH_FLAG): __sync_val_compare_and_swap_4 needs
+	  -march=i486 on at least linux gcc 4.1.
+
+Fri Feb 14 19:07:13 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ruby_atomic.h (ATOMIC_PTR_EXCHANGE): atomic exchange function for
+	  a generic pointer.
+
+Fri Feb 14 19:07:13 2014  Masaki Matsushita  <glass.saga@gmail.com>
+
+	* ruby_atomic.h: define ATOMIC_SIZE_CAS() with
+	  __atomic_compare_exchange_n() and refactoring.
+
+Fri Feb 14 19:07:13 2014  Masaki Matsushita  <glass.saga@gmail.com>
+
+	* ruby_atomic.h: use __atomic builtin functions supported by GCC.
+	  __sync family are legacy functions now and it is recommended
+	  that new code use the __atomic functions.
+	  http://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html
+
+	* configure.in: check existence of __atomic functions.
+
+Fri Feb 14 16:21:28 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ruby_atomic.h (ATOMIC_CAS): added.
+
+	* signal.c (ruby_atomic_compare_and_swap): ATOMIC_CAS implementation
+	  for non-VC/gcc platform.
+
+Fri Feb 14 15:56:27 2014  Tanaka Akira  <akr@fsij.org>
+
+	* lib/resolv.rb: Ignore name servers which cause EAFNOSUPPORT on
+	  socket creation.
+	  Reported by Bjoern Rennhak.  [ruby-core:60442] [Bug #9477]
+
+Fri Feb 14 15:54:57 2014  Tanaka Akira  <akr@fsij.org>
+
+	* lib/resolv.rb (Resolv::DNS::Message::MessageDecoder): Raise
+	  DecodeError if no data before the limit.
+	  Reported by Will Bryant.  [ruby-core:60557] [Bug #9498]
+
+Fri Feb 14 15:49:55 2014  Eric Wong <e@80x24.org>
+
+	* ext/json/generator/depend: add build dependencies for json extension
+	  [Bug #9374] [ruby-core:59609]
+	* ext/json/parser/depend: ditto
+
+Fri Feb 14 15:40:32 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* iseq.c (iseq_load): keep type_map to get rid of memory leak.
+	  based on a patch by Eric Wong at [ruby-core:59699].  [Bug #9399]
+
+Fri Feb 14 15:25:23 2014  Tanaka Akira  <akr@fsij.org>
+
+	* lib/resolv.rb (Resolv::DNS::Resource::TXT#data): Return concatenated
+	  string.
+	  Patch by Ryan Brunner.  [ruby-core:58220] [Bug #9093]
+
+Fri Feb 14 15:23:43 2014  Tanaka Akira  <akr@fsij.org>
+
+	* ext/socket: Avoid unnecessary ppoll/select on Linux.
+	  Patch by Eric Wong.  [ruby-core:57950] [Bug #9039]
+
+Fri Feb 14 15:21:21 2014  Eric Wong <e@80x24.org>
+
+	* benchmark/driver: avoid large alloc in driver process
+	  [ruby-core:59869] [Bug #9430]
+
+Fri Feb 14 15:17:17 2014  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* ext/fiddle/closure.c: use sizeof(*pcl) for correct sizeof value.
+	  [ruby-core:57599] [Bug #8978].
+
+Fri Feb 14 15:17:17 2014  Aaron Patterson <aaron@tenderlovemaking.com>
+
+	* ext/fiddle/closure.c: use sizeof(*pcl) for correct sizeof value.
+	  [ruby-core:57599] [Bug #8978].  Thanks mame!
+
+Fri Feb 14 15:04:36 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* thread_pthread.c (rb_thread_create_timer_thread): fix for platforms
+	  where PTHREAD_STACK_MIN is a dynamic value and not a compile-time
+	  constant.  [ruby-dev:47911] [Bug #9436]
+
+Fri Feb 14 15:04:36 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* thread_pthread.c (rb_thread_create_timer_thread): expand timer
+	  thread stack size to get rid of segfault on FreeBSD/powerpc64.
+	  based on the patch by Steve Wills at [ruby-core:59923].
+	  [ruby-core:56590] [Bug #8783]
+
+Fri Feb 14 14:58:19 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* eval.c (rb_mod_s_constants): return its own constants for other
+	  than Module itself.  [ruby-core:59763] [Bug #9413]
+
+Fri Feb 14 14:40:27 2014  Masaki Matsushita  <glass.saga@gmail.com>
+
+	* array.c (rb_hash_rehash): use hash_alloc() instead of rb_hash_new().
+	  [Bug #9187]
+
+Fri Feb 14 14:40:27 2014  Masaki Matsushita  <glass.saga@gmail.com>
+
+	* hash.c (rb_hash_rehash): make temporary st_table under the control
+	  of GC. [Bug #9187]
+
+	* test/ruby/test_hash.rb: add a test for above.
+
+Fri Feb 14 14:40:27 2014  Masaki Matsushita  <glass.saga@gmail.com>
+
+	* hash.c (rb_hash_rehash): fix to free new st_table when exception
+	  is raised in do_hash(). [Bug #9187]
+
+Fri Feb 14 13:51:45 2014  Eric Hodel  <drbrain@segment7.net>
+
+	* lib/optparse.rb:  The Integer acceptable now allows binary and
+	  hexadecimal numbers per the documentation.  [ruby-trunk - Bug #8865]
+
+	  DecimalInteger, OctalInteger, DecimalNumeric now validate their input
+	  before converting to a number.  [ruby-trunk - Bug #8865]
+
+	* test/optparse/test_acceptable.rb:  Tests for the above, tests for all
+	  numeric acceptables for existing behavior.
+
+Fri Feb 14 12:52:50 2014  Kouhei Sutou  <kou@cozmixng.org>
+
+	* ext/socket/raddrinfo.c (nogvl_getaddrinfo): Fix indent.
+
+Fri Feb 14 12:52:50 2014  Kouhei Sutou  <kou@cozmixng.org>
+
+	* ext/socket/raddrinfo.c (nogvl_getaddrinfo): Add missing return
+	  value assignment.
+
+Fri Feb 14 12:52:50 2014  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/socket/raddrinfo.c (nogvl_getaddrinfo): work around for Ubuntu
+	  13.04's getaddrinfo issue with mdns4. [ruby-list:49420]
+
+Fri Feb 14 12:45:07 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* lib/thread.rb (SizedQueue#clear): wake waiting threads when called.
+	  [Bug #9342] [ruby-core:59462]
+
+	* test/thread/test_queue.rb: add a test for above.
+
+	patched by Justin Collins.
+
+Thu Feb  6 09:06:00 2014  Kenta Murata  <mrkn@cookpad.com>
+
+	* configure.in (POSTLINK): sign built program using RUBY_CODESIGN
+	  identity.
+	  [Backport #9491]
+
+	* Makefile.in (PROGRAM): ditto.
+
+	* Makefile.in (LIBRUBY_SO): ditto.
+
+	* lib/mkmf.rb (LINK_SO): sign extensions too.  replace empty line with
+	  default command.
+
+	* enc/depend (link_so): prefix $(Q) for each commands.
+
+	* tool/mkconfig.rb: restore embedded newlines.
+
+Wed Feb  5 13:43:02 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_modify_expand): enable capacity and disable
+	  assocation with packed objects when setting capa, so that
+	  pack("p") string fails to unpack properly after modified.
+
+Sun Feb 2 05:48:42 2014  Eric Wong <e@80x24.org>
+
+	* io.c (rb_io_syswrite): add RB_GC_GUARD
+	  [Bug #9472][ruby-core:60407]
+
+Wed Feb  5 11:36:30 2014  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* configure.in (opt-dir): don't use non portable flag -E of sed.
+
+Thu Jan 30 20:53:42 2014  Tanaka Akira  <akr@fsij.org>
+
+	* ext/socket/lib/socket.rb: Don't test $! in "ensure" clause because
+	  it may be set before the body.
+	  Reported by ko1 and mrkn.  [ruby-core:59088] [Bug #9247]
+
+	* lib/cgi/core.rb: Ditto.
+
+	* lib/drb/ssl.rb: Ditto.
+
+Thu Jan 30 20:31:32 2014  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* process.c (rb_daemon): daemon(3) is implemented with fork(2).
+	  Therefore it needs rb_thread_atfork(). (and revert r41903)
+
+Thu Jan 30 20:31:32 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* process.c (fork_daemon): kill the other threads all and abandon the
+	  kept mutexes.
+
+Thu Jan 30 20:31:32 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* process.c (fork_daemon): kill the other threads all and abandon the
+	  kept mutexes.
+
+Thu Jan 30 19:54:16 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* gc.c (finalize_deferred): flush all deferred finalizers while other
+	  finalizers can get ready to run newly by lazy sweep.
+	  [ruby-core:58833] [Bug #9205]
+
+Thu Jan 30 19:08:00 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* gc.c (rb_gc_finalize_deferred, rb_objspace_call_finalizer):
+	  should use ATOMIC_EXCHANGE() to check the previous value.
+	  [ruby-dev:44596] [Bug #5439]
+
+Thu Jan 30 19:08:00 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* gc.c (slot_sweep, rb_gc_finalize_deferred)
+	  (rb_objspace_call_finalizer, rb_gc): run finalizers
+	  sequencially.  [ruby-dev:44562]
+
+Thu Jan 30 11:07:09 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/bigdecimal/bigdecimal.c (CLASS_NAME): macro to wrap
+	  depending on PRIsVALUE for 1.9.  [Backport #9406]
+
+	* ext/bigdecimal/bigdecimal.c (DECIMAL_SIZE_OF_BITS): fallback
+	  definition for 2.1 or older.  [ruby-core:59750] [Backport #9406]
+
+Wed Jan 29 19:22:45 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* enumerator.c: include internal.h instead of declaring the external
+	  function there.
+
+Wed Jan 29 18:52:09 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* enumerator.c (enumerator_with_index_i): add the declaration of
+	  rb_int_succ().  this fixes test failure on OS X introduced at r44745.
+
+Wed Jan 29 14:44:44 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/date/date_strptime.c (date__strptime_internal): unset
+	  case-insensitive flag for [:alpha:], which already implies both
+	  cases, to get rid of backtrack explosion.  [ruby-core:58984]
+	  [Bug #9221]
+
+Wed Jan 29 14:44:44 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/date/date_parse.c (parse_time): unset case-insensitive flag
+	  for [:alpha:], which already implies both cases, to get rid of
+	  backtrack explosion.  [ruby-core:58876] [Bug #9221]
+
+Wed Jan 29 14:26:10 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* enumerator.c (enumerator_with_index): should not store local variable
+	  address to memoise the arguments.  it is invalidated after the return.
+	  [ruby-core:58692] [Bug #9178]
+
+Wed Jan 29 14:26:10 2014  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* enumerator.c (enumerator_with_index): try to convert given offset to
+	  integer. fix bug introduced in r39594.
+
+Wed Jan 29 14:20:11 2014  Eric Hodel  <drbrain@segment7.net>
+
+	* enumerator.c (enumerator_with_index):  Restore handling of a nil memo
+	  from r39594.
+
+Wed Jan 29 14:08:54 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* include/ruby/win32.h (rb_infinity_float): suppress overflow in
+	  constant arithmetic warnings.  [ruby-core:57981] [Bug #9044]
+
+Wed Jan 29 14:08:54 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* win32/Makefile.sub (config.h): VC 2013 supports C99 mathematics
+	  functions.  [ruby-core:57981] [Bug #9044]
+
+Wed Jan 29 14:00:15 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* compar.c (cmp_eq): fail if recursion.  [ruby-core:57736] [Bug #9003]
+
+	* thread.c (rb_exec_recursive_paired_outer): new function which is
+	  combinnation of paired and outer variants.
+
+Wed Jan 29 13:40:48 2014  Eric Hodel  <drbrain@segment7.net>
+
+	* lib/net/smtp.rb (Net::SMTP#critical):  Always return a
+	  Net::SMTP::Response.  Patch by Pawel Veselov.
+	  [ruby-trunk - Bug #9125]
+	* test/net/smtp/test_smtp.rb:  Test for the above.
+
+Wed Jan 29 13:32:53 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* eval_jump.c (rb_exec_end_proc): unlink and free procs data before
+	  calling for each procs.  [Bug #9110]
+
+Wed Jan 29 13:32:53 2014  Masaki Matsushita  <glass.saga@gmail.com>
+
+	* eval_jump.c (rb_exec_end_proc): fix double free or corruption error
+	  when reentering by callcc. [ruby-core:58329] [Bug #9110]
+
+	* test/ruby/test_beginendblock.rb: test for above.
+
+Wed Jan 29 13:25:32 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/resolv.rb (Resolv::Hosts#lazy_initialize): should not
+	  consider encodings in hosts file.  [ruby-core:59239] [Bug #9273]
+
+	* lib/resolv.rb (Resolv::Config.parse_resolv_conf): ditto.
+
+Wed Jan 29 13:00:17 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* util.c (ruby_qsort): fix potential stack overflow on a large
+	  machine.  based on the patch by Conrad Irwin <conrad.irwin AT
+	  gmail.com> at [ruby-core:51816].  [Bug #7772]
+
+Wed Jan 29 12:54:13 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* parse.y (local_push_gen, local_pop_gen): save cmdarg_stack to
+	  isolate command argument state from outer scope.
+	  [ruby-core:59342] [Bug #9308]
+
+Wed Jan 29 12:37:33 2014  Koichi Sasada  <ko1@atdot.net>
+
+	* vm.c (rb_thread_mark): mark a working Proc of bmethod
+	  (a method defined by define_method) even if the method was removed.
+	  We could not trace working Proc object which represents the body
+	  of bmethod if the method was removed (alias/undef/overridden).
+	  Simply, it was mark miss.
+	  This patch by Kazuki Tsujimoto. [Bug #7825]
+
+	  NOTE: We can brush up this marking because we do not need to mark
+	  `me' on each living control frame. We need to mark `me's
+	  only if `me' was free'ed. This is future work after Ruby 2.0.0.
+
+	* test/ruby/test_method.rb: add a test.
+
+Wed Jan 29 12:35:37 2014  CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>
+
+	* lib/rexml/document.rb (REXML::Document.entity_expansion_text_limit):
+	  fix a typo in comment in r39384.
+
+Thu Jan  9 14:27:25 2014  Aman Gupta <ruby@tmm1.net>
+
+	* test/net/imap/cacert.pem: generate new CA cert, since the last one
+	  expired. [Bug #9341] [ruby-core:59459]
+	* test/net/imap/server.crt: new server cert signed with updated CA.
+	* test/net/imap/Makefile: add `make regen_certs` to automate this
+	  process.
+
+Sun Dec 22 14:25:54 2013  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* process.c (redirect_dup2): set standard handles when new fd is stdio,
+	  because if there is no allocated console at the moment Windows does
+	  not automatically associate it for child process's standard handle.
+	  this is adhoc workaround.
+	  reported by Martin Thiede at [ruby-core:48542] [Bug #7239].
+
+Tue Dec  3 18:36:42 2013  Narihiro Nakamura  <authornari@gmail.com>
+
+	* object.c (rb_obj_clone): protect FL_MARK of a dest object. A lazy
+	  sweeper free up a dest object if a marker is invoked immediately
+	  following allocate a dest object in rb_obj_alloc().
+	  [Backport #9206]
+
+Sun Dec 22 13:35:58 2013  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* lib/rubygems.rb: 1.8.23.2.
+	  [ruby-core:58757] [Backport#9193] reported by Jeremy Evans and patched
+	  by Eric Hodel.
+
 Fri Nov 22 12:44:56 2013  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* util.c (ruby_strtod): ignore too long fraction part, which does not

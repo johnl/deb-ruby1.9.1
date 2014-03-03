@@ -712,6 +712,7 @@ ARCH_FLAG
 DLDFLAGS
 ALLOCA
 LIBOBJS
+codesign
 POSTLINK
 WERRORFLAG
 CHDIR
@@ -4723,6 +4724,78 @@ esac
 $as_echo "$ARCH_FLAG" >&6; }
 
 fi
+
+case "$target_cpu-$target_os" in #(
+  i[3-6]86*) :
+
+	 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_val_compare_and_swap" >&5
+$as_echo_n "checking for __sync_val_compare_and_swap... " >&6; }
+if ${rb_cv_gcc_compiler_cas+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+			 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+unsigned long atomic_var;
+int
+main ()
+{
+
+				      __sync_val_compare_and_swap(&atomic_var, 0, 1);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  rb_cv_gcc_compiler_cas=yes
+else
+  rb_cv_gcc_compiler_cas=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $rb_cv_gcc_compiler_cas" >&5
+$as_echo "$rb_cv_gcc_compiler_cas" >&6; }
+	 if test "$rb_cv_gcc_compiler_cas" = no; then
+		 unset rb_cv_gcc_compiler_cas
+		 save_CFLAGS="$CFLAGS"
+		 CFLAGS="$CFLAGS -march=i486"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_val_compare_and_swap with -march=i486" >&5
+$as_echo_n "checking for __sync_val_compare_and_swap with -march=i486... " >&6; }
+if ${rb_cv_gcc_compiler_cas+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+				 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+unsigned long atomic_var;
+int
+main ()
+{
+
+					      __sync_val_compare_and_swap(&atomic_var, 0, 1);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  rb_cv_gcc_compiler_cas=yes
+					       ARCH_FLAG="-march=i486"
+else
+  rb_cv_gcc_compiler_cas=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $rb_cv_gcc_compiler_cas" >&5
+$as_echo "$rb_cv_gcc_compiler_cas" >&6; }
+		 CFLAGS="$save_CFLAGS"
+	 fi ;; #(
+  *) :
+     ;;
+esac
 
 if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}ranlib", so it can be a program name with args.
@@ -10145,9 +10218,47 @@ _ACEOF
 _ACEOF
 
     fi
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for atomic builtins" >&5
-$as_echo_n "checking for atomic builtins... " >&6; }
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __atomic builtins" >&5
+$as_echo_n "checking for __atomic builtins... " >&6; }
 if ${rb_cv_gcc_atomic_builtins+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+unsigned char atomic_var;
+int
+main ()
+{
+
+			__atomic_exchange_n(&atomic_var, 0, __ATOMIC_SEQ_CST);
+			__atomic_exchange_n(&atomic_var, 1, __ATOMIC_SEQ_CST);
+			__atomic_fetch_add(&atomic_var, 1, __ATOMIC_SEQ_CST);
+			__atomic_fetch_sub(&atomic_var, 1, __ATOMIC_SEQ_CST);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  rb_cv_gcc_atomic_builtins=yes
+else
+  rb_cv_gcc_atomic_builtins=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $rb_cv_gcc_atomic_builtins" >&5
+$as_echo "$rb_cv_gcc_atomic_builtins" >&6; }
+    if test "$rb_cv_gcc_atomic_builtins" = yes; then
+	$as_echo "#define HAVE_GCC_ATOMIC_BUILTINS 1" >>confdefs.h
+
+    fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync builtins" >&5
+$as_echo_n "checking for __sync builtins... " >&6; }
+if ${rb_cv_gcc_sync_builtins+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
@@ -10168,19 +10279,20 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  rb_cv_gcc_atomic_builtins=yes
+  rb_cv_gcc_sync_builtins=yes
 else
-  rb_cv_gcc_atomic_builtins=no
+  rb_cv_gcc_sync_builtins=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $rb_cv_gcc_atomic_builtins" >&5
-$as_echo "$rb_cv_gcc_atomic_builtins" >&6; }
-    if test "$rb_cv_gcc_atomic_builtins" = yes; then
-	$as_echo "#define HAVE_GCC_ATOMIC_BUILTINS 1" >>confdefs.h
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $rb_cv_gcc_sync_builtins" >&5
+$as_echo "$rb_cv_gcc_sync_builtins" >&6; }
+    if test "$rb_cv_gcc_sync_builtins" = yes; then
+	$as_echo "#define HAVE_GCC_SYNC_BUILTINS 1" >>confdefs.h
 
     fi
+
 fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for exported function attribute" >&5
@@ -10446,6 +10558,53 @@ $as_echo "$rb_cv_broken_crypt" >&6; }
                   $as_echo "#define BROKEN_CRYPT 1" >>confdefs.h
 
                 fi
+		for ac_prog in codesign
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_codesign+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$codesign"; then
+  ac_cv_prog_codesign="$codesign" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_codesign="$ac_prog"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+codesign=$ac_cv_prog_codesign
+if test -n "$codesign"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $codesign" >&5
+$as_echo "$codesign" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  test -n "$codesign" && break
+done
+
+		if test -n "$codesign"; then
+		    POSTLINK="test -z '\$(RUBY_CODESIGN)' || $codesign -s '\$(RUBY_CODESIGN)' -f \$@"
+		    LINK_SO="$LINK_SO
+\$(POSTLINK)"
+		fi
 		 ;; #(
   hpux*) :
     	LIBS="-lm $LIBS"
@@ -17745,7 +17904,7 @@ if test "${with_opt_dir+set}" = set; then :
 		val=`IFS="$PATH_SEPARATOR"
 		    for dir in $withval; do
 			echo x ${LIBPATHFLAG} ${RPATHFLAG} |
-			sed -E 's/^x *//;s'"${PATH_SEPARATOR}"'%1\\$-s|%s'"${IFS}${dir}/lib${IFS}g"
+			sed "s/^x *//;s${IFS}"'%1\\$-s'"${IFS}${dir}/lib${IFS}g;s${IFS}%s${IFS}${dir}/lib${IFS}g"
 		    done | tr '\012' ' '`
 		set +x
 		LDFLAGS="$LDFLAGS${LDFLAGS:+ }$val"
