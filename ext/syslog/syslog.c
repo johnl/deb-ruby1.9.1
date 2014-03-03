@@ -5,12 +5,21 @@
  * Documented by mathew <meta@pobox.com>
  *
  * $RoughId: syslog.c,v 1.21 2002/02/25 12:21:17 knu Exp $
- * $Id: syslog.c 35740 2012-05-21 07:24:34Z knu $
+ * $Id: syslog.c 44754 2014-01-30 03:49:07Z usa $
  */
 
 #include "ruby/ruby.h"
 #include "ruby/util.h"
 #include <syslog.h>
+
+#ifdef PRIsVALUE
+# define RB_OBJ_CLASSNAME(obj) rb_obj_class(obj)
+# define RB_OBJ_STRING(obj) (obj)
+#else
+# define PRIsVALUE "s"
+# define RB_OBJ_CLASSNAME(obj) rb_obj_classname(obj)
+# define RB_OBJ_STRING(obj) StringValueCStr(obj)
+#endif
 
 /* Syslog class */
 static VALUE mSyslog, mSyslogConstants;
@@ -301,7 +310,7 @@ static VALUE mSyslog_log(int argc, VALUE *argv, VALUE self)
     pri = *argv++;
 
     if (!FIXNUM_P(pri)) {
-      rb_raise(rb_eTypeError, "type mismatch: %s given", rb_class2name(CLASS_OF(pri)));
+	rb_raise(rb_eTypeError, "type mismatch: %"PRIsVALUE" given", RB_OBJ_CLASSNAME(pri));
     }
 
     syslog_write(FIX2INT(pri), argc, argv);
@@ -313,24 +322,17 @@ static VALUE mSyslog_log(int argc, VALUE *argv, VALUE self)
  */
 static VALUE mSyslog_inspect(VALUE self)
 {
-    char buf[1024];
-
     Check_Type(self, T_MODULE);
 
-    if (syslog_opened) {
-	snprintf(buf, sizeof(buf),
-	  "<#%s: opened=true, ident=\"%s\", options=%d, facility=%d, mask=%d>",
-	  rb_class2name(self),
-	  syslog_ident,
-	  syslog_options,
-	  syslog_facility,
-	  syslog_mask);
-    } else {
-	snprintf(buf, sizeof(buf),
-	  "<#%s: opened=false>", rb_class2name(self));
-    }
+    if (!syslog_opened)
+	return rb_sprintf("<#%s: opened=false>", rb_class2name(self));
 
-    return rb_str_new2(buf);
+    return rb_sprintf("<#%s: opened=true, ident=\"%s\", options=%d, facility=%d, mask=%d>",
+		      rb_class2name(self),
+		      syslog_ident,
+		      syslog_options,
+		      syslog_facility,
+		      syslog_mask);
 }
 
 /* Returns self, for backward compatibility.

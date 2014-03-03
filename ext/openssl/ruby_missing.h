@@ -1,5 +1,5 @@
 /*
- * $Id: ruby_missing.h 31149 2011-03-22 11:09:43Z akr $
+ * $Id: ruby_missing.h 44754 2014-01-30 03:49:07Z usa $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2003  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -37,5 +37,14 @@
 /* the openssl module doesn't use arg[3-4] and arg2 is always rb_each */
 #define rb_block_call(arg1, arg2, arg3, arg4, arg5, arg6) rb_iterate(rb_each, (arg1), (arg5), (arg6))
 #endif /* ! HAVE_RB_BLOCK_CALL */
+
+#ifdef PRIsVALUE
+# define RB_OBJ_CLASSNAME(obj) rb_obj_class(obj)
+# define RB_OBJ_STRING(obj) (obj)
+#else
+# define PRIsVALUE "s"
+# define RB_OBJ_CLASSNAME(obj) rb_obj_classname(obj)
+# define RB_OBJ_STRING(obj) StringValueCStr(obj)
+#endif
 
 #endif /* _OSSL_RUBY_MISSING_H_ */

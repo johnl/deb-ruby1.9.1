@@ -3,7 +3,7 @@
  *
  *   Copyright (C) UENO Katsuhiro 2000-2003
  *
- * $Id: zlib.c 36939 2012-09-09 14:01:53Z naruse $
+ * $Id: zlib.c 45091 2014-02-22 00:50:33Z usa $
  */
 
 #include <ruby.h>
@@ -294,11 +294,8 @@ raise_zlib_error(int err, const char *msg)
 	rb_sys_fail(msg);
 	/* no return */
       default:
-      {
-	  char buf[BUFSIZ];
-	  snprintf(buf, BUFSIZ, "unknown zlib error %d: %s", err, msg);
-	  exc = rb_exc_new2(cZError, buf);
-      }
+	exc = rb_exc_new3(cZError,
+			  rb_sprintf("unknown zlib error %d: %s", err, msg));
     }
 
     rb_exc_raise(exc);
@@ -1337,6 +1334,7 @@ rb_deflate_init_copy(VALUE self, VALUE orig)
     Data_Get_Struct(self, struct zstream, z1);
     z2 = get_zstream(orig);
 
+    if (z1 == z2) return self;
     err = deflateCopy(&z1->stream, &z2->stream);
     if (err != Z_OK) {
 	raise_zlib_error(err, 0);

@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_pkey_dh.c 32344 2011-06-30 20:20:32Z nobu $
+ * $Id: ossl_pkey_dh.c 45157 2014-02-24 03:39:54Z usa $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2001-2002  Michal Rokos <m.rokos@sh.cvut.cz>
  * All rights reserved.
@@ -572,7 +572,7 @@ Init_ossl_dh()
      *
      * === Example of a key exchange
      *  dh1 = OpenSSL::PKey::DH.new(2048)
-     *  params = dh1.public_key.to_der #you may send this publicly to the participating party
+     *  der = dh1.public_key.to_der #you may send this publicly to the participating party
      *  dh2 = OpenSSL::PKey::DH.new(der)
      *  dh2.generate_key! #generate the per-session key pair
      *  symm_key1 = dh1.compute_key(dh2.pub_key)
@@ -615,4 +615,3 @@ Init_ossl_dh()
 {
 }
 #endif /* NO_DH */
-

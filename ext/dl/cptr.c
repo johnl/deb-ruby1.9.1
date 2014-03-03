@@ -1,11 +1,20 @@
 /* -*- C -*-
- * $Id: cptr.c 34604 2012-02-14 20:09:27Z naruse $
+ * $Id: cptr.c 44754 2014-01-30 03:49:07Z usa $
  */
 
 #include <ruby/ruby.h>
 #include <ruby/io.h>
 #include <ctype.h>
 #include "dl.h"
+
+#ifdef PRIsVALUE
+# define RB_OBJ_CLASSNAME(obj) rb_obj_class(obj)
+# define RB_OBJ_STRING(obj) (obj)
+#else
+# define PRIsVALUE "s"
+# define RB_OBJ_CLASSNAME(obj) rb_obj_classname(obj)
+# define RB_OBJ_STRING(obj) StringValueCStr(obj)
+#endif
 
 VALUE rb_cDLCPtr;
 
@@ -400,12 +409,10 @@ static VALUE
 rb_dlptr_inspect(VALUE self)
 {
     struct ptr_data *data;
-    char str[1024];
 
     TypedData_Get_Struct(self, struct ptr_data, &dlptr_data_type, data);
-    snprintf(str, 1023, "#<%s:%p ptr=%p size=%ld free=%p>",
-	     rb_class2name(CLASS_OF(self)), data, data->ptr, data->size, data->free);
-    return rb_str_new2(str);
+    return rb_sprintf("#<%"PRIsVALUE":%p ptr=%p size=%ld free=%p>",
+		      RB_OBJ_CLASSNAME(self), data, data->ptr, data->size, data->free);
 }
 
 /*

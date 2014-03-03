@@ -15,7 +15,7 @@ class CGI
   # Standard internet newline sequence
   EOL = CR + LF
 
-  REVISION = '$Id: core.rb 34187 2012-01-03 01:22:28Z kosaki $' #:nodoc:
+  REVISION = '$Id: core.rb 44767 2014-01-30 12:04:22Z usa $' #:nodoc:
 
   # Whether processing will be required in binary vs text
   NEEDS_BINMODE = File::BINARY != 0
@@ -478,10 +478,12 @@ class CGI
       bufsize = 10 * 1024
       max_count = MAX_MULTIPART_COUNT
       n = 0
+      tempfiles = []
       while true
         (n += 1) < max_count or raise StandardError.new("too many parameters.")
         ## create body (StringIO or Tempfile)
         body = create_body(bufsize < content_length)
+        tempfiles << body if defined?(Tempfile) && body.kind_of?(Tempfile)
         class << body
           if method_defined?(:path)
             alias local_path path
@@ -562,6 +564,15 @@ class CGI
       raise EOFError, "bad boundary end of body part" unless boundary_end =~ /--/
       params.default = []
       params
+    rescue Exception
+      if tempfiles
+        tempfiles.each {|t|
+          if t.path
+            t.unlink
+          end
+        }
+      end
+      raise
     end # read_multipart
     private :read_multipart
     def create_body(is_large)  #:nodoc:

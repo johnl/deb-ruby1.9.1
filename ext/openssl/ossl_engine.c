@@ -1,5 +1,5 @@
 /*
- * $Id: ossl_engine.c 34505 2012-02-09 03:25:07Z nobu $
+ * $Id: ossl_engine.c 44754 2014-01-30 03:49:07Z usa $
  * 'OpenSSL for Ruby' project
  * Copyright (C) 2003  GOTOU Yuuzou <gotoyuzo@notwork.org>
  * All rights reserved.
@@ -347,18 +347,11 @@ ossl_engine_get_cmds(VALUE self)
 static VALUE
 ossl_engine_inspect(VALUE self)
 {
-    VALUE str;
-    const char *cname = rb_class2name(rb_obj_class(self));
+    ENGINE *e;
 
-    str = rb_str_new2("#<");
-    rb_str_cat2(str, cname);
-    rb_str_cat2(str, " id=\"");
-    rb_str_append(str, ossl_engine_get_id(self));
-    rb_str_cat2(str, "\" name=\"");
-    rb_str_append(str, ossl_engine_get_name(self));
-    rb_str_cat2(str, "\">");
-
-    return str;
+    GetEngine(self, e);
+    return rb_sprintf("#<%"PRIsVALUE" id=\"%s\" name=\"%s\">",
+		      RB_OBJ_CLASSNAME(self), ENGINE_get_id(e), ENGINE_get_name(e));
 }
 
 #define DefEngineConst(x) rb_define_const(cEngine, #x, INT2NUM(ENGINE_##x))

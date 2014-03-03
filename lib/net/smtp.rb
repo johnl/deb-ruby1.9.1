@@ -14,7 +14,7 @@
 # NOTE: You can find Japanese version of this document at:
 # http://www.ruby-lang.org/ja/man/html/net_smtp.html
 #
-# $Id: smtp.rb 40712 2013-05-14 01:33:34Z usa $
+# $Id: smtp.rb 45154 2014-02-24 03:33:47Z usa $
 #
 # See Net::SMTP for documentation.
 #
@@ -78,8 +78,9 @@ module Net
   #
   # This library does NOT provide functions to compose internet mails.
   # You must create them by yourself. If you want better mail support,
-  # try RubyMail or TMail. You can get both libraries from RAA.
-  # (http://www.ruby-lang.org/en/raa.html)
+  # try RubyMail or TMail or search for alternatives in
+  # {RubyGems.org}[https://rubygems.org/] or {The Ruby
+  # Toolbox}[https://www.ruby-toolbox.com/].
   #
   # FYI: the official documentation on internet mail is: [RFC2822] (http://www.ietf.org/rfc/rfc2822.txt).
   #
@@ -172,7 +173,7 @@ module Net
   #
   class SMTP
 
-    Revision = %q$Revision: 40712 $.split[1]
+    Revision = %q$Revision: 45154 $.split[1]
 
     # The default SMTP port number, 25.
     def SMTP.default_port
@@ -934,11 +935,11 @@ module Net
     end
 
     def critical(&block)
-      return '200 dummy reply code' if @error_occured
+      return Response.parse('200 dummy reply code') if @error_occurred
       begin
         return yield()
       rescue Exception
-        @error_occured = true
+        @error_occurred = true
         raise
       end
     end
