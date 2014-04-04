@@ -1,0 +1,557 @@
+commit 27ead690ae54d3ff3c0dbda5cc9c5dbf0012e32e
+Author: John Leach <john@brightbox.co.uk>
+Date:   Fri Apr 4 15:28:17 2014 +0100
+
+    Upgrade rubygems to 1.8.29
+
+diff --git a/lib/rubygems/commands/setup_command.rb b/lib/rubygems/commands/setup_command.rb
+index 0c95739..8bfc1d7 100644
+--- a/lib/rubygems/commands/setup_command.rb
++++ b/lib/rubygems/commands/setup_command.rb
+@@ -124,7 +124,9 @@ By default, this RubyGems will install gem as:
+                       open release_notes do |io|
+                         text = io.gets '==='
+                         text << io.gets('===')
+-                        text[0...-3].sub(/^# coding:.*?^=/m, '')
++                        text.force_encoding Encoding::UTF_8 if
++                          Object.const_defined? :Encoding
++                        text[0...-3].sub(/^# coding:.*?^=/mu, '')
+                       end
+                     else
+                       "Oh-no! Unable to find release notes!"
+@@ -165,7 +167,7 @@ By default, this RubyGems will install gem as:
+                              end
+ 
+         dest_file = File.join bin_dir, bin_file_formatted
+-        bin_tmp_file = File.join Dir.tmpdir, bin_file
++        bin_tmp_file = File.join Dir.tmpdir, "#{bin_file}.#{$$}"
+ 
+         begin
+           bin = File.readlines bin_file
+@@ -209,7 +211,10 @@ TEXT
+     say "Installing RubyGems" if @verbose
+ 
+     Dir.chdir 'lib' do
+-      lib_files = Dir[File.join('**', '*rb')]
++      lib_files =  Dir[File.join('**', '*rb')]
++
++      # Be sure to include our SSL ca bundles
++      lib_files += Dir[File.join('**', '*pem')]
+ 
+       lib_files.each do |lib_file|
+         dest_file = File.join lib_dir, lib_file
+diff --git a/lib/rubygems/custom_require.rb b/lib/rubygems/custom_require.rb
+old mode 100644
+new mode 100755
+diff --git a/lib/rubygems/ext/builder.rb b/lib/rubygems/ext/builder.rb
+index 5e51896..27b3620 100644
+--- a/lib/rubygems/ext/builder.rb
++++ b/lib/rubygems/ext/builder.rb
+@@ -4,8 +4,18 @@
+ # See LICENSE.txt for permissions.
+ #++
+ 
++require 'thread'
++
+ class Gem::Ext::Builder
+ 
++  ##
++  # The builder shells-out to run various commands after changing the
++  # directory.  This means multiple installations cannot be allowed to build
++  # extensions in parallel as they may change each other's directories leading
++  # to broken extensions or failed installations.
++
++  CHDIR_MUTEX = Mutex.new # :nodoc:
++
+   def self.class_name
+     name =~ /Ext::(.*)Builder/
+     $1.downcase
+@@ -16,12 +26,6 @@ class Gem::Ext::Builder
+       raise Gem::InstallError, "Makefile not found:\n\n#{results.join "\n"}"
+     end
+ 
+-    mf = File.read('Makefile')
+-    mf = mf.gsub(/^RUBYARCHDIR\s*=\s*\$[^$]*/, "RUBYARCHDIR = #{dest_path}")
+-    mf = mf.gsub(/^RUBYLIBDIR\s*=\s*\$[^$]*/, "RUBYLIBDIR = #{dest_path}")
+-
+-    File.open('Makefile', 'wb') {|f| f.print mf}
+-
+     # try to find make program from Ruby configure arguments first
+     RbConfig::CONFIG['configure_args'] =~ /with-make-prog\=(\w+)/
+     make_program = $1 || ENV['make']
+@@ -29,13 +33,16 @@ class Gem::Ext::Builder
+       make_program = (/mswin/ =~ RUBY_PLATFORM) ? 'nmake' : 'make'
+     end
+ 
+-    ['', ' install'].each do |target|
+-      cmd = "#{make_program}#{target}"
+-      results << cmd
+-      results << `#{cmd} #{redirector}`
++    destdir = '"DESTDIR=%s"' % ENV['DESTDIR'] if RUBY_VERSION > '2.0'
+ 
+-      raise Gem::InstallError, "make#{target} failed:\n\n#{results}" unless
+-        $?.success?
++    ['', 'install'].each do |target|
++      # Pass DESTDIR via command line to override what's in MAKEFLAGS
++      cmd = [
++        make_program,
++        destdir,
++        target
++      ].join(' ').rstrip
++      run(cmd, results, "make #{target}".rstrip)
+     end
+   end
+ 
+@@ -43,12 +50,12 @@ class Gem::Ext::Builder
+     '2>&1'
+   end
+ 
+-  def self.run(command, results)
++  def self.run(command, results, command_name = nil)
+     results << command
+     results << `#{command} #{redirector}`
+ 
+     unless $?.success? then
+-      raise Gem::InstallError, "#{class_name} failed:\n\n#{results.join "\n"}"
++      raise Gem::InstallError, "#{command_name || class_name} failed:\n\n#{results.join "\n"}"
+     end
+   end
+ 
+diff --git a/lib/rubygems/ext/ext_conf_builder.rb b/lib/rubygems/ext/ext_conf_builder.rb
+index b3d588d..7f75b39 100644
+--- a/lib/rubygems/ext/ext_conf_builder.rb
++++ b/lib/rubygems/ext/ext_conf_builder.rb
+@@ -6,18 +6,58 @@
+ 
+ require 'rubygems/ext/builder'
+ require 'rubygems/command'
++require 'fileutils'
++require 'tempfile'
+ 
+ class Gem::Ext::ExtConfBuilder < Gem::Ext::Builder
++  FileEntry = FileUtils::Entry_ # :nodoc:
+ 
+   def self.build(extension, directory, dest_path, results)
+-    cmd = "#{Gem.ruby} #{File.basename extension}"
+-    cmd << " #{Gem::Command.build_args.join ' '}" unless Gem::Command.build_args.empty?
++    tmp_dest = Dir.mktmpdir(".gem.", ".")
+ 
+-    run cmd, results
++    t = nil
++    Tempfile.open %w"siteconf .rb", "." do |siteconf|
++      t = siteconf
++      siteconf.puts "require 'rbconfig'"
++      siteconf.puts "dest_path = #{(tmp_dest || dest_path).dump}"
++      %w[sitearchdir sitelibdir].each do |dir|
++        siteconf.puts "RbConfig::MAKEFILE_CONFIG['#{dir}'] = dest_path"
++        siteconf.puts "RbConfig::CONFIG['#{dir}'] = dest_path"
++      end
+ 
+-    make dest_path, results
++      siteconf.flush
++
++      rubyopt = ENV["RUBYOPT"]
++      destdir = ENV["DESTDIR"]
++
++      begin
++        ENV["RUBYOPT"] = ["-r#{siteconf.path}", rubyopt].compact.join(' ')
++        cmd = [Gem.ruby, File.basename(extension), *Gem::Command.build_args].join ' '
++
++        run cmd, results
++
++        ENV["DESTDIR"] = nil
++        ENV["RUBYOPT"] = rubyopt
++        siteconf.unlink
++
++        make dest_path, results
++
++        if tmp_dest
++          FileEntry.new(tmp_dest).traverse do |ent|
++            destent = ent.class.new(dest_path, ent.rel)
++            destent.exist? or File.rename(ent.path, destent.path)
++          end
++        end
++      ensure
++        ENV["RUBYOPT"] = rubyopt
++        ENV["DESTDIR"] = destdir
++      end
++    end
++    t.unlink if t and t.path
+ 
+     results
++  ensure
++    FileUtils.rm_rf tmp_dest if tmp_dest
+   end
+ 
+ end
+diff --git a/lib/rubygems/indexer.rb b/lib/rubygems/indexer.rb
+index e87e5a3..ddd4435 100644
+--- a/lib/rubygems/indexer.rb
++++ b/lib/rubygems/indexer.rb
+@@ -584,6 +584,9 @@ class Gem::Indexer
+     specs = map_gems_to_specs updated_gems
+     prerelease, released = specs.partition { |s| s.version.prerelease? }
+ 
++    Gem::Specification.dirs = []
++    Gem::Specification.add_specs(*specs)
++
+     files = build_marshal_gemspecs
+ 
+     Gem.time 'Updated indexes' do
+diff --git a/lib/rubygems/installer.rb b/lib/rubygems/installer.rb
+index 514316f..9956e3f 100644
+--- a/lib/rubygems/installer.rb
++++ b/lib/rubygems/installer.rb
+@@ -538,10 +538,12 @@ TEXT
+ 
+ 
+       begin
+-        Dir.chdir extension_dir do
+-          results = builder.build(extension, gem_dir, dest_path, results)
++        Gem::Ext::Builder::CHDIR_MUTEX.synchronize do
++          Dir.chdir extension_dir do
++            results = builder.build(extension, gem_dir, dest_path, results)
+ 
+-          say results.join("\n") if Gem.configuration.really_verbose
++            say results.join("\n") if Gem.configuration.really_verbose
++          end
+         end
+       rescue
+         results = results.join "\n"
+diff --git a/lib/rubygems/package/tar_input.rb b/lib/rubygems/package/tar_input.rb
+index 77b4d69..5d79938 100644
+--- a/lib/rubygems/package/tar_input.rb
++++ b/lib/rubygems/package/tar_input.rb
+@@ -5,7 +5,6 @@
+ #--
+ 
+ require 'zlib'
+-Gem.load_yaml
+ 
+ class Gem::Package::TarInput
+ 
+diff --git a/lib/rubygems/psych_additions.rb b/lib/rubygems/psych_additions.rb
+index 6a46bda..08a5cb3 100644
+--- a/lib/rubygems/psych_additions.rb
++++ b/lib/rubygems/psych_additions.rb
+@@ -7,12 +7,3 @@ module Psych
+   class PrivateType
+   end
+ end
+-# This exists just to satify bugs in marshal'd gemspecs that
+-# contain a reference to YAML::PrivateType. We prune these out
+-# in Specification._load, but if we don't have the constant, Marshal
+-# blows up.
+-
+-module Psych
+-  class PrivateType
+-  end
+-end
+diff --git a/lib/rubygems/psych_tree.rb b/lib/rubygems/psych_tree.rb
+index d73541e..eca8249 100644
+--- a/lib/rubygems/psych_tree.rb
++++ b/lib/rubygems/psych_tree.rb
+@@ -25,30 +25,3 @@ module Gem
+     end
+   end
+ end
+-module Gem
+-  if defined? ::Psych::Visitors
+-    class NoAliasYAMLTree < Psych::Visitors::YAMLTree
+-      def visit_String(str)
+-        return super unless str == '=' # or whatever you want
+-
+-        quote = Psych::Nodes::Scalar::SINGLE_QUOTED
+-        @emitter.scalar str, nil, nil, false, true, quote
+-      end
+-
+-      # Noop this out so there are no anchors
+-      def register(target, obj)
+-      end
+-
+-      # This is ported over from the yaml_tree in 1.9.3
+-      def format_time time
+-        if time.utc?
+-          time.strftime("%Y-%m-%d %H:%M:%S.%9N Z")
+-        else
+-          time.strftime("%Y-%m-%d %H:%M:%S.%9N %:z")
+-        end
+-      end
+-
+-      private :format_time
+-    end
+-  end
+-end
+diff --git a/lib/rubygems/remote_fetcher.rb b/lib/rubygems/remote_fetcher.rb
+index 9827e66..37699d1 100644
+--- a/lib/rubygems/remote_fetcher.rb
++++ b/lib/rubygems/remote_fetcher.rb
+@@ -176,7 +176,7 @@ class Gem::RemoteFetcher
+ 
+       begin
+         FileUtils.cp source_path, local_gem_path unless
+-          File.expand_path(source_path) == File.expand_path(local_gem_path)
++          File.identical?(source_path, local_gem_path)
+       rescue Errno::EACCES
+         local_gem_path = source_uri.to_s
+       end
+@@ -321,13 +321,24 @@ class Gem::RemoteFetcher
+ 
+     if https?(uri) and !connection.started? then
+       configure_connection_for_https(connection)
+-    end
+ 
+-    connection.start unless connection.started?
++      # Don't refactor this with the else branch. We don't want the
++      # http-only code path to not depend on anything in OpenSSL.
++      #
++      begin
++        connection.start
++      rescue OpenSSL::SSL::SSLError, Errno::EHOSTDOWN => e
++        raise FetchError.new(e.message, uri)
++      end
++    else
++      begin
++        connection.start unless connection.started?
++      rescue Errno::EHOSTDOWN => e
++        raise FetchError.new(e.message, uri)
++      end
++    end
+ 
+     connection
+-  rescue OpenSSL::SSL::SSLError, Errno::EHOSTDOWN => e
+-    raise FetchError.new(e.message, uri)
+   end
+ 
+   def configure_connection_for_https(connection)
+diff --git a/lib/rubygems/requirement.rb b/lib/rubygems/requirement.rb
+index 7abff01..efde4fd 100644
+--- a/lib/rubygems/requirement.rb
++++ b/lib/rubygems/requirement.rb
+@@ -135,6 +135,7 @@ class Gem::Requirement
+       instance_variable_set "@#{ivar}", val
+     end
+ 
++    Gem.load_yaml
+     fix_syck_default_key_in_requirements
+   end
+ 
+diff --git a/lib/rubygems/specification.rb b/lib/rubygems/specification.rb
+index 70a3fd0..1a0130c 100644
+--- a/lib/rubygems/specification.rb
++++ b/lib/rubygems/specification.rb
+@@ -1,3 +1,4 @@
++# -*- coding: utf-8 -*-
+ #--
+ # Copyright 2006 by Chad Fowler, Rich Kilmer, Jim Weirich and others.
+ # All rights reserved.
+@@ -1720,7 +1721,9 @@ class Gem::Specification
+     when Numeric           then obj.inspect
+     when true, false, nil  then obj.inspect
+     when Gem::Platform     then "Gem::Platform.new(#{obj.to_a.inspect})"
+-    when Gem::Requirement  then "Gem::Requirement.new(#{obj.to_s.inspect})"
++    when Gem::Requirement  then
++      list = obj.as_list
++      "Gem::Requirement.new(#{ruby_code(list.size == 1 ? obj.to_s : list)})"
+     else raise Gem::Exception, "ruby_code case not handled: #{obj.class}"
+     end
+   end
+@@ -1946,6 +1949,7 @@ class Gem::Specification
+       ast = builder.tree
+ 
+       io = StringIO.new
++      io.set_encoding Encoding::UTF_8 if Object.const_defined? :Encoding
+ 
+       Psych::Visitors::Emitter.new(io).accept(ast)
+ 
+diff --git a/lib/rubygems/syck_hack.rb b/lib/rubygems/syck_hack.rb
+index 1971165..9c6f4a2 100644
+--- a/lib/rubygems/syck_hack.rb
++++ b/lib/rubygems/syck_hack.rb
+@@ -72,74 +72,3 @@ module Gem
+ end
+ 
+ # :startdoc:
+-# :stopdoc:
+-
+-# Hack to handle syck's DefaultKey bug
+-#
+-# This file is always loaded AFTER either syck or psych are already
+-# loaded. It then looks at what constants are available and creates
+-# a consistent view on all rubys.
+-#
+-# All this is so that there is always a YAML::Syck::DefaultKey
+-# class no matter if the full yaml library has loaded or not.
+-#
+-
+-module YAML
+-  # In newer 1.9.2, there is a Syck toplevel constant instead of it
+-  # being underneith YAML. If so, reference it back under YAML as
+-  # well.
+-  if defined? ::Syck
+-    # for tests that change YAML::ENGINE
+-    remove_const :Syck if const_defined? :Syck, false
+-    
+-    Syck = ::Syck
+-
+-  # JRuby's "Syck" is called "Yecht"
+-  elsif defined? YAML::Yecht
+-    Syck = YAML::Yecht
+-
+-  # Otherwise, if there is no YAML::Syck, then we've got just psych
+-  # loaded, so lets define a stub for DefaultKey.
+-  elsif !defined? YAML::Syck
+-    module Syck
+-      class DefaultKey
+-      end
+-    end
+-  end
+-
+-  # Now that we've got something that is always here, define #to_s
+-  # so when code tries to use this, it at least just shows up like it
+-  # should.
+-  module Syck
+-    class DefaultKey
+-      def to_s
+-        '='
+-      end
+-    end
+-  end
+-end
+-
+-# Sometime in the 1.9 dev cycle, the Syck constant was moved from under YAML
+-# to be a toplevel constant. So gemspecs created under these versions of Syck
+-# will have references to Syck::DefaultKey.
+-#
+-# So we need to be sure that we reference Syck at the toplevel too so that
+-# we can always load these kind of gemspecs.
+-#
+-if !defined?(Syck)
+-  Syck = YAML::Syck
+-end
+-
+-# Now that we've got Syck setup in all the right places, store
+-# a reference to the DefaultKey class inside Gem. We do this so that
+-# if later on YAML, etc are redefined, we've still got a consistent
+-# place to find the DefaultKey class for comparison.
+-
+-module Gem
+-  # for tests that change YAML::ENGINE
+-  remove_const :SyckDefaultKey if const_defined? :SyckDefaultKey
+-
+-  SyckDefaultKey = YAML::Syck::DefaultKey
+-end
+-
+-# :startdoc:
+diff --git a/lib/rubygems/test_case.rb b/lib/rubygems/test_case.rb
+index 9fbdfca..38fd32a 100644
+--- a/lib/rubygems/test_case.rb
++++ b/lib/rubygems/test_case.rb
+@@ -1,5 +1,7 @@
+ at_exit { $SAFE = 1 }
+ 
++gem 'minitest', '~> 4.0'
++
+ if defined? Gem::QuickLoader
+   Gem::QuickLoader.load_full_rubygems_library
+ else
+@@ -21,6 +23,7 @@ require 'rubygems/test_utilities'
+ require 'pp'
+ require 'zlib'
+ require 'pathname'
++require 'shellwords'
+ Gem.load_yaml
+ 
+ require 'rubygems/mock_gem_ui'
+@@ -92,6 +95,63 @@ class Gem::TestCase < MiniTest::Unit::TestCase
+     refute File.exist?(path), msg
+   end
+ 
++  def scan_make_command_lines(output)
++    output.scan(/^#{Regexp.escape make_command}(?:[[:blank:]].*)?$/)
++  end
++
++  def parse_make_command_line(line)
++    command, *args = line.shellsplit
++
++    targets = []
++    macros = {}
++
++    args.each do |arg|
++      case arg
++      when /\A(\w+)=/
++        macros[$1] = $'
++      else
++        targets << arg
++      end
++    end
++
++    targets << '' if targets.empty?
++
++    {
++      :command => command,
++      :targets => targets,
++      :macros => macros,
++    }
++  end
++
++  def assert_contains_make_command(target, output, msg = nil)
++    if output.match(/\n/)
++      msg = message(msg) {
++        'Expected output containing make command "%s": %s' % [
++          ('%s %s' % [make_command, target]).rstrip,
++          output.inspect
++        ]
++      }
++    else
++      msg = message(msg) {
++        'Expected make command "%s": %s' % [
++          ('%s %s' % [make_command, target]).rstrip,
++          output.inspect
++        ]
++      }
++    end
++
++    assert scan_make_command_lines(output).any? { |line|
++      make = parse_make_command_line(line)
++
++      if make[:targets].include?(target)
++        yield make, line if block_given?
++        true
++      else
++        false
++      end
++    }, msg
++  end
++
+   include Gem::DefaultUserInteraction
+ 
+   undef_method :default_test if instance_methods.include? 'default_test' or
+@@ -417,6 +477,11 @@ class Gem::TestCase < MiniTest::Unit::TestCase
+     end
+   end
+ 
++  def util_remove_gem(spec)
++    FileUtils.rm_rf spec.cache_file
++    FileUtils.rm_rf spec.spec_file
++  end
++
+   ##
+   # Removes all installed gems from +@gemhome+.
+ 
+diff --git a/lib/rubygems/validator.rb b/lib/rubygems/validator.rb
+old mode 100644
+new mode 100755
+diff --git a/lib/rubygems/version.rb b/lib/rubygems/version.rb
+index 86821a9..de915d0 100644
+--- a/lib/rubygems/version.rb
++++ b/lib/rubygems/version.rb
+@@ -187,7 +187,7 @@ class Gem::Version
+     raise ArgumentError, "Malformed version number string #{version}" unless
+       self.class.correct?(version)
+ 
+-    @version = version.to_s
++    @version = version.to_s.dup
+     @version.strip!
+   end
+ 
