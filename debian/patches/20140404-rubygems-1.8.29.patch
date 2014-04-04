@@ -1,47 +1,25 @@
-commit e3ddc193780f7e849e4b6ee4cc81a47b383f73b5
+commit 27ead690ae54d3ff3c0dbda5cc9c5dbf0012e32e
 Author: John Leach <john@brightbox.co.uk>
-Date:   Fri Nov 22 18:28:23 2013 +0000
+Date:   Fri Apr 4 15:28:17 2014 +0100
 
-    Rubygems 1.8.28
+    Upgrade rubygems to 1.8.29
 
-diff --git a/bin/gem b/bin/gem
-index a4ec754..7cea2a5 100755
---- a/bin/gem
-+++ b/bin/gem
-@@ -5,6 +5,15 @@
- # See LICENSE.txt for permissions.
- #++
- 
-+# The prelude in 1.9.1 injects rubygems.rb into $LOADED_FEATURES
-+# which prevents the `require 'rubygems'` from actually loading
-+# the site's version of rubygems. So we have to use it's API
-+# to get it's prelude out of the way.
-+#
-+if RUBY_VERSION =~ /^1\.9\.1/ && defined?(Gem::QuickLoader)
-+  Gem::QuickLoader.load_full_rubygems_library
-+end
-+
- require 'rubygems'
- require 'rubygems/gem_runner'
- require 'rubygems/exceptions'
-diff --git a/lib/rubygems.rb b/lib/rubygems.rb
-index 7ed2746..58c6655 100644
---- a/lib/rubygems.rb
-+++ b/lib/rubygems.rb
-@@ -121,7 +121,7 @@ require "rubygems/deprecate"
- # -The RubyGems Team
- 
- module Gem
--  VERSION = '1.8.23'
-+  VERSION = '1.8.28'
- 
-   ##
-   # Raised when RubyGems is unable to load or activate a gem.  Contains the
 diff --git a/lib/rubygems/commands/setup_command.rb b/lib/rubygems/commands/setup_command.rb
-index 0c95739..cf0fdd0 100644
+index 0c95739..8bfc1d7 100644
 --- a/lib/rubygems/commands/setup_command.rb
 +++ b/lib/rubygems/commands/setup_command.rb
-@@ -165,7 +165,7 @@ By default, this RubyGems will install gem as:
+@@ -124,7 +124,9 @@ By default, this RubyGems will install gem as:
+                       open release_notes do |io|
+                         text = io.gets '==='
+                         text << io.gets('===')
+-                        text[0...-3].sub(/^# coding:.*?^=/m, '')
++                        text.force_encoding Encoding::UTF_8 if
++                          Object.const_defined? :Encoding
++                        text[0...-3].sub(/^# coding:.*?^=/mu, '')
+                       end
+                     else
+                       "Oh-no! Unable to find release notes!"
+@@ -165,7 +167,7 @@ By default, this RubyGems will install gem as:
                               end
  
          dest_file = File.join bin_dir, bin_file_formatted
@@ -50,7 +28,7 @@ index 0c95739..cf0fdd0 100644
  
          begin
            bin = File.readlines bin_file
-@@ -209,7 +209,10 @@ TEXT
+@@ -209,7 +211,10 @@ TEXT
      say "Installing RubyGems" if @verbose
  
      Dir.chdir 'lib' do
@@ -386,86 +364,6 @@ index 70a3fd0..1a0130c 100644
  
        Psych::Visitors::Emitter.new(io).accept(ast)
  
-diff --git a/lib/rubygems/ssl_certs/Class3PublicPrimaryCertificationAuthority.pem b/lib/rubygems/ssl_certs/Class3PublicPrimaryCertificationAuthority.pem
-new file mode 100644
-index 0000000..87676ac
---- /dev/null
-+++ b/lib/rubygems/ssl_certs/Class3PublicPrimaryCertificationAuthority.pem
-@@ -0,0 +1,14 @@
-+-----BEGIN CERTIFICATE-----
-+MIICPDCCAaUCEHC65B0Q2Sk0tjjKewPMur8wDQYJKoZIhvcNAQECBQAwXzELMAkG
-+A1UEBhMCVVMxFzAVBgNVBAoTDlZlcmlTaWduLCBJbmMuMTcwNQYDVQQLEy5DbGFz
-+cyAzIFB1YmxpYyBQcmltYXJ5IENlcnRpZmljYXRpb24gQXV0aG9yaXR5MB4XDTk2
-+MDEyOTAwMDAwMFoXDTI4MDgwMTIzNTk1OVowXzELMAkGA1UEBhMCVVMxFzAVBgNV
-+BAoTDlZlcmlTaWduLCBJbmMuMTcwNQYDVQQLEy5DbGFzcyAzIFB1YmxpYyBQcmlt
-+YXJ5IENlcnRpZmljYXRpb24gQXV0aG9yaXR5MIGfMA0GCSqGSIb3DQEBAQUAA4GN
-+ADCBiQKBgQDJXFme8huKARS0EN8EQNvjV69qRUCPhAwL0TPZ2RHP7gJYHyX3KqhE
-+BarsAx94f56TuZoAqiN91qyFomNFx3InzPRMxnVx0jnvT0Lwdd8KkMaOIG+YD/is
-+I19wKTakyYbnsZogy1Olhec9vn2a/iRFM9x2Fe0PonFkTGUugWhFpwIDAQABMA0G
-+CSqGSIb3DQEBAgUAA4GBALtMEivPLCYATxQT3ab7/AoRhIzzKBxnki98tsX63/Do
-+lbwdj2wsqFHMc9ikwFPwTtYmwHYBV4GSXiHx0bH/59AhWM1pF+NEHJwZRDmJXNyc
-+AA9WjQKZ7aKQRUzkuxCkPfAyAw7xzvjoyVGM5mKf5p/AfbdynMk2OmufTqj/ZA1k
-+-----END CERTIFICATE-----
-diff --git a/lib/rubygems/ssl_certs/EntrustnetSecureServerCertificationAuthority.pem b/lib/rubygems/ssl_certs/EntrustnetSecureServerCertificationAuthority.pem
-new file mode 100644
-index 0000000..4b8939c
---- /dev/null
-+++ b/lib/rubygems/ssl_certs/EntrustnetSecureServerCertificationAuthority.pem
-@@ -0,0 +1,28 @@
-+-----BEGIN CERTIFICATE-----
-+MIIE2DCCBEGgAwIBAgIEN0rSQzANBgkqhkiG9w0BAQUFADCBwzELMAkGA1UEBhMC
-+VVMxFDASBgNVBAoTC0VudHJ1c3QubmV0MTswOQYDVQQLEzJ3d3cuZW50cnVzdC5u
-+ZXQvQ1BTIGluY29ycC4gYnkgcmVmLiAobGltaXRzIGxpYWIuKTElMCMGA1UECxMc
-+KGMpIDE5OTkgRW50cnVzdC5uZXQgTGltaXRlZDE6MDgGA1UEAxMxRW50cnVzdC5u
-+ZXQgU2VjdXJlIFNlcnZlciBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTAeFw05OTA1
-+MjUxNjA5NDBaFw0xOTA1MjUxNjM5NDBaMIHDMQswCQYDVQQGEwJVUzEUMBIGA1UE
-+ChMLRW50cnVzdC5uZXQxOzA5BgNVBAsTMnd3dy5lbnRydXN0Lm5ldC9DUFMgaW5j
-+b3JwLiBieSByZWYuIChsaW1pdHMgbGlhYi4pMSUwIwYDVQQLExwoYykgMTk5OSBF
-+bnRydXN0Lm5ldCBMaW1pdGVkMTowOAYDVQQDEzFFbnRydXN0Lm5ldCBTZWN1cmUg
-+U2VydmVyIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MIGdMA0GCSqGSIb3DQEBAQUA
-+A4GLADCBhwKBgQDNKIM0VBuJ8w+vN5Ex/68xYMmo6LIQaO2f55M28Qpku0f1BBc/
-+I0dNxScZgSYMVHINiC3ZH5oSn7yzcdOAGT9HZnuMNSjSuQrfJNqc1lB5gXpa0zf3
-+wkrYKZImZNHkmGw6AIr1NJtl+O3jEP/9uElY3KDegjlrgbEWGWG5VLbmQwIBA6OC
-+AdcwggHTMBEGCWCGSAGG+EIBAQQEAwIABzCCARkGA1UdHwSCARAwggEMMIHeoIHb
-+oIHYpIHVMIHSMQswCQYDVQQGEwJVUzEUMBIGA1UEChMLRW50cnVzdC5uZXQxOzA5
-+BgNVBAsTMnd3dy5lbnRydXN0Lm5ldC9DUFMgaW5jb3JwLiBieSByZWYuIChsaW1p
-+dHMgbGlhYi4pMSUwIwYDVQQLExwoYykgMTk5OSBFbnRydXN0Lm5ldCBMaW1pdGVk
-+MTowOAYDVQQDEzFFbnRydXN0Lm5ldCBTZWN1cmUgU2VydmVyIENlcnRpZmljYXRp
-+b24gQXV0aG9yaXR5MQ0wCwYDVQQDEwRDUkwxMCmgJ6AlhiNodHRwOi8vd3d3LmVu
-+dHJ1c3QubmV0L0NSTC9uZXQxLmNybDArBgNVHRAEJDAigA8xOTk5MDUyNTE2MDk0
-+MFqBDzIwMTkwNTI1MTYwOTQwWjALBgNVHQ8EBAMCAQYwHwYDVR0jBBgwFoAU8Bdi
-+E1U9s/8KAGv7UISX8+1i0BowHQYDVR0OBBYEFPAXYhNVPbP/CgBr+1CEl/PtYtAa
-+MAwGA1UdEwQFMAMBAf8wGQYJKoZIhvZ9B0EABAwwChsEVjQuMAMCBJAwDQYJKoZI
-+hvcNAQEFBQADgYEAkNwwAvpkdMKnCqV8IY00F6j7Rw7/JXyNEwr75Ji174z4xRAN
-+95K+8cPV1ZVqBLssziY2ZcgxxufuP+NXdYR6Ee9GTxj005i7qIcyunL2POI9n9cd
-+2cNgQ4xYDiKWL2KjLB+6rQXvqzJ4h6BUcxm1XAX5Uj5tLUUL9wqT6u0G+bI=
-+-----END CERTIFICATE-----
-diff --git a/lib/rubygems/ssl_certs/GeoTrustGlobalCA.pem b/lib/rubygems/ssl_certs/GeoTrustGlobalCA.pem
-new file mode 100644
-index 0000000..bcb2529
---- /dev/null
-+++ b/lib/rubygems/ssl_certs/GeoTrustGlobalCA.pem
-@@ -0,0 +1,20 @@
-+-----BEGIN CERTIFICATE-----
-+MIIDVDCCAjygAwIBAgIDAjRWMA0GCSqGSIb3DQEBBQUAMEIxCzAJBgNVBAYTAlVT
-+MRYwFAYDVQQKEw1HZW9UcnVzdCBJbmMuMRswGQYDVQQDExJHZW9UcnVzdCBHbG9i
-+YWwgQ0EwHhcNMDIwNTIxMDQwMDAwWhcNMjIwNTIxMDQwMDAwWjBCMQswCQYDVQQG
-+EwJVUzEWMBQGA1UEChMNR2VvVHJ1c3QgSW5jLjEbMBkGA1UEAxMSR2VvVHJ1c3Qg
-+R2xvYmFsIENBMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2swYYzD9
-+9BcjGlZ+W988bDjkcbd4kdS8odhM+KhDtgPpTSEHCIjaWC9mOSm9BXiLnTjoBbdq
-+fnGk5sRgprDvgOSJKA+eJdbtg/OtppHHmMlCGDUUna2YRpIuT8rxh0PBFpVXLVDv
-+iS2Aelet8u5fa9IAjbkU+BQVNdnARqN7csiRv8lVK83Qlz6cJmTM386DGXHKTubU
-+1XupGc1V3sjs0l44U+VcT4wt/lAjNvxm5suOpDkZALeVAjmRCw7+OC7RHQWa9k0+
-+bw8HHa8sHo9gOeL6NlMTOdReJivbPagUvTLrGAMoUgRx5aszPeE4uwc2hGKceeoW
-+MPRfwCvocWvk+QIDAQABo1MwUTAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTA
-+ephojYn7qwVkDBF9qn1luMrMTjAfBgNVHSMEGDAWgBTAephojYn7qwVkDBF9qn1l
-+uMrMTjANBgkqhkiG9w0BAQUFAAOCAQEANeMpauUvXVSOKVCUn5kaFOSPeCpilKIn
-+Z57QzxpeR+nBsqTP3UEaBU6bS+5Kb1VSsyShNwrrZHYqLizz/Tt1kL/6cdjHPTfS
-+tQWVYrmm3ok9Nns4d0iXrKYgjy6myQzCsplFAMfOEVEiIuCl6rYVSAlk6l5PdPcF
-+PseKUgzbFbS9bZvlxrFUaKnjaZC2mqUPuLk/IH2uSrW4nOQdtqvmlKXBx4Ot2/Un
-+hw4EbNX/3aBd7YdStysVAq45pmp06drE57xNNB6pXE0zX5IJL4hmXXeXxx12E6nV
-+5fEWCRE11azbJHFwLJhWC9kXtNHjUStedejV0NxPNO3CBWaAocvmMw==
-+-----END CERTIFICATE-----
 diff --git a/lib/rubygems/syck_hack.rb b/lib/rubygems/syck_hack.rb
 index 1971165..9c6f4a2 100644
 --- a/lib/rubygems/syck_hack.rb
@@ -645,20 +543,9 @@ diff --git a/lib/rubygems/validator.rb b/lib/rubygems/validator.rb
 old mode 100644
 new mode 100755
 diff --git a/lib/rubygems/version.rb b/lib/rubygems/version.rb
-index 2ced9cc..de915d0 100644
+index 86821a9..de915d0 100644
 --- a/lib/rubygems/version.rb
 +++ b/lib/rubygems/version.rb
-@@ -145,8 +145,8 @@ class Gem::Version
- 
-   include Comparable
- 
--  VERSION_PATTERN = '[0-9]+(\.[0-9a-zA-Z]+)*' # :nodoc:
--  ANCHORED_VERSION_PATTERN = /\A\s*(#{VERSION_PATTERN})*\s*\z/ # :nodoc:
-+  VERSION_PATTERN = '[0-9]+(?>\.[0-9a-zA-Z]+)*' # :nodoc:
-+  ANCHORED_VERSION_PATTERN = /\A\s*(#{VERSION_PATTERN})?\s*\z/ # :nodoc:
- 
-   ##
-   # A string representation of this Version.
 @@ -187,7 +187,7 @@ class Gem::Version
      raise ArgumentError, "Malformed version number string #{version}" unless
        self.class.correct?(version)
@@ -1274,39 +1161,6 @@ index 6d370cf..30d49f6 100644
    end
  
    class Conn
-diff --git a/test/rubygems/test_gem_requirement.rb b/test/rubygems/test_gem_requirement.rb
-index 0bc6ad7..d79cc8e 100644
---- a/test/rubygems/test_gem_requirement.rb
-+++ b/test/rubygems/test_gem_requirement.rb
-@@ -37,17 +37,19 @@ class TestGemRequirement < Gem::TestCase
-   end
- 
-   def test_parse_bad
--    e = assert_raises ArgumentError do
--      Gem::Requirement.parse nil
--    end
--
--    assert_equal 'Illformed requirement [nil]', e.message
-+    [
-+      nil,
-+      '',
-+      '! 1',
-+      '= junk',
-+      '1..2',
-+    ].each do |bad|
-+      e = assert_raises ArgumentError do
-+        Gem::Requirement.parse bad
-+      end
- 
--    e = assert_raises ArgumentError do
--      Gem::Requirement.parse ""
-+      assert_equal "Illformed requirement [#{bad.inspect}]", e.message
-     end
--
--    assert_equal 'Illformed requirement [""]', e.message
-   end
- 
-   def test_prerelease_eh
 diff --git a/test/rubygems/test_gem_specification.rb b/test/rubygems/test_gem_specification.rb
 index aa648c9..bf8183a 100644
 --- a/test/rubygems/test_gem_specification.rb
@@ -1342,7 +1196,7 @@ index aa648c9..bf8183a 100644
      @a1.platform = Gem::Platform.local
      yaml_str = @a1.to_yaml
 diff --git a/test/rubygems/test_gem_version.rb b/test/rubygems/test_gem_version.rb
-index f578063..5d5bf6c 100644
+index e543ef8..5d5bf6c 100644
 --- a/test/rubygems/test_gem_version.rb
 +++ b/test/rubygems/test_gem_version.rb
 @@ -33,6 +33,9 @@ class TestGemVersion < Gem::TestCase
@@ -1355,25 +1209,3 @@ index f578063..5d5bf6c 100644
    end
  
    def test_eql_eh
-@@ -64,12 +67,18 @@ class TestGemVersion < Gem::TestCase
-   end
- 
-   def test_initialize_bad
--    ["junk", "1.0\n2.0"].each do |bad|
--      e = assert_raises ArgumentError do
-+    %W[
-+      junk
-+      1.0\n2.0
-+      1..2
-+      1.2\ 3.4
-+      1-2-3
-+    ].each do |bad|
-+      e = assert_raises ArgumentError, bad do
-         Gem::Version.new bad
-       end
- 
--      assert_equal "Malformed version number string #{bad}", e.message
-+      assert_equal "Malformed version number string #{bad}", e.message, bad
-     end
-   end
- 
