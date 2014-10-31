@@ -1,9 +1,9 @@
-ruby1.9.1 (1:1.9.3.545-1bbox2~precise1) precise; urgency=medium
+ruby1.9.1 (1:1.9.3.545-1bbox4~trusty2) trusty; urgency=medium
 
   * New upstream release, 1.9.3-p545
   * Upgrade rubygems to 1.8.29
 
- -- John Leach <john@brightbox.co.uk>  Fri, 04 Apr 2014 15:36:39 +0100
+ -- John Leach <john@brightbox.co.uk>  Sun, 11 May 2014 18:38:31 +0100
 
 ruby1.9.1 (1:1.9.3.484-1bbox1~precise1) precise; urgency=high
 
