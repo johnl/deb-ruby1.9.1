@@ -1,3 +1,45 @@
+Mon Oct 27 20:23:27 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* lib/rexml/entity.rb: keep the entity size within the limitation.
+	  reported by Willis Vandevanter <will@silentrobots.com> and
+	  patched by nahi.
+
+Thu Oct 24 12:00:55 2014  CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>
+
+	* ext/openssl/lib/openssl/ssl-internal.rb (DEFAULT_PARAMS): override
+	  options even if OpenSSL::SSL::OP_NO_SSLv3 is not defined.
+	  this is pointed out by Stephen Touset. [ruby-core:65711] [Bug #9424]
+
+Thu Oct 24 12:00:55 2014  Martin Bosslet  <Martin.Bosslet@gmail.com>
+
+	* test/openssl/test_ssl.rb: Reuse TLS default options from
+	  OpenSSL::SSL::SSLContext::DEFAULT_PARAMS.
+
+Thu Oct 24 12:00:55 2014  Martin Bosslet  <Martin.Bosslet@gmail.com>
+
+	* lib/openssl/ssl-internal.rb: Explicitly whitelist the default
+	  SSL/TLS ciphers. Forbid SSLv2 and SSLv3, disable
+	  compression by default.
+	  Reported by Jeff Hodges.
+	  [ruby-core:59829] [Bug #9424]
+
+Sat Sep  6 09:13:55 2014  Zachary Scott  <e@zzak.io>
+
+	* lib/rdoc/generator/template/darkfish/js/jquery.js: Backport
+	  rdoc/rdoc@74f60fcb04fee1778fe2694d1a0ea6513f8e67b7
+
+Wed May 14 17:35:32 2014  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* common.mk: need to quote $BASERUBY because it may includes options.
+	  this change is only for release management, not bug fix.
+	  [Backport #9837] [ruby-dev:48218]
+
+Mon Mar 31 15:38:07 2014  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* ext/openssl/ossl.c (ossl_make_error): check NULL for unknown
+	  error reasons with old OpenSSL, and insert a colon iff formatted
+	  message is not empty.
+
 Mon Feb 24 12:42:01 2014  Zachary Scott  <e@zzak.io>
 
 	* lib/open-uri.rb: [DOC] use lower case version of core classes, same
