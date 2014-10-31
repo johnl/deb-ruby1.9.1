@@ -1,3 +1,10 @@
+ruby1.9.1 (1:1.9.3.550-1bbox1~trusty1) trusty; urgency=medium
+
+  * New upstream release, 1.9.3-p550
+  * Fixes CVE-2014-8080
+
+ -- John Leach <john@brightbox.co.uk>  Fri, 31 Oct 2014 11:59:23 +0000
+
 ruby1.9.1 (1:1.9.3.545-1bbox4~trusty2) trusty; urgency=medium
 
   * New upstream release, 1.9.3-p545
