@@ -539,6 +539,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_exec_recursive@Base 1.9.2.0
  rb_exec_recursive_outer@Base 1.9.2.0
  rb_exec_recursive_paired@Base 1.9.2.0
+ rb_exec_recursive_paired_outer@Base 1.9.3.551
  rb_exit@Base 1.9.2.0
  rb_extend_object@Base 1.9.2.0
  rb_external_str_new@Base 1.9.2.0
@@ -549,6 +550,7 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_f_exit@Base 1.9.2.0
  rb_f_global_variables@Base 1.9.2.0
  rb_f_kill@Base 1.9.2.0
+ rb_f_lambda@Base 1.9.3.551
  rb_f_notimplement@Base 1.9.2.0
  rb_f_require@Base 1.9.2.0
  rb_f_sprintf@Base 1.9.2.0
@@ -923,6 +925,10 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  rb_parser_while_loop@Base 1.9.2.0
  rb_path2class@Base 1.9.2.0
  rb_path_check@Base 1.9.2.0
+ rb_path_end@Base 1.9.3.551
+ rb_path_last_separator@Base 1.9.3.551
+ rb_path_next@Base 1.9.3.551
+ rb_path_skip_prefix@Base 1.9.3.551
  rb_path_to_class@Base 1.9.2.0
  rb_pipe@Base 1.9.2.0
  rb_proc_arity@Base 1.9.2.0
@@ -1210,8 +1216,11 @@ libruby-1.9.1.so.1.9 libruby1.9.1 #MINVER#
  ruby_exec_node@Base 1.9.2.0
  ruby_executable_node@Base 1.9.2.0
  ruby_finalize@Base 1.9.2.0
+ ruby_find_basename@Base 1.9.3.551
+ ruby_find_extname@Base 1.9.3.551
  ruby_getcwd@Base 1.9.2.0
  ruby_glob@Base 1.9.2.0
+ ruby_global_name_punct_bits@Base 1.9.3.551
  ruby_incpush@Base 1.9.2.0
  ruby_init@Base 1.9.2.0
  ruby_init_ext@Base 1.9.2.0
