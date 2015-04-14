@@ -21,3 +21,4 @@ hurd-path-max.diff
 12-falcon-array-queue.patch
 121113-brightbox-version.diff
 20140404-rubygems-1.8.29.patch
+ruby_1_9_3-p551-fixes-2015-04-14.patch
