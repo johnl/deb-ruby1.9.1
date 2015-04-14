@@ -1,3 +1,11 @@
+ruby1.9.1 (1:1.9.3.551-2bbox1~trusty1) trusty; urgency=medium
+
+  * Add ruby_1_9_3-p551-fixes-2015-04-14.patch
+  * Fixes CVE-2015-1855 OpenSSL hostname verification (backported by
+    tobias.kraze@makandra.de)
+
+ -- John Leach <john@brightbox.co.uk>  Tue, 14 Apr 2015 22:10:29 +0100
+
 ruby1.9.1 (1:1.9.3.551-1bbox1~trusty1) trusty; urgency=medium
 
   * New upstream release, 1.9.3-p551
